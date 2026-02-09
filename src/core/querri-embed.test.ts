@@ -385,6 +385,18 @@ describe('destroy() cleanup', () => {
 
     expect(cb).not.toHaveBeenCalled();
   });
+
+  it('double destroy is safe (idempotent)', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+
+    expect(() => {
+      instance.destroy();
+      instance.destroy();
+    }).not.toThrow();
+  });
 });
 
 describe('Ready timeout', () => {

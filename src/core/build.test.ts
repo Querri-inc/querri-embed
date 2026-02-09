@@ -37,8 +37,32 @@ describe('Build outputs', () => {
     expect(fileExists('react/index.mjs')).toBe(true);
   });
 
+  it.skipIf(!distExists)('dist/react/index.cjs exists and is non-empty', () => {
+    expect(fileExists('react/index.cjs')).toBe(true);
+  });
+
   it.skipIf(!distExists)('dist/vue/index.mjs exists and is non-empty', () => {
     expect(fileExists('vue/index.mjs')).toBe(true);
+  });
+
+  it.skipIf(!distExists)('dist/vue/index.cjs exists and is non-empty', () => {
+    expect(fileExists('vue/index.cjs')).toBe(true);
+  });
+
+  it.skipIf(!distExists)('dist/vue/index.d.ts exists and is non-empty', () => {
+    expect(fileExists('vue/index.d.ts')).toBe(true);
+  });
+
+  it.skipIf(!distExists)('dist/angular/index.mjs exists and is non-empty', () => {
+    expect(fileExists('angular/index.mjs')).toBe(true);
+  });
+
+  it.skipIf(!distExists)('dist/angular/index.cjs exists and is non-empty', () => {
+    expect(fileExists('angular/index.cjs')).toBe(true);
+  });
+
+  it.skipIf(!distExists)('dist/angular/index.d.ts exists and is non-empty', () => {
+    expect(fileExists('angular/index.d.ts')).toBe(true);
   });
 
   it.skipIf(!distExists)('dist/svelte/QuerriEmbed.svelte exists and is non-empty', () => {

@@ -1,6 +1,6 @@
 # @querri/embed
 
-Embed Querri views in your application. Works with vanilla JavaScript, React, Vue, and Svelte.
+Embed Querri views in your application. Works with vanilla JavaScript, React, Vue, Svelte, and Angular.
 
 ## Installation
 
@@ -92,6 +92,36 @@ function onError(err) { console.error(err); }
     on:error={(e) => console.error(e.detail)}
   />
 </div>
+```
+
+### Angular
+
+```typescript
+import { Component } from '@angular/core';
+import { QuerriEmbedComponent, type QuerriAuth } from '@querri/embed/angular';
+
+@Component({
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [QuerriEmbedComponent],
+  template: `
+    <div style="width: 100%; height: 600px">
+      <querri-embed
+        [serverUrl]="'https://app.querri.com'"
+        [auth]="auth"
+        [startView]="'/builder/dashboard/your-dashboard-uuid'"
+        (ready)="onReady()"
+        (error)="onError($event)"
+      />
+    </div>
+  `,
+})
+export class DashboardComponent {
+  auth: QuerriAuth = { shareKey: 'your-share-key', org: 'your-org-id' };
+
+  onReady() { console.log('Loaded'); }
+  onError(err: any) { console.error(err); }
+}
 ```
 
 ### Script Tag (CDN)
@@ -237,6 +267,20 @@ Access the underlying instance via `bind:this`:
 <!-- embed.getInstance() / embed.getIframe() -->
 ```
 
+### Angular
+
+Inputs: `serverUrl`, `auth`, `startView`, `chrome`, `theme`
+
+Events: `(ready)`, `(error)`, `(sessionExpired)`, `(navigation)`
+
+Access the underlying instance via a template ref or `ViewChild`:
+
+```typescript
+@ViewChild(QuerriEmbedComponent) embed!: QuerriEmbedComponent;
+// embed.sdkInstance — SDK instance
+// embed.iframe — iframe element
+```
+
 ## TypeScript
 
 All types are exported from every entry point:
@@ -270,13 +314,14 @@ Framework wrappers require:
 | React | >= 17 |
 | Vue | >= 3.2 |
 | Svelte | >= 4 |
+| Angular | >= 17 |
 
 All framework dependencies are optional — install only what you use.
 
 ## Important Notes
 
 - The container element must have explicit dimensions (width and height). The iframe fills 100% of its container.
-- **React/Vue:** Memoize the `auth` prop if it's an object. A new object reference on every render will cause the iframe to be destroyed and recreated.
+- **React/Vue/Angular:** Memoize the `auth` prop if it's an object. A new object reference on every render/change detection cycle will cause the iframe to be destroyed and recreated.
 - All framework wrappers automatically clean up the iframe on unmount.
 
 ## License

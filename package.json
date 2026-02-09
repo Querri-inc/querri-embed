@@ -1,7 +1,7 @@
 {
   "name": "@querri/embed",
   "version": "0.1.0",
-  "description": "Embed Querri views in your application. Core SDK + React, Vue, and Svelte components.",
+  "description": "Embed Querri views in your application. Core SDK + React, Vue, Svelte, and Angular components.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -16,6 +16,7 @@
     "react",
     "vue",
     "svelte",
+    "angular",
     "dashboard",
     "analytics"
   ],
@@ -49,6 +50,12 @@
       "import": "./dist/svelte/index.js",
       "default": "./dist/svelte/index.js"
     },
+    "./angular": {
+      "types": "./dist/angular/index.d.ts",
+      "import": "./dist/angular/index.mjs",
+      "require": "./dist/angular/index.cjs",
+      "default": "./dist/angular/index.mjs"
+    },
     "./iife": {
       "default": "./dist/core/querri-embed.iife.global.js"
     }
@@ -59,8 +66,9 @@
   "peerDependencies": {
     "react": ">=17",
     "react-dom": ">=17",
-    "vue": ">=3.2",
-    "svelte": ">=4"
+    "@angular/core": ">=17",
+    "svelte": ">=4",
+    "vue": ">=3.2"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -72,11 +80,16 @@
     "vue": {
       "optional": true
     },
+    "@angular/core": {
+      "optional": true
+    },
     "svelte": {
       "optional": true
     }
   },
   "devDependencies": {
+    "@angular/compiler": "^18.2.14",
+    "@angular/core": "^18.2.14",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/vue": "^8.0.0",
@@ -85,11 +98,13 @@
     "happy-dom": "^14.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "rxjs": "^7.8.2",
     "svelte": "^5.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0",
-    "vue": "^3.4.0"
+    "vue": "^3.4.0",
+    "zone.js": "^0.14.10"
   },
   "scripts": {
     "build": "tsup && node scripts/build-svelte.js",

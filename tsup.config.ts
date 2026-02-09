@@ -50,4 +50,16 @@ export default defineConfig([
       return { js: format === 'esm' ? '.mjs' : '.cjs' };
     },
   },
+  // Angular wrapper
+  {
+    entry: { 'angular/index': 'src/angular/index.ts' },
+    format: ['esm', 'cjs'],
+    dts: true,
+    outDir: 'dist',
+    external: ['@angular/core'],
+    sourcemap: true,
+    outExtension({ format }) {
+      return { js: format === 'esm' ? '.mjs' : '.cjs' };
+    },
+  },
 ]);
