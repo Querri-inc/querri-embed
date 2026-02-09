@@ -10,4 +10,4 @@ export type {
   QuerriEventCallback,
   QuerriErrorEvent,
   QuerriNavigationEvent,
-} from '@querri/embed';
+} from '../core/querri-embed.js';
