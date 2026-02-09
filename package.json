@@ -1,0 +1,102 @@
+{
+  "name": "@querri/embed",
+  "version": "0.1.0",
+  "description": "Embed Querri views in your application. Core SDK + React, Vue, and Svelte components.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Querri-inc/querri-embed.git"
+  },
+  "homepage": "https://github.com/Querri-inc/querri-embed#readme",
+  "keywords": [
+    "querri",
+    "embed",
+    "iframe",
+    "react",
+    "vue",
+    "svelte",
+    "dashboard",
+    "analytics"
+  ],
+  "files": [
+    "dist",
+    "src/svelte"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.mjs",
+      "require": "./dist/core/index.cjs",
+      "default": "./dist/core/index.mjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.mjs",
+      "require": "./dist/react/index.cjs",
+      "default": "./dist/react/index.mjs"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue/index.mjs",
+      "require": "./dist/vue/index.cjs",
+      "default": "./dist/vue/index.mjs"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/index.d.ts",
+      "svelte": "./src/svelte/QuerriEmbed.svelte",
+      "import": "./dist/svelte/index.js",
+      "default": "./dist/svelte/index.js"
+    },
+    "./iife": {
+      "default": "./dist/core/querri-embed.iife.global.js"
+    }
+  },
+  "main": "./dist/core/index.cjs",
+  "module": "./dist/core/index.mjs",
+  "types": "./dist/core/index.d.ts",
+  "peerDependencies": {
+    "react": ">=17",
+    "react-dom": ">=17",
+    "vue": ">=3.2",
+    "svelte": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/vue": "^8.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "happy-dom": "^14.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svelte": "^5.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0",
+    "vue": "^3.4.0"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/build-svelte.js",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  }
+}
