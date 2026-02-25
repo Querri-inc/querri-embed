@@ -169,7 +169,7 @@ auth: 'login'
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `serverUrl` | `string` | Yes | Querri server URL (e.g. `'https://app.querri.com'`) |
+| `serverUrl` | `string` | Yes | Querri server URL. Use `'https://app.querri.com'` for web-app embeds or `'https://app.querri.com/builder'` for dashboard embeds. |
 | `auth` | `QuerriAuth` | Yes | Authentication mode (see above) |
 | `startView` | `string` | No | Initial view path (e.g. `'/builder/dashboard/uuid'`) |
 | `chrome` | `object` | No | UI chrome visibility |

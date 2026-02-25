@@ -1,5 +1,8 @@
 <script>
   import { QuerriEmbed } from '@querri/embed/svelte';
+  import { env } from '$env/dynamic/public';
+
+  const PUBLIC_QUERRI_URL = env.PUBLIC_QUERRI_URL || 'https://app.querri.com';
 
   const auth = {
     fetchSessionToken: async () => {
@@ -17,7 +20,7 @@
 <h1>Querri Embed - SvelteKit Example</h1>
 <div style="width: 100%; height: 80vh;">
   <QuerriEmbed
-    serverUrl="https://app.querri.com"
+    serverUrl={PUBLIC_QUERRI_URL}
     {auth}
     on:ready={() => console.log('Embed ready')}
     on:error={(e) => console.error('Embed error:', e.detail)}

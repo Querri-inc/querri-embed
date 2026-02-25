@@ -13,6 +13,7 @@
   <div id="embed-container"></div>
   <script>
     const instance = QuerriEmbed.create(document.getElementById('embed-container'), {
+      // Change this to 'https://app.querri.com/builder' for dashboard embeds
       serverUrl: 'https://app.querri.com',
       auth: {
         fetchSessionToken: async () => {

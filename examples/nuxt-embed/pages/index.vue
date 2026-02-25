@@ -4,7 +4,7 @@
     <div style="width: 100%; height: 80vh">
       <ClientOnly>
         <QuerriEmbed
-          server-url="https://app.querri.com"
+          :server-url="serverUrl"
           :auth="auth"
           @ready="() => console.log('Embed ready')"
           @error="(e) => console.error('Embed error:', e)"
@@ -16,6 +16,9 @@
 
 <script setup>
 import { QuerriEmbed } from '@querri/embed/vue';
+
+const config = useRuntimeConfig();
+const serverUrl = config.public.querriUrl as string || 'https://app.querri.com';
 
 const auth = {
   fetchSessionToken: async () => {
