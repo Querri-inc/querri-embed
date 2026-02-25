@@ -1,0 +1,13 @@
+{
+  "name": "sveltekit-embed-example",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite dev", "build": "vite build" },
+  "dependencies": {
+    "@querri/embed": "file:../..",
+    "@sveltejs/kit": "^2.0.0",
+    "@sveltejs/adapter-auto": "^3.0.0",
+    "svelte": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

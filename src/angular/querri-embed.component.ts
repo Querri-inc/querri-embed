@@ -1,5 +1,6 @@
 import {
   Component,
+  ChangeDetectionStrategy,
   Input,
   Output,
   EventEmitter,
@@ -22,6 +23,7 @@ import type {
 @Component({
   selector: 'querri-embed',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: '<div #container style="width:100%;height:100%"></div>',
 })
 export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
@@ -35,6 +37,8 @@ export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
   @Input() chrome?: QuerriChromeConfig;
   /** Theme overrides */
   @Input() theme?: Record<string, unknown>;
+  /** Maximum time (ms) to wait for iframe to respond. Default: 15000 */
+  @Input() timeout?: number;
 
   /** Fired when embed is authenticated and ready */
   @Output() ready = new EventEmitter<Record<string, never>>();
@@ -72,7 +76,8 @@ export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
       changes['auth'] ||
       changes['startView'] ||
       changes['chrome'] ||
-      changes['theme']
+      changes['theme'] ||
+      changes['timeout']
     ) {
       this.createInstance();
     }
@@ -91,6 +96,7 @@ export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
       startView: this.startView,
       chrome: this.chrome,
       theme: this.theme,
+      timeout: this.timeout,
     });
 
     this.instance

@@ -124,4 +124,14 @@ describe('Vue QuerriEmbed', () => {
     expect(SDK.create).toHaveBeenCalledTimes(2);
     wrapper.unmount();
   });
+
+  it('passes timeout prop through to SDK.create', () => {
+    const wrapper = mount(QuerriEmbed, {
+      props: { serverUrl: SERVER_URL, auth: AUTH, timeout: 5000 },
+    });
+
+    const [, options] = (SDK.create as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(options.timeout).toBe(5000);
+    wrapper.unmount();
+  });
 });

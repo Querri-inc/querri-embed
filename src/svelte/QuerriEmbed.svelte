@@ -1,6 +1,6 @@
 <script>
   import { onDestroy, createEventDispatcher } from 'svelte';
-  import { QuerriEmbed as SDK } from '@querri/embed';
+  import { QuerriEmbed as SDK } from '../core/querri-embed.js';
 
   /** @type {string} Querri server URL (e.g. 'https://app.querri.com') */
   export let serverUrl;
@@ -17,6 +17,9 @@
   /** @type {Record<string, unknown> | undefined} */
   export let theme = undefined;
 
+  /** @type {number | undefined} Maximum time (ms) to wait for iframe. Default: 15000 */
+  export let timeout = undefined;
+
   const dispatch = createEventDispatcher();
 
   let containerEl;
@@ -26,7 +29,7 @@
     destroy();
     if (!containerEl) return;
 
-    instance = SDK.create(containerEl, { serverUrl, auth, startView, chrome, theme });
+    instance = SDK.create(containerEl, { serverUrl, auth, startView, chrome, theme, timeout });
     instance
       .on('ready', (d) => dispatch('ready', d))
       .on('error', (d) => dispatch('error', d))
@@ -44,7 +47,7 @@
   onDestroy(() => destroy());
 
   // Creates on mount (when containerEl is set by bind:this) and re-creates when props change
-  $: serverUrl, auth, startView, chrome, theme, containerEl && create();
+  $: serverUrl, auth, startView, chrome, theme, timeout, containerEl && create();
 
   /** Get the underlying SDK instance */
   export function getInstance() { return instance; }

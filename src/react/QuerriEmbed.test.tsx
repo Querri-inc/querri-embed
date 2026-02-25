@@ -161,4 +161,69 @@ describe('React QuerriEmbed', () => {
     expect(firstInstance.destroy).toHaveBeenCalledTimes(1);
     expect(SDK.create).toHaveBeenCalledTimes(2);
   });
+
+  it('passes timeout prop through to SDK.create', () => {
+    render(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} timeout={5000} />
+    );
+
+    const [, options] = (SDK.create as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(options.timeout).toBe(5000);
+  });
+
+  it('does not recreate instance when auth object has same content but new reference', () => {
+    const { rerender } = render(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={{ shareKey: 'sk-123', org: 'org-456' }} />
+    );
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+
+    // Re-render with a new object that has the same content
+    rerender(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={{ shareKey: 'sk-123', org: 'org-456' }} />
+    );
+
+    // Should NOT recreate — same content, different reference
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('recreates instance when auth content actually changes', () => {
+    const { rerender } = render(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={{ shareKey: 'sk-123', org: 'org-456' }} />
+    );
+
+    const firstInstance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={{ shareKey: 'sk-NEW', org: 'org-456' }} />
+    );
+
+    expect(firstInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(SDK.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not recreate instance when chrome/theme objects have same content but new reference', () => {
+    const { rerender } = render(
+      <QuerriEmbed
+        serverUrl={SERVER_URL}
+        auth={AUTH}
+        chrome={{ sidebar: { show: false } }}
+        theme={{ color: 'blue' }}
+      />
+    );
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <QuerriEmbed
+        serverUrl={SERVER_URL}
+        auth={AUTH}
+        chrome={{ sidebar: { show: false } }}
+        theme={{ color: 'blue' }}
+      />
+    );
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+  });
 });

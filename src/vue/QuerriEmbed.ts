@@ -37,6 +37,8 @@ export const QuerriEmbed = defineComponent({
       type: Object as PropType<Record<string, unknown>>,
       default: undefined,
     },
+    /** Maximum time (ms) to wait for iframe to respond. Default: 15000 */
+    timeout: { type: Number, default: undefined },
   },
 
   emits: ['ready', 'error', 'session-expired', 'navigation'],
@@ -55,6 +57,7 @@ export const QuerriEmbed = defineComponent({
         startView: props.startView,
         chrome: props.chrome,
         theme: props.theme,
+        timeout: props.timeout,
       });
 
       instance
@@ -76,7 +79,7 @@ export const QuerriEmbed = defineComponent({
 
     // Recreate on prop changes that require a new iframe session
     watch(
-      () => [props.serverUrl, props.auth, props.startView, props.chrome, props.theme],
+      () => [props.serverUrl, props.auth, props.startView, props.chrome, props.theme, props.timeout],
       () => createInstance(),
       { deep: true }
     );
@@ -90,6 +93,6 @@ export const QuerriEmbed = defineComponent({
       },
     });
 
-    return () => h('div', { ref: containerEl });
+    return () => h('div', { ref: containerEl, style: 'width:100%;height:100%' });
   },
 });

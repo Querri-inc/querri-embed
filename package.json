@@ -18,7 +18,11 @@
     "svelte",
     "angular",
     "dashboard",
-    "analytics"
+    "analytics",
+    "server",
+    "sdk",
+    "api",
+    "node"
   ],
   "files": [
     "dist",
@@ -58,15 +62,51 @@
     },
     "./iife": {
       "default": "./dist/core/querri-embed.iife.global.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.cjs",
+      "default": "./dist/server/index.mjs"
+    },
+    "./server/sveltekit": {
+      "types": "./dist/server/integrations/sveltekit.d.ts",
+      "import": "./dist/server/integrations/sveltekit.mjs",
+      "require": "./dist/server/integrations/sveltekit.cjs"
+    },
+    "./server/nextjs": {
+      "types": "./dist/server/integrations/nextjs.d.ts",
+      "import": "./dist/server/integrations/nextjs.mjs",
+      "require": "./dist/server/integrations/nextjs.cjs"
+    },
+    "./server/nuxt": {
+      "types": "./dist/server/integrations/nuxt.d.ts",
+      "import": "./dist/server/integrations/nuxt.mjs",
+      "require": "./dist/server/integrations/nuxt.cjs"
+    },
+    "./server/angular": {
+      "types": "./dist/server/integrations/angular.d.ts",
+      "import": "./dist/server/integrations/angular.mjs",
+      "require": "./dist/server/integrations/angular.cjs"
+    },
+    "./server/react-router": {
+      "types": "./dist/server/integrations/react-router.d.ts",
+      "import": "./dist/server/integrations/react-router.mjs",
+      "require": "./dist/server/integrations/react-router.cjs"
+    },
+    "./server/express": {
+      "types": "./dist/server/integrations/express.d.ts",
+      "import": "./dist/server/integrations/express.mjs",
+      "require": "./dist/server/integrations/express.cjs"
     }
   },
   "main": "./dist/core/index.cjs",
   "module": "./dist/core/index.mjs",
   "types": "./dist/core/index.d.ts",
   "peerDependencies": {
+    "@angular/core": ">=17",
     "react": ">=17",
     "react-dom": ">=17",
-    "@angular/core": ">=17",
     "svelte": ">=4",
     "vue": ">=3.2"
   },
@@ -93,6 +133,7 @@
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/vue": "^8.0.0",
+    "@types/node": "^20.19.33",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "happy-dom": "^14.0.0",

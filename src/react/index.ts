@@ -5,10 +5,12 @@ export type {
   QuerriAuth,
   QuerriShareKeyAuth,
   QuerriTokenAuth,
+  QuerriSessionEndpointAuth,
   QuerriChromeConfig,
   QuerriInstance,
   QuerriEventType,
   QuerriEventCallback,
+  QuerriErrorCode,
   QuerriErrorEvent,
   QuerriNavigationEvent,
 } from '../core/querri-embed.js';

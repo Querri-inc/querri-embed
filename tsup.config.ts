@@ -62,4 +62,37 @@ export default defineConfig([
       return { js: format === 'esm' ? '.mjs' : '.cjs' };
     },
   },
+  // Server SDK — ESM + CJS (Node.js only)
+  {
+    entry: { 'server/index': 'src/server/index.ts' },
+    format: ['esm', 'cjs'],
+    dts: true,
+    outDir: 'dist',
+    platform: 'node',
+    target: 'node18',
+    sourcemap: true,
+    outExtension({ format }) {
+      return { js: format === 'esm' ? '.mjs' : '.cjs' };
+    },
+  },
+  // Server framework integrations
+  {
+    entry: {
+      'server/integrations/sveltekit': 'src/server/integrations/sveltekit.ts',
+      'server/integrations/nextjs': 'src/server/integrations/nextjs.ts',
+      'server/integrations/nuxt': 'src/server/integrations/nuxt.ts',
+      'server/integrations/angular': 'src/server/integrations/angular.ts',
+      'server/integrations/react-router': 'src/server/integrations/react-router.ts',
+      'server/integrations/express': 'src/server/integrations/express.ts',
+    },
+    format: ['esm', 'cjs'],
+    dts: true,
+    outDir: 'dist',
+    platform: 'node',
+    target: 'node18',
+    sourcemap: true,
+    outExtension({ format }) {
+      return { js: format === 'esm' ? '.mjs' : '.cjs' };
+    },
+  },
 ]);

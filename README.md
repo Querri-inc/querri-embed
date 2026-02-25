@@ -1,139 +1,123 @@
 # @querri/embed
 
-Embed Querri views in your application. Works with vanilla JavaScript, React, Vue, Svelte, and Angular.
+> Embed Querri analytics in your app. Zero dependencies. Works everywhere.
 
-## Installation
+## Get Started in 60 Seconds
+
+### 1. Install
 
 ```bash
 npm install @querri/embed
 ```
 
-## Quick Start
+### 2. Add the embed
 
-### Vanilla JavaScript
-
-```javascript
-import { QuerriEmbed } from '@querri/embed';
-
-const querri = QuerriEmbed.create('#container', {
-  serverUrl: 'https://app.querri.com',
-  auth: { shareKey: 'your-share-key', org: 'your-org-id' },
-  startView: '/builder/dashboard/your-dashboard-uuid',
-});
-
-querri.on('ready', () => console.log('Embed loaded'));
-querri.on('error', (err) => console.error(err.code, err.message));
-```
-
-### React
+**React**
 
 ```tsx
-import { useMemo } from 'react';
 import { QuerriEmbed } from '@querri/embed/react';
 
-function App() {
-  // Memoize auth to prevent unnecessary iframe recreation
-  const auth = useMemo(() => ({ shareKey: 'your-share-key', org: 'your-org-id' }), []);
-
-  return (
-    <div style={{ width: '100%', height: '600px' }}>
-      <QuerriEmbed
-        serverUrl="https://app.querri.com"
-        auth={auth}
-        startView="/builder/dashboard/your-dashboard-uuid"
-        onReady={() => console.log('Loaded')}
-        onError={(err) => console.error(err)}
-      />
-    </div>
-  );
-}
+<div style={{ width: '100%', height: '600px' }}>
+  <QuerriEmbed serverUrl="https://app.querri.com" auth={auth} startView="/builder/dashboard/uuid" />
+</div>
 ```
 
-### Vue
+**Vue**
 
 ```vue
 <template>
   <div style="width: 100%; height: 600px">
-    <QuerriEmbed
-      server-url="https://app.querri.com"
-      :auth="auth"
-      start-view="/builder/dashboard/your-dashboard-uuid"
-      @ready="onReady"
-      @error="onError"
-    />
+    <QuerriEmbed server-url="https://app.querri.com" :auth="auth" start-view="/builder/dashboard/uuid" />
   </div>
 </template>
-
 <script setup>
 import { QuerriEmbed } from '@querri/embed/vue';
-
 const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
-
-function onReady() { console.log('Loaded'); }
-function onError(err) { console.error(err); }
 </script>
 ```
 
-### Svelte
+**Svelte**
 
 ```svelte
 <script>
   import { QuerriEmbed } from '@querri/embed/svelte';
-
   const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 </script>
-
 <div style="width: 100%; height: 600px">
-  <QuerriEmbed
-    serverUrl="https://app.querri.com"
-    {auth}
-    startView="/builder/dashboard/your-dashboard-uuid"
-    on:ready={() => console.log('Loaded')}
-    on:error={(e) => console.error(e.detail)}
-  />
+  <QuerriEmbed serverUrl="https://app.querri.com" {auth} startView="/builder/dashboard/uuid" />
 </div>
 ```
 
-### Angular
+**Angular**
 
 ```typescript
 import { Component } from '@angular/core';
-import { QuerriEmbedComponent, type QuerriAuth } from '@querri/embed/angular';
+import { QuerriEmbedComponent } from '@querri/embed/angular';
 
 @Component({
-  selector: 'app-dashboard',
   standalone: true,
   imports: [QuerriEmbedComponent],
-  template: `
-    <div style="width: 100%; height: 600px">
-      <querri-embed
-        [serverUrl]="'https://app.querri.com'"
-        [auth]="auth"
-        [startView]="'/builder/dashboard/your-dashboard-uuid'"
-        (ready)="onReady()"
-        (error)="onError($event)"
-      />
-    </div>
-  `,
+  template: `<div style="width: 100%; height: 600px">
+    <querri-embed [serverUrl]="'https://app.querri.com'" [auth]="auth" [startView]="'/builder/dashboard/uuid'" />
+  </div>`,
 })
 export class DashboardComponent {
-  auth: QuerriAuth = { shareKey: 'your-share-key', org: 'your-org-id' };
-
-  onReady() { console.log('Loaded'); }
-  onError(err: any) { console.error(err); }
+  auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 }
 ```
 
-### Script Tag (CDN)
+**Vanilla JS**
+
+```javascript
+import { QuerriEmbed } from '@querri/embed';
+
+QuerriEmbed.create('#container', {
+  serverUrl: 'https://app.querri.com',
+  auth: { shareKey: 'your-share-key', org: 'your-org-id' },
+  startView: '/builder/dashboard/uuid',
+});
+```
+
+**CDN**
 
 ```html
 <script src="https://unpkg.com/@querri/embed/dist/core/querri-embed.iife.global.js"></script>
 <script>
-  var querri = QuerriEmbed.create('#container', {
+  QuerriEmbed.create('#container', {
     serverUrl: 'https://app.querri.com',
     auth: { shareKey: 'your-share-key', org: 'your-org-id' },
   });
 </script>
+```
+
+### 3. Create a session endpoint
+
+For server-authenticated embeds, add a one-liner session route. Import from `@querri/embed/server/<framework>`.
+
+| Framework | File | Code |
+|-----------|------|------|
+| Next.js | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
+| SvelteKit | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
+| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| Nuxt | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
+| Express | `server.ts` | `app.post('/api/querri-session', createSessionHandler())` |
+
+Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API key at https://app.querri.com/settings/api-keys.
+
+### 4. Done.
+
+The embed handles auth, token caching, and cleanup automatically.
+
+## Important: Container Sizing
+
+The container element **must** have explicit width and height. Without dimensions, the embed iframe is invisible.
+
+```html
+<!-- Good -->
+<div style="width: 100%; height: 600px">...</div>
+
+<!-- Bad -- the iframe will be 0px tall -->
+<div>...</div>
 ```
 
 ## Authentication Modes
@@ -151,14 +135,24 @@ auth: {
 
 ### Server Token (Enterprise)
 
-Your backend exchanges an API key for a session token. The token is passed to the embed.
+Your backend exchanges an API key for a session token. Point the embed at your session endpoint:
+
+```javascript
+auth: {
+  sessionEndpoint: '/api/querri-session',
+}
+```
+
+The SDK POSTs to this URL and extracts `session_token` from the JSON response automatically (with retry).
+
+For full control over the request, use a callback instead:
 
 ```javascript
 auth: {
   fetchSessionToken: async () => {
-    const res = await fetch('/api/querri-token');
-    const { sessionToken } = await res.json();
-    return sessionToken;
+    const res = await fetch('/api/querri-session');
+    const { session_token } = await res.json();
+    return session_token;
   },
 }
 ```
@@ -182,6 +176,7 @@ auth: 'login'
 | `chrome.sidebar` | `{ show?: boolean }` | No | Sidebar visibility (default: hidden) |
 | `chrome.header` | `{ show?: boolean }` | No | Header visibility (default: shown) |
 | `theme` | `object` | No | Theme overrides |
+| `timeout` | `number` | No | Max time (ms) to wait for iframe to respond (default: `15000`) |
 
 ## Events
 
@@ -192,16 +187,38 @@ auth: 'login'
 | `session-expired` | `{}` | Session token expired |
 | `navigation` | `{ type, path?, ... }` | User navigated within the embed |
 
+```javascript
+// Example: handling events
+instance.on('error', ({ code, message }) => {
+  console.error(`Querri error [${code}]: ${message}`);
+});
+
+instance.on('navigation', ({ type, path }) => {
+  console.log('Navigated to:', path);
+});
+```
+
 ### Error Codes
 
 | Code | Meaning |
 |------|---------|
 | `invalid_auth` | Auth config is invalid |
-| `token_fetch_failed` | `fetchSessionToken` callback failed |
+| `token_fetch_failed` | `fetchSessionToken` callback failed after 3 automatic retries |
 | `popup_blocked` | Browser blocked the login popup |
 | `auth_failed` | Authentication failed after popup login |
 | `auth_required` | Auth required but no login mode configured |
-| `timeout` | Iframe didn't respond within 15 seconds |
+| `timeout` | Iframe didn't respond within timeout period (default: 15s, configurable via `timeout` option) |
+
+## Framework Quick Reference
+
+| Framework | Client Import | Server Import | Handler |
+|-----------|---------------|---------------|---------|
+| React + Next.js | `@querri/embed/react` | `@querri/embed/server/nextjs` | `createSessionHandler()` |
+| React + React Router | `@querri/embed/react` | `@querri/embed/server/react-router` | `createSessionHandler()` |
+| Vue + Nuxt | `@querri/embed/vue` | `@querri/embed/server/nuxt` | `createNuxtSessionHandler()` |
+| Svelte + SvelteKit | `@querri/embed/svelte` | `@querri/embed/server/sveltekit` | `createSessionHandler()` |
+| Angular | `@querri/embed/angular` | `@querri/embed/server/express` | `createSessionHandler()` |
+| Vanilla JS / Any | `@querri/embed` or CDN | `@querri/embed/server/express` | `createSessionHandler()` |
 
 ## Instance API
 
@@ -212,7 +229,7 @@ querri.on('ready', callback);     // Subscribe to event (chainable)
 querri.off('ready', callback);    // Unsubscribe (chainable)
 querri.destroy();                 // Clean up iframe and listeners
 
-querri.ready;    // boolean — true when authenticated
+querri.ready;    // boolean -- true when authenticated
 querri.iframe;   // HTMLIFrameElement | null
 
 QuerriEmbed.version;  // SDK version string (e.g. '0.1.0')
@@ -240,8 +257,8 @@ import { useRef } from 'react';
 import { QuerriEmbed, type QuerriEmbedRef } from '@querri/embed/react';
 
 const ref = useRef<QuerriEmbedRef>(null);
-// ref.current.instance — SDK instance
-// ref.current.iframe — iframe element
+// ref.current.instance -- SDK instance
+// ref.current.iframe -- iframe element
 <QuerriEmbed ref={ref} ... />
 ```
 
@@ -277,9 +294,112 @@ Access the underlying instance via a template ref or `ViewChild`:
 
 ```typescript
 @ViewChild(QuerriEmbedComponent) embed!: QuerriEmbedComponent;
-// embed.sdkInstance — SDK instance
-// embed.iframe — iframe element
+// embed.sdkInstance -- SDK instance
+// embed.iframe -- iframe element
 ```
+
+## Server SDK
+
+The server SDK is included in `@querri/embed` -- no extra package required. Use it to create embed session tokens, manage users, enforce access policies, and interact with the full Querri API from your backend.
+
+### Import
+
+```typescript
+import { Querri } from '@querri/embed/server';
+```
+
+### Quick Start
+
+```typescript
+import { Querri } from '@querri/embed/server';
+
+const client = new Querri('qk_your_api_key');
+
+const { session_token, expires_in } = await client.getSession({
+  user: {
+    external_id: 'usr_alice',
+    email: 'alice@example.com',
+  },
+  access: {
+    sources: ['src_sales'],
+    filters: { tenant_id: 'acme' },
+  },
+  ttl: 3600,
+  origin: 'https://myapp.com',
+});
+```
+
+### Framework Integrations
+
+Each framework has a one-liner server handler that wraps `getSession()`:
+
+```typescript
+// Next.js -- app/api/querri-session/route.ts
+import { createSessionHandler } from '@querri/embed/server/nextjs';
+export const POST = createSessionHandler();
+
+// SvelteKit -- src/routes/api/querri-session/+server.ts
+import { createSessionHandler } from '@querri/embed/server/sveltekit';
+export const POST = createSessionHandler();
+
+// React Router v7 -- app/routes/api.querri-session.ts
+import { createSessionHandler } from '@querri/embed/server/react-router';
+export const action = createSessionHandler();
+
+// Nuxt -- server/api/querri-session.post.ts
+import { createNuxtSessionHandler } from '@querri/embed/server/nuxt';
+export default createNuxtSessionHandler();
+
+// Express -- server.ts
+import { createSessionHandler } from '@querri/embed/server/express';
+app.post('/api/querri-session', createSessionHandler());
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `QUERRI_API_KEY` | API key (`qk_*` format) | -- |
+| `QUERRI_ORG_ID` | Organization / tenant ID | -- |
+| `QUERRI_HOST` | API host URL | `https://app.querri.com` |
+
+### Available Resources
+
+The client exposes these resource namespaces: `users`, `embed`, `policies`, `projects`, `chats`, `dashboards`, `data`, `files`, `sources`, `keys`, `sharing`, `audit`, `usage`.
+
+### Full Reference
+
+See **[docs/server-sdk.md](docs/server-sdk.md)** for complete API documentation, including every method signature, pagination, streaming, error handling, and detailed framework integration guides.
+
+## Troubleshooting
+
+### Embed is blank or has zero height
+
+Your container needs explicit dimensions. Add `style="width: 100%; height: 600px"` to the container element.
+
+### "Missing API key" error
+
+Set the `QUERRI_API_KEY` environment variable. Find your API key at https://app.querri.com/settings/api-keys.
+
+### `timeout` -- iframe didn't respond
+
+Check that `serverUrl` is correct and the Querri server is reachable. The default timeout is 15 seconds. You can increase it for slow networks:
+
+```javascript
+QuerriEmbed.create('#container', {
+  serverUrl: 'https://app.querri.com',
+  auth: { /* ... */ },
+  timeout: 30000, // 30 seconds
+});
+```
+
+### `popup_blocked`
+
+The login popup requires a user gesture (e.g., a button click). Browsers block popups triggered without user interaction.
+
+### `token_fetch_failed`
+
+Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 automatic retries (1s, 2s backoff). Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
 
 ## TypeScript
 
@@ -290,6 +410,7 @@ import type {
   QuerriAuth,
   QuerriShareKeyAuth,
   QuerriTokenAuth,
+  QuerriSessionEndpointAuth,
   QuerriChromeConfig,
   QuerriEmbedOptions,
   QuerriInstance,
@@ -316,11 +437,10 @@ Framework wrappers require:
 | Svelte | >= 4 |
 | Angular | >= 17 |
 
-All framework dependencies are optional — install only what you use.
+All framework dependencies are optional -- install only what you use.
 
 ## Important Notes
 
-- The container element must have explicit dimensions (width and height). The iframe fills 100% of its container.
 - **React/Vue/Angular:** Memoize the `auth` prop if it's an object. A new object reference on every render/change detection cycle will cause the iframe to be destroyed and recreated.
 - All framework wrappers automatically clean up the iframe on unmount.
 

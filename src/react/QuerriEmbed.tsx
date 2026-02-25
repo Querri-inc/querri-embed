@@ -23,6 +23,8 @@ export interface QuerriEmbedProps {
   chrome?: QuerriEmbedOptions['chrome'];
   /** Theme overrides */
   theme?: QuerriEmbedOptions['theme'];
+  /** Maximum time (ms) to wait for iframe to respond. @default 15000 */
+  timeout?: number;
   /** Container className */
   className?: string;
   /** Container inline style */
@@ -44,6 +46,25 @@ export interface QuerriEmbedRef {
   iframe: HTMLIFrameElement | null;
 }
 
+/**
+ * Returns a stable reference for a value, only updating the reference
+ * when the serialized (JSON) form actually changes. This prevents
+ * unnecessary useEffect re-runs when callers pass inline object literals
+ * like `auth={{ shareKey: '...', org: '...' }}`.
+ */
+function useStableValue<T>(value: T): T {
+  const ref = useRef(value);
+  const prevSerialized = useRef<string | undefined>(undefined);
+  const serialized = JSON.stringify(value);
+
+  if (serialized !== prevSerialized.current) {
+    ref.current = value;
+    prevSerialized.current = serialized;
+  }
+
+  return ref.current;
+}
+
 export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
   function QuerriEmbed(
     {
@@ -52,6 +73,7 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
       startView,
       chrome,
       theme,
+      timeout,
       className,
       style,
       onReady,
@@ -63,6 +85,11 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const instanceRef = useRef<QuerriInstance | null>(null);
+
+    // Stabilize object props so inline literals don't cause iframe recreation
+    const stableAuth = useStableValue(auth);
+    const stableChrome = useStableValue(chrome);
+    const stableTheme = useStableValue(theme);
 
     // Stable callback refs — prevents iframe recreation when handlers change
     const handlersRef = useRef({ onReady, onError, onSessionExpired, onNavigation });
@@ -82,10 +109,11 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
 
       const instance = SDK.create(containerRef.current, {
         serverUrl,
-        auth,
+        auth: stableAuth,
         startView,
-        chrome,
-        theme,
+        chrome: stableChrome,
+        theme: stableTheme,
+        timeout,
       });
 
       instance
@@ -102,8 +130,9 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
       };
       // Changing auth or serverUrl destroys and recreates the iframe.
       // Changing event handlers does NOT (via handlersRef pattern).
-      // NOTE: If auth is an object, memoize it to prevent unnecessary recreation.
-    }, [serverUrl, auth, startView, chrome, theme]);
+      // Object props (auth, chrome, theme) are stabilized via useStableValue
+      // so inline literals don't cause unnecessary recreation.
+    }, [serverUrl, stableAuth, startView, stableChrome, stableTheme, timeout]);
 
     return <div ref={containerRef} className={className} style={style} />;
   }

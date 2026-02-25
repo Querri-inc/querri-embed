@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Express Querri Embed Example</title>
+  <script src="https://unpkg.com/@querri/embed/dist/core/querri-embed.iife.global.js"></script>
+  <style>
+    #embed-container { width: 100%; height: 80vh; }
+  </style>
+</head>
+<body>
+  <h1>Querri Embed - Express + Vanilla JS Example</h1>
+  <div id="embed-container"></div>
+  <script>
+    const instance = QuerriEmbed.create(document.getElementById('embed-container'), {
+      serverUrl: 'https://app.querri.com',
+      auth: {
+        fetchSessionToken: async () => {
+          const res = await fetch('/api/querri-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: 'demo-user' }),
+          });
+          const data = await res.json();
+          return data.session_token;
+        },
+      },
+    });
+    instance.on('ready', () => console.log('Embed ready'));
+    instance.on('error', (err) => console.error('Embed error:', err));
+  </script>
+</body>
+</html>

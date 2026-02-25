@@ -122,8 +122,9 @@ function createLoader(container) {
 function QuerriInstance(container, options) {
   this._container = container;
   this._options = options;
-  this._serverUrl = options.serverUrl;
+  this._serverUrl = options.serverUrl.replace(/\/+$/, '');
   this._origin = parseOrigin(options.serverUrl);
+  this._timeout = (options.timeout != null && options.timeout > 0) ? options.timeout : 15000;
   this._listeners = {};
   this._messageHandler = null;
   this._popupMessageHandler = null;
@@ -132,6 +133,8 @@ function QuerriInstance(container, options) {
   this._loader = null;
   this._pollTimer = null;
   this._readyTimer = null;
+  this._retryTimer = null;
+  this._fetchInFlight = false;
   this._destroyed = false;
 
   this.iframe = null;
@@ -147,11 +150,56 @@ QuerriInstance.prototype._init = function () {
     this._container.style.position = 'relative';
   }
 
+  // Warn if container has no visible dimensions (deferred to after CSS layout)
+  var self = this;
+  requestAnimationFrame(function () {
+    if (self._destroyed) return;
+    var rect = self._container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      console.warn(
+        'QuerriEmbed: container has zero ' + (rect.width === 0 ? 'width' : 'height') +
+        '. The embed will be invisible. Set explicit width/height on the container element.'
+      );
+    }
+  });
+
   // Show loading spinner
   this._loader = createLoader(this._container);
 
   // Detect auth mode and begin
   var auth = this._options.auth;
+
+  // Validate auth config shapes — emit errors asynchronously instead of
+  // throwing so React components don't crash and callers can attach handlers.
+  if (auth && typeof auth === 'object') {
+    var validationError = null;
+    if ('fetchSessionToken' in auth && typeof auth.fetchSessionToken !== 'function') {
+      validationError =
+        'auth.fetchSessionToken must be a function that returns a Promise<string>. ' +
+        'Got ' + typeof auth.fetchSessionToken + '.';
+    } else if ('sessionEndpoint' in auth && (typeof auth.sessionEndpoint !== 'string' || !auth.sessionEndpoint)) {
+      validationError = 'auth.sessionEndpoint must be a non-empty string';
+    } else if ('shareKey' in auth) {
+      if (typeof auth.shareKey !== 'string' || !auth.shareKey) {
+        validationError = 'auth.shareKey must be a non-empty string';
+      } else if (!auth.org || typeof auth.org !== 'string') {
+        validationError =
+          'auth.org is required when using shareKey authentication. ' +
+          'Pass { shareKey: "...", org: "your-org-id" }.';
+      }
+    }
+    if (validationError) {
+      if (this._loader) { this._loader.remove(); this._loader = null; }
+      var self2 = this;
+      var msg = validationError;
+      setTimeout(function () {
+        if (!self2._destroyed) {
+          self2._emitError('invalid_auth', msg);
+        }
+      }, 0);
+      return;
+    }
+  }
 
   if (auth && typeof auth === 'object' && auth.shareKey) {
     // Mode 1: Share key — build iframe URL with share params
@@ -159,6 +207,22 @@ QuerriInstance.prototype._init = function () {
   } else if (auth && typeof auth === 'object' && typeof auth.fetchSessionToken === 'function') {
     // Mode 2: fetchSessionToken callback
     this._initFetchToken(auth);
+  } else if (auth && typeof auth === 'object' && typeof auth.sessionEndpoint === 'string') {
+    // Mode 2b: sessionEndpoint shorthand — wraps fetchSessionToken internally
+    var endpoint = auth.sessionEndpoint;
+    this._initFetchToken({
+      fetchSessionToken: function () {
+        return fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }).then(function (res) {
+          if (!res.ok) throw new Error('Session endpoint returned ' + res.status);
+          return res.json();
+        }).then(function (data) {
+          return data.session_token;
+        });
+      },
+    });
   } else if (auth === 'login') {
     // Mode 3: Popup login
     this._initPopupLogin();
@@ -172,7 +236,7 @@ QuerriInstance.prototype._init = function () {
     var self = this;
     setTimeout(function () {
       if (!self._destroyed) {
-        self._emitError('invalid_auth', 'auth must be "login", { shareKey, org }, or { fetchSessionToken }');
+        self._emitError('invalid_auth', 'auth must be "login", { shareKey, org }, { sessionEndpoint }, or { fetchSessionToken }');
       }
     }, 0);
   }
@@ -205,16 +269,47 @@ QuerriInstance.prototype._handleFetchToken = function () {
   var self = this;
   if (!this._fetchTokenFn) return;
 
-  Promise.resolve(this._fetchTokenFn()).then(function (token) {
-    if (self._destroyed) return;
-    self._sendToIframe({
-      type: 'init',
-      sessionToken: token,
-      config: self._buildConfig(),
+  // Deduplication: skip if a fetch is already in progress
+  if (this._fetchInFlight) return;
+  this._fetchInFlight = true;
+
+  var maxRetries = 3;
+  var attempt = 0;
+
+  function tryFetch() {
+    attempt++;
+    Promise.resolve(self._fetchTokenFn()).then(function (token) {
+      if (self._destroyed) return;
+      if (!token || typeof token !== 'string') {
+        throw new Error(
+          'fetchSessionToken must return a non-empty string, got: ' + typeof token
+        );
+      }
+      self._fetchInFlight = false;
+      self._sendToIframe({
+        type: 'init',
+        sessionToken: token,
+        config: self._buildConfig(),
+      });
+    }).catch(function (err) {
+      if (self._destroyed) return;
+      if (attempt < maxRetries) {
+        var delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s
+        self._retryTimer = setTimeout(function () {
+          self._retryTimer = null;
+          if (!self._destroyed) tryFetch();
+        }, delay);
+      } else {
+        self._fetchInFlight = false;
+        self._emitError('token_fetch_failed',
+          'Failed to fetch session token after ' + maxRetries + ' attempts: ' +
+          (err.message || 'Unknown error')
+        );
+      }
     });
-  }).catch(function (err) {
-    self._emitError('token_fetch_failed', err.message || 'Failed to fetch session token');
-  });
+  }
+
+  tryFetch();
 };
 
 // ─── Mode 3: Popup Login ─────────────────────────────────
@@ -323,6 +418,16 @@ QuerriInstance.prototype._openPopup = function () {
 
 QuerriInstance.prototype._createIframe = function (src) {
   var self = this;
+
+  // Warn if container already has a QuerriEmbed iframe
+  var existing = this._container.querySelector('iframe[src*="/embed"]');
+  if (existing) {
+    console.warn(
+      'QuerriEmbed: container already has a QuerriEmbed iframe. ' +
+      'Call destroy() on the existing instance first.'
+    );
+  }
+
   var iframe = document.createElement('iframe');
   iframe.src = src;
   iframe.style.cssText = 'border:none;width:100%;height:100%;display:block;';
@@ -331,13 +436,17 @@ QuerriInstance.prototype._createIframe = function (src) {
   this._container.appendChild(iframe);
   this.iframe = iframe;
 
-  // Timeout: emit error if iframe never sends 'ready' within 15s
+  // Timeout: emit error if iframe never sends 'ready'
+  var timeout = this._timeout;
   this._readyTimer = setTimeout(function () {
     self._readyTimer = null;
     if (!self._destroyed && !self.ready) {
-      self._emitError('timeout', 'Embed iframe did not respond within 15 seconds');
+      self._emitError('timeout',
+        'Embed iframe did not respond within ' + (timeout / 1000) + ' seconds. ' +
+        'Check that serverUrl is correct and the server is reachable.'
+      );
     }
-  }, 15000);
+  }, timeout);
 };
 
 QuerriInstance.prototype._sendToIframe = function (msg) {
@@ -503,6 +612,11 @@ QuerriInstance.prototype.destroy = function () {
     clearTimeout(this._readyTimer);
     this._readyTimer = null;
   }
+  if (this._retryTimer) {
+    clearTimeout(this._retryTimer);
+    this._retryTimer = null;
+  }
+  this._fetchInFlight = false;
   if (this._popup && !this._popup.closed) {
     this._popup.close();
     this._popup = null;
@@ -527,12 +641,28 @@ QuerriInstance.prototype.destroy = function () {
 
 export var QuerriEmbed = {
   create: function (selectorOrElement, options) {
+    if (typeof document === 'undefined') {
+      throw new Error(
+        'QuerriEmbed.create() requires a browser environment. ' +
+        'This code should only run on the client side. ' +
+        'In Next.js, wrap in useEffect. In Nuxt, use onMounted.'
+      );
+    }
+
     if (!options || !options.serverUrl) {
       throw new Error('QuerriEmbed: serverUrl is required');
     }
     if (!options.auth) {
       throw new Error('QuerriEmbed: auth is required');
     }
+
+    if (typeof options.serverUrl === 'string' && !/^https?:\/\/.+/.test(options.serverUrl)) {
+      console.warn(
+        "QuerriEmbed: serverUrl doesn't look like a URL. Expected 'https://...' but got '" +
+        options.serverUrl + "'"
+      );
+    }
+
     var container = resolveElement(selectorOrElement);
     return new QuerriInstance(container, options);
   },
