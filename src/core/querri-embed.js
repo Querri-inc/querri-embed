@@ -510,14 +510,16 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'authenticated':
-        // Session validated, content is rendering
-        self.ready = true;
-        if (self._loader) {
-          self._loader.remove();
-          self._loader = null;
+        // Session validated, content is rendering — emit only once
+        if (!self.ready) {
+          self.ready = true;
+          if (self._loader) {
+            self._loader.remove();
+            self._loader = null;
+          }
+          self._hideOverlay();
+          self._emit('ready', {});
         }
-        self._hideOverlay();
-        self._emit('ready', {});
         break;
 
       case 'auth-required':

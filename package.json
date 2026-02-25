@@ -50,7 +50,7 @@
     },
     "./svelte": {
       "types": "./dist/svelte/index.d.ts",
-      "svelte": "./src/svelte/QuerriEmbed.svelte",
+      "svelte": "./src/svelte/index.js",
       "import": "./dist/svelte/index.js",
       "default": "./dist/svelte/index.js"
     },

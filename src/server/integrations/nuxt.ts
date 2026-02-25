@@ -8,6 +8,8 @@ export interface SessionHandlerOptions {
   orgId?: string;
   host?: string;
   resolveParams?: (event: { body: unknown; headers: Record<string, string | undefined> }) => Promise<GetSessionParams> | GetSessionParams;
+  /** Pass the h3 module if auto-import fails (e.g. in monorepos or file: linked packages). */
+  h3?: { readBody: Function; getHeaders: Function; createError: Function };
 }
 
 /**
@@ -93,10 +95,20 @@ export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
   const client = new Querri(resolveConfig(options));
 
   return async (event: unknown): Promise<GetSessionResult> => {
-    // h3 is always available in Nuxt server routes at runtime.
-    // Use a variable to prevent TypeScript from resolving the module specifier.
-    const h3ModuleName = 'h3';
-    const h3: any = await import(h3ModuleName);
+    // Resolve h3: prefer explicit option, then dynamic import
+    let h3: any = options?.h3;
+    if (!h3) {
+      try {
+        const h3ModuleName = 'h3';
+        h3 = await import(h3ModuleName);
+      } catch {
+        throw new Error(
+          'Could not import h3. If using a monorepo or file: link, pass ' +
+          '{ h3: await import("h3") } to createNuxtSessionHandler(), or use ' +
+          'defineQuerriSessionHandler() with manual readBody/getHeaders calls.',
+        );
+      }
+    }
 
     try {
       const body = await h3.readBody(event);

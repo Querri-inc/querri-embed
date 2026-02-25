@@ -40,7 +40,7 @@ const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 
 ```svelte
 <script>
-  import { QuerriEmbed } from '@querri/embed/svelte';
+  import QuerriEmbed from '@querri/embed/svelte';
   const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 </script>
 <div style="width: 100%; height: 600px">
@@ -103,6 +103,23 @@ For server-authenticated embeds, add a one-liner session route. Import from `@qu
 | Express | `server.ts` | `app.post('/api/querri-session', createSessionHandler())` |
 
 Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API key at https://app.querri.com/settings/api-keys.
+
+> **Vite-based frameworks (SvelteKit, Nuxt, React Router v7):** `process.env` is not automatically
+> populated in Vite server routes. Pass credentials explicitly:
+>
+> ```ts
+> // SvelteKit — use $env/dynamic/private
+> import { env } from '$env/dynamic/private';
+> export const POST = createSessionHandler({
+>   apiKey: env.QUERRI_API_KEY, host: env.QUERRI_HOST, orgId: env.QUERRI_ORG_ID,
+> });
+>
+> // Nuxt — use useRuntimeConfig() in your server handler
+> const config = useRuntimeConfig();
+> createNuxtSessionHandler({
+>   apiKey: config.querriApiKey, host: config.querriHost, orgId: config.querriOrgId,
+> });
+> ```
 
 ### 4. Done.
 

@@ -25,7 +25,17 @@ const result = compile(source, {
   filename: 'QuerriEmbed.svelte',
 });
 
-writeFileSync(`${OUT_DIR}/index.js`, result.js.code);
+// Fix the relative import path: source uses ../core/querri-embed.js but
+// dist/core/ has index.mjs (tsup output). Also add a named export so
+// consumers can use either `import QuerriEmbed` or `import { QuerriEmbed }`.
+let compiledCode = result.js.code;
+compiledCode = compiledCode.replace(
+  `from '../core/querri-embed.js'`,
+  `from '../core/index.mjs'`,
+);
+compiledCode += '\nexport { QuerriEmbed };\n';
+
+writeFileSync(`${OUT_DIR}/index.js`, compiledCode);
 
 // 3. Generate type declarations
 writeFileSync(

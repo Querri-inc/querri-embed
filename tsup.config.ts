@@ -23,7 +23,7 @@ export default defineConfig([
     sourcemap: true,
     footer: {
       // Unwrap the module to expose QuerriEmbed directly on window
-      js: 'if(typeof window!=="undefined"&&window.QuerriEmbedModule){window.QuerriEmbed=window.QuerriEmbedModule.QuerriEmbed;delete window.QuerriEmbedModule;}',
+      js: 'if(typeof window!=="undefined"&&window.QuerriEmbedModule){window.QuerriEmbed=window.QuerriEmbedModule.QuerriEmbed;try{delete window.QuerriEmbedModule}catch(e){window.QuerriEmbedModule=undefined;}}',
     },
   },
   // React wrapper
