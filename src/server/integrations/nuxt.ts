@@ -50,9 +50,10 @@ export interface SessionHandlerOptions {
  * ```
  */
 export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   async function handler(input: unknown): Promise<GetSessionResult> {
+    if (!client) client = new Querri(resolveConfig(options));
     if (options?.resolveParams) {
       const event = typeof input === 'object' && input !== null && 'body' in input
         ? input as { body: unknown; headers: Record<string, string | undefined> }
@@ -92,7 +93,7 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
  * ```
  */
 export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (event: unknown): Promise<GetSessionResult> => {
     // Resolve h3: prefer explicit option, then dynamic import
@@ -111,6 +112,7 @@ export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
     }
 
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const body = await h3.readBody(event);
 
       if (options?.resolveParams) {

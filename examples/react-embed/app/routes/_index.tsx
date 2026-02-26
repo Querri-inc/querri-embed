@@ -23,7 +23,7 @@ export default function DashboardPage() {
       </p>
       <div style={{ width: '100%', height: '80vh', marginTop: '1rem' }}>
         <QuerriEmbed
-          serverUrl={process.env.QUERRI_URL || 'https://app.querri.com'}
+          serverUrl={import.meta.env.VITE_QUERRI_URL || 'https://app.querri.com'}
           auth={auth}
           onReady={() => console.log('Embed ready')}
           onError={(err) => console.error('Embed error:', err)}

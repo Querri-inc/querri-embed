@@ -43,7 +43,7 @@ export function createSessionAction(
   params: Record<string, string | undefined>;
   context?: unknown;
 }) => Promise<Response> {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (args: {
     request: Request;
@@ -51,6 +51,7 @@ export function createSessionAction(
     context?: unknown;
   }): Promise<Response> => {
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(args)
         : ((await args.request.json()) as GetSessionParams);

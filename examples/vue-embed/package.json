@@ -1,6 +1,7 @@
 {
   "name": "vue-embed-example",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently \"node server.js\" \"vite\"",
     "dev:server": "node server.js",

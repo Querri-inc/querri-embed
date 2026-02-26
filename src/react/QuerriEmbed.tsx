@@ -134,6 +134,6 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
       // so inline literals don't cause unnecessary recreation.
     }, [serverUrl, stableAuth, startView, stableChrome, stableTheme, timeout]);
 
-    return <div ref={containerRef} className={className} style={style} />;
+    return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', ...style }} />;
   }
 );

@@ -31,10 +31,11 @@ export interface SessionHandlerOptions {
 export function createSessionHandler(
   options?: SessionHandlerOptions,
 ): (req: Request) => Promise<Response> {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (req: Request): Promise<Response> => {
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(req)
         : ((await req.json()) as GetSessionParams);

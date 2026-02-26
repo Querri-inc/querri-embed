@@ -33,13 +33,14 @@ export interface QuerriMiddlewareOptions {
  * ```
  */
 export function createQuerriMiddleware(options?: QuerriMiddlewareOptions) {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (
     req: { body: unknown; headers: Record<string, string | undefined> },
     res: { status(code: number): { json(body: unknown): void }; json(body: unknown): void },
   ): Promise<void> => {
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(req)
         : (req.body as GetSessionParams);
