@@ -15,7 +15,7 @@ const mockInstance = {
 vi.mock('../core/querri-embed.js', () => ({
   QuerriEmbed: {
     create: vi.fn(() => ({ ...mockInstance, on: vi.fn().mockReturnThis() })),
-    version: '0.1.0',
+    version: '0.1.5',
   },
 }));
 
