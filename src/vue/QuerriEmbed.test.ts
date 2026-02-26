@@ -15,7 +15,7 @@ vi.mock('../core/querri-embed.js', () => ({
       };
       return inst;
     }),
-    version: '0.1.6',
+    version: '0.0.0-test',
   },
 }));
 

@@ -134,7 +134,7 @@ export interface QuerriEmbedStatic {
    * @throws If called in a non-browser environment (SSR).
    */
   create(container: string | HTMLElement, options: QuerriEmbedOptions): QuerriInstance;
-  /** SDK version string (semver, e.g. `'0.1.6'`). */
+  /** SDK version string (semver, e.g. `'0.0.0-test'`). */
   readonly version: string;
 }
 

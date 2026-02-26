@@ -669,7 +669,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '0.1.6',
+  version: '0.0.0-test',
 };
 
 export default QuerriEmbed;

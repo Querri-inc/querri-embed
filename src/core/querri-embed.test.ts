@@ -487,7 +487,7 @@ describe('Container setup', () => {
 describe('QuerriEmbed.version', () => {
   it('exposes a version string', () => {
     expect(typeof QuerriEmbed.version).toBe('string');
-    expect(QuerriEmbed.version).toBe('0.1.6');
+    expect(QuerriEmbed.version).toBe('0.0.0-test');
   });
 });
 

@@ -20,7 +20,7 @@ vi.mock('../core/querri-embed.js', () => ({
       iframe: document.createElement('iframe'),
       ready: false,
     })),
-    version: '0.1.6',
+    version: '0.0.0-test',
   },
 }));
 
