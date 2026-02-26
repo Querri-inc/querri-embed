@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": { "dev": "vite dev", "build": "vite build" },
   "dependencies": {
-    "@querri-inc/embed": "file:../..",
+    "@querri-inc/embed": "latest",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/adapter-auto": "^3.0.0",
     "svelte": "^5.0.0",

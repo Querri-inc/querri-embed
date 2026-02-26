@@ -14,6 +14,16 @@ cd examples/nextjs-embed
 npm install
 ```
 
+## Local Development
+
+To develop against a local copy of the SDK, replace the dependency version in `package.json`:
+
+```json
+"@querri-inc/embed": "file:../../"
+```
+
+Then re-run `npm install`.
+
 ## Environment Variables
 
 Set the following before running:

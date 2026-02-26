@@ -8,7 +8,7 @@
     "dev:client": "vite"
   },
   "dependencies": {
-    "@querri-inc/embed": "file:../..",
+    "@querri-inc/embed": "latest",
     "express": "^4.18.0",
     "vue": "^3.4.0"
   },

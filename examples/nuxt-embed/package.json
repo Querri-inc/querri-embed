@@ -3,7 +3,7 @@
   "private": true,
   "scripts": { "dev": "nuxt dev", "build": "nuxt build" },
   "dependencies": {
-    "@querri-inc/embed": "file:../..",
+    "@querri-inc/embed": "latest",
     "nuxt": "^3.0.0",
     "vue": "^3.4.0"
   }
