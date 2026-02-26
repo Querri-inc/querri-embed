@@ -18,14 +18,13 @@ export default function DashboardPage() {
   return (
     <main>
       <h1>Querri Embed - Next.js Example</h1>
-      <div style={{ width: '100%', height: '80vh' }}>
-        <QuerriEmbed
-          serverUrl={process.env.NEXT_PUBLIC_QUERRI_URL || 'https://app.querri.com'}
-          auth={auth}
-          onReady={() => console.log('Embed ready')}
-          onError={(err) => console.error('Embed error:', err)}
-        />
-      </div>
+      <QuerriEmbed
+        style={{ width: '100%', height: '80vh' }}
+        serverUrl={process.env.NEXT_PUBLIC_QUERRI_URL || 'https://app.querri.com'}
+        auth={auth}
+        onReady={() => console.log('Embed ready')}
+        onError={(err) => console.error('Embed error:', err)}
+      />
     </main>
   );
 }
