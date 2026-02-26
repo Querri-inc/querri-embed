@@ -1,4 +1,4 @@
-import { createSessionAction } from '@querri/embed/server/react-router';
+import { createSessionAction } from '@querri-inc/embed/server/react-router';
 
 /**
  * Resource route — no default component export, so this is API-only.

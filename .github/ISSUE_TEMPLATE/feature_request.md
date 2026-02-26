@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for @querri/embed
+about: Suggest an idea for @querri-inc/embed
 labels: enhancement
 ---
 

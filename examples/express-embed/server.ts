@@ -1,5 +1,5 @@
 import express from 'express';
-import { createSessionHandler } from '@querri/embed/server/express';
+import { createSessionHandler } from '@querri-inc/embed/server/express';
 
 const app = express();
 app.use(express.json());

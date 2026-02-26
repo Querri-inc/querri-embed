@@ -1,4 +1,4 @@
-# @querri/embed
+# @querri-inc/embed
 
 > Embed Querri analytics in your app. Zero dependencies. Works everywhere.
 
@@ -7,7 +7,7 @@
 ### 1. Install
 
 ```bash
-npm install @querri/embed
+npm install @querri-inc/embed
 ```
 
 ### 2. Add the embed
@@ -15,7 +15,7 @@ npm install @querri/embed
 **React**
 
 ```tsx
-import { QuerriEmbed } from '@querri/embed/react';
+import { QuerriEmbed } from '@querri-inc/embed/react';
 
 <div style={{ width: '100%', height: '600px' }}>
   <QuerriEmbed serverUrl="https://app.querri.com" auth={auth} startView="/builder/dashboard/uuid" />
@@ -31,7 +31,7 @@ import { QuerriEmbed } from '@querri/embed/react';
   </div>
 </template>
 <script setup>
-import { QuerriEmbed } from '@querri/embed/vue';
+import { QuerriEmbed } from '@querri-inc/embed/vue';
 const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 </script>
 ```
@@ -40,7 +40,7 @@ const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 
 ```svelte
 <script>
-  import QuerriEmbed from '@querri/embed/svelte';
+  import QuerriEmbed from '@querri-inc/embed/svelte';
   const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 </script>
 <div style="width: 100%; height: 600px">
@@ -52,7 +52,7 @@ const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 
 ```typescript
 import { Component } from '@angular/core';
-import { QuerriEmbedComponent } from '@querri/embed/angular';
+import { QuerriEmbedComponent } from '@querri-inc/embed/angular';
 
 @Component({
   standalone: true,
@@ -69,7 +69,7 @@ export class DashboardComponent {
 **Vanilla JS**
 
 ```javascript
-import { QuerriEmbed } from '@querri/embed';
+import { QuerriEmbed } from '@querri-inc/embed';
 
 QuerriEmbed.create('#container', {
   serverUrl: 'https://app.querri.com',
@@ -81,7 +81,7 @@ QuerriEmbed.create('#container', {
 **CDN**
 
 ```html
-<script src="https://unpkg.com/@querri/embed/dist/core/querri-embed.iife.global.js"></script>
+<script src="https://unpkg.com/@querri-inc/embed/dist/core/querri-embed.iife.global.js"></script>
 <script>
   QuerriEmbed.create('#container', {
     serverUrl: 'https://app.querri.com',
@@ -92,7 +92,7 @@ QuerriEmbed.create('#container', {
 
 ### 3. Create a session endpoint
 
-For server-authenticated embeds, add a one-liner session route. Import from `@querri/embed/server/<framework>`.
+For server-authenticated embeds, add a one-liner session route. Import from `@querri-inc/embed/server/<framework>`.
 
 | Framework | File | Code |
 |-----------|------|------|
@@ -230,12 +230,12 @@ instance.on('navigation', ({ type, path }) => {
 
 | Framework | Client Import | Server Import | Handler |
 |-----------|---------------|---------------|---------|
-| React + Next.js | `@querri/embed/react` | `@querri/embed/server/nextjs` | `createSessionHandler()` |
-| React + React Router | `@querri/embed/react` | `@querri/embed/server/react-router` | `createSessionHandler()` |
-| Vue + Nuxt | `@querri/embed/vue` | `@querri/embed/server/nuxt` | `createNuxtSessionHandler()` |
-| Svelte + SvelteKit | `@querri/embed/svelte` | `@querri/embed/server/sveltekit` | `createSessionHandler()` |
-| Angular | `@querri/embed/angular` | `@querri/embed/server/express` | `createSessionHandler()` |
-| Vanilla JS / Any | `@querri/embed` or CDN | `@querri/embed/server/express` | `createSessionHandler()` |
+| React + Next.js | `@querri-inc/embed/react` | `@querri-inc/embed/server/nextjs` | `createSessionHandler()` |
+| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionHandler()` |
+| Vue + Nuxt | `@querri-inc/embed/vue` | `@querri-inc/embed/server/nuxt` | `createNuxtSessionHandler()` |
+| Svelte + SvelteKit | `@querri-inc/embed/svelte` | `@querri-inc/embed/server/sveltekit` | `createSessionHandler()` |
+| Angular | `@querri-inc/embed/angular` | `@querri-inc/embed/server/express` | `createSessionHandler()` |
+| Vanilla JS / Any | `@querri-inc/embed` or CDN | `@querri-inc/embed/server/express` | `createSessionHandler()` |
 
 ## Instance API
 
@@ -271,7 +271,7 @@ Access the underlying instance via ref:
 
 ```tsx
 import { useRef } from 'react';
-import { QuerriEmbed, type QuerriEmbedRef } from '@querri/embed/react';
+import { QuerriEmbed, type QuerriEmbedRef } from '@querri-inc/embed/react';
 
 const ref = useRef<QuerriEmbedRef>(null);
 // ref.current.instance -- SDK instance
@@ -317,18 +317,18 @@ Access the underlying instance via a template ref or `ViewChild`:
 
 ## Server SDK
 
-The server SDK is included in `@querri/embed` -- no extra package required. Use it to create embed session tokens, manage users, enforce access policies, and interact with the full Querri API from your backend.
+The server SDK is included in `@querri-inc/embed` -- no extra package required. Use it to create embed session tokens, manage users, enforce access policies, and interact with the full Querri API from your backend.
 
 ### Import
 
 ```typescript
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 ```
 
 ### Quick Start
 
 ```typescript
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 
 const client = new Querri('qk_your_api_key');
 
@@ -352,23 +352,23 @@ Each framework has a one-liner server handler that wraps `getSession()`:
 
 ```typescript
 // Next.js -- app/api/querri-session/route.ts
-import { createSessionHandler } from '@querri/embed/server/nextjs';
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
 export const POST = createSessionHandler();
 
 // SvelteKit -- src/routes/api/querri-session/+server.ts
-import { createSessionHandler } from '@querri/embed/server/sveltekit';
+import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
 export const POST = createSessionHandler();
 
 // React Router v7 -- app/routes/api.querri-session.ts
-import { createSessionHandler } from '@querri/embed/server/react-router';
+import { createSessionHandler } from '@querri-inc/embed/server/react-router';
 export const action = createSessionHandler();
 
 // Nuxt -- server/api/querri-session.post.ts
-import { createNuxtSessionHandler } from '@querri/embed/server/nuxt';
+import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
 export default createNuxtSessionHandler();
 
 // Express -- server.ts
-import { createSessionHandler } from '@querri/embed/server/express';
+import { createSessionHandler } from '@querri-inc/embed/server/express';
 app.post('/api/querri-session', createSessionHandler());
 ```
 
@@ -435,10 +435,10 @@ import type {
   QuerriEventCallback,
   QuerriErrorEvent,
   QuerriNavigationEvent,
-} from '@querri/embed';
+} from '@querri-inc/embed';
 
 // Framework wrappers re-export all core types, plus their own:
-import type { QuerriEmbedProps, QuerriEmbedRef } from '@querri/embed/react';
+import type { QuerriEmbedProps, QuerriEmbedRef } from '@querri-inc/embed/react';
 ```
 
 ## Requirements

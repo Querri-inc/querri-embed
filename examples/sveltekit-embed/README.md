@@ -35,7 +35,7 @@ Open http://localhost:5173 in your browser.
 
 **Server route** (`src/routes/api/querri-session/+server.ts`):
 - Handles POST requests at `/api/querri-session`
-- Uses `createSessionHandler` from `@querri/embed/server/sveltekit` to create embed sessions
+- Uses `createSessionHandler` from `@querri-inc/embed/server/sveltekit` to create embed sessions
 - Resolves user identity and access params from the request body
 - Returns a `session_token` for authenticating the embed iframe
 

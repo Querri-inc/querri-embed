@@ -1,5 +1,5 @@
 {
-  "name": "@querri/embed",
+  "name": "@querri-inc/embed",
   "version": "0.1.0",
   "description": "Embed Querri views in your application. Core SDK + React, Vue, Svelte, and Angular components.",
   "type": "module",
@@ -9,6 +9,12 @@
     "url": "https://github.com/Querri-inc/querri-embed.git"
   },
   "homepage": "https://github.com/Querri-inc/querri-embed#readme",
+  "bugs": {
+    "url": "https://github.com/Querri-inc/querri-embed/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "querri",
     "embed",

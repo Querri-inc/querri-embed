@@ -1,4 +1,4 @@
-import { createSessionHandler } from '@querri/embed/server/sveltekit';
+import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
 import type { RequestHandler } from './$types';
 
 // Server-side: creates embed session using Querri API

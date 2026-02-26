@@ -1,5 +1,5 @@
 import express from 'express';
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 
 const app = express();
 app.use(express.json());

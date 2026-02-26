@@ -1,13 +1,13 @@
 # Querri Server SDK Reference
 
-The Querri server SDK is included in the `@querri/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more.
+The Querri server SDK is included in the `@querri-inc/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more.
 
 ```bash
-npm install @querri/embed
+npm install @querri-inc/embed
 ```
 
 ```typescript
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 ```
 
 ## Quick Start
@@ -15,7 +15,7 @@ import { Querri } from '@querri/embed/server';
 ### Create a session token (the #1 use case)
 
 ```typescript
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 
 const client = new Querri();  // reads QUERRI_API_KEY from env
 
@@ -34,11 +34,11 @@ Every framework integration exports `createSessionHandler` for a consistent API:
 
 | Framework | Import | Server File | Code |
 |-----------|--------|------------|------|
-| Next.js | `@querri/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
-| SvelteKit | `@querri/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `@querri/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
-| Nuxt | `@querri/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
-| Express | `@querri/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
+| Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
+| SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
+| React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
+| Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
 
 Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
 
@@ -1450,7 +1450,7 @@ import {
   NotFoundError,
   RateLimitError,
   ValidationError,
-} from '@querri/embed/server';
+} from '@querri-inc/embed/server';
 
 try {
   const user = await client.users.retrieve('user_nonexistent');
@@ -1509,13 +1509,13 @@ Each integration provides a `createSessionHandler` (or equivalent) that wraps `c
 #### Install
 
 ```bash
-npm install @querri/embed
+npm install @querri-inc/embed
 ```
 
 #### Server Route: `src/routes/api/querri-session/+server.ts`
 
 ```typescript
-import { createSessionHandler } from '@querri/embed/server/sveltekit';
+import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
 
 export const POST = createSessionHandler({
   resolveParams: async ({ locals }) => {
@@ -1538,7 +1538,7 @@ If you omit `resolveParams`, the handler reads the request body as `GetSessionPa
 
 ```svelte
 <script>
-  import { QuerriEmbed } from '@querri/embed/svelte';
+  import { QuerriEmbed } from '@querri-inc/embed/svelte';
 
   const auth = {
     fetchSessionToken: async () => {
@@ -1573,7 +1573,7 @@ For server-side logic beyond session creation (e.g., in `+page.server.ts` load f
 
 ```typescript
 // src/lib/server/querri.ts
-import { createQuerriClient } from '@querri/embed/server/sveltekit';
+import { createQuerriClient } from '@querri-inc/embed/server/sveltekit';
 export const querri = createQuerriClient();
 ```
 
@@ -1584,7 +1584,7 @@ export const querri = createQuerriClient();
 #### Server Route: `app/api/querri-session/route.ts`
 
 ```typescript
-import { createSessionHandler } from '@querri/embed/server/nextjs';
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
 import { getServerSession } from 'next-auth'; // or your auth library
 
 export const POST = createSessionHandler({
@@ -1610,7 +1610,7 @@ export const POST = createSessionHandler({
 'use client';
 
 import { useMemo } from 'react';
-import { QuerriEmbed } from '@querri/embed/react';
+import { QuerriEmbed } from '@querri-inc/embed/react';
 
 export default function DashboardPage() {
   const auth = useMemo(() => ({
@@ -1646,7 +1646,7 @@ export default function DashboardPage() {
 
 ```typescript
 // lib/querri.ts
-import { createQuerriClient } from '@querri/embed/server/nextjs';
+import { createQuerriClient } from '@querri-inc/embed/server/nextjs';
 export const querri = createQuerriClient();
 ```
 
@@ -1659,7 +1659,7 @@ React Router v7 (the Remix successor) supports framework-native "resource routes
 #### Server Route: `app/routes/api.querri-session.ts`
 
 ```typescript
-import { createSessionAction } from '@querri/embed/server/react-router';
+import { createSessionAction } from '@querri-inc/embed/server/react-router';
 
 export const action = createSessionAction({
   resolveParams: async ({ request, context }) => {
@@ -1684,7 +1684,7 @@ If you omit `resolveParams`, the handler reads the request body as `GetSessionPa
 
 ```tsx
 import { useMemo } from 'react';
-import { QuerriEmbed } from '@querri/embed/react';
+import { QuerriEmbed } from '@querri-inc/embed/react';
 
 export default function DashboardPage() {
   const auth = useMemo(() => ({
@@ -1722,7 +1722,7 @@ For server-side logic in loaders or actions beyond session creation:
 
 ```typescript
 // app/lib/querri.server.ts
-import { createQuerriClient } from '@querri/embed/server/react-router';
+import { createQuerriClient } from '@querri-inc/embed/server/react-router';
 export const querri = createQuerriClient();
 ```
 
@@ -1736,7 +1736,7 @@ The simplest setup is a one-liner using `createNuxtSessionHandler`:
 
 ```typescript
 // server/api/querri-session.post.ts
-import { createNuxtSessionHandler } from '@querri/embed/server/nuxt';
+import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
 export default createNuxtSessionHandler();
 ```
 
@@ -1753,7 +1753,7 @@ export default createNuxtSessionHandler({
 For developers who need more control, `defineQuerriSessionHandler` is the manual alternative -- you wrap it yourself with `defineEventHandler` and `readBody`:
 
 ```typescript
-import { defineQuerriSessionHandler } from '@querri/embed/server/nuxt';
+import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
 
 const handler = defineQuerriSessionHandler({
   resolveParams: async ({ body, headers }) => ({
@@ -1791,7 +1791,7 @@ export default defineEventHandler(async (event) => {
 </template>
 
 <script setup>
-import { QuerriEmbed } from '@querri/embed/vue';
+import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const auth = {
   fetchSessionToken: async () => {
@@ -1819,7 +1819,7 @@ function onError(err) { console.error(err); }
 
 ```typescript
 // server/utils/querri.ts
-import { createQuerriClient } from '@querri/embed/server/nuxt';
+import { createQuerriClient } from '@querri-inc/embed/server/nuxt';
 export const querri = createQuerriClient();
 ```
 
@@ -1833,7 +1833,7 @@ Angular applications typically use Express for server-side rendering. The integr
 
 ```typescript
 import express from 'express';
-import { createSessionHandler } from '@querri/embed/server/express';
+import { createSessionHandler } from '@querri-inc/embed/server/express';
 
 const app = express();
 app.use(express.json());
@@ -1855,10 +1855,10 @@ app.post('/api/querri-session', createSessionHandler({
 }));
 ```
 
-> **Note:** For Angular SSR projects, you can also import from `@querri/embed/server/angular` (same module):
+> **Note:** For Angular SSR projects, you can also import from `@querri-inc/embed/server/angular` (same module):
 >
 > ```typescript
-> import { createQuerriMiddleware } from '@querri/embed/server/angular';
+> import { createQuerriMiddleware } from '@querri-inc/embed/server/angular';
 > ```
 
 #### Client Component: `src/app/dashboard/dashboard.component.ts`
@@ -1866,7 +1866,7 @@ app.post('/api/querri-session', createSessionHandler({
 ```typescript
 import { Component } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { QuerriEmbedComponent, type QuerriAuth } from '@querri/embed/angular';
+import { QuerriEmbedComponent, type QuerriAuth } from '@querri-inc/embed/angular';
 
 @Component({
   selector: 'app-dashboard',
@@ -1917,7 +1917,7 @@ export class DashboardComponent {
 
 ```typescript
 // src/app/querri.service.ts
-import { createQuerriClient } from '@querri/embed/server/angular';
+import { createQuerriClient } from '@querri-inc/embed/server/angular';
 const querri = createQuerriClient();
 ```
 
@@ -1931,7 +1931,7 @@ For Vue 3 apps without Nuxt, use the `Querri` client directly in a standalone Ex
 
 ```javascript
 import express from 'express';
-import { Querri } from '@querri/embed/server';
+import { Querri } from '@querri-inc/embed/server';
 
 const app = express();
 app.use(express.json());
@@ -1969,7 +1969,7 @@ app.listen(3001, () => console.log('API server running on http://localhost:3001'
 </template>
 
 <script setup lang="ts">
-import { QuerriEmbed } from '@querri/embed/vue';
+import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const auth = {
   fetchSessionToken: async () => {

@@ -41,7 +41,7 @@ Open http://localhost:3000 in your browser.
 
 **Express server** (`server.ts`):
 - Serves static files from `public/`
-- Mounts `createSessionHandler` from `@querri/embed/server/express` at `/api/querri-session`
+- Mounts `createSessionHandler` from `@querri-inc/embed/server/express` at `/api/querri-session`
 - The handler creates embed sessions via the Querri API and returns a `session_token`
 
 **Client page** (`public/index.html`):

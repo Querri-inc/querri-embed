@@ -24,7 +24,7 @@ export interface SessionActionOptions {
  * @example
  * ```ts
  * // app/routes/api.querri-session.ts
- * import { createSessionAction } from '@querri/embed/server/react-router';
+ * import { createSessionAction } from '@querri-inc/embed/server/react-router';
  *
  * export const action = createSessionAction({
  *   resolveParams: async ({ request, context }) => {
@@ -86,7 +86,7 @@ export const createSessionHandler = createSessionAction;
  * @example
  * ```ts
  * // app/lib/querri.server.ts
- * import { createQuerriClient } from '@querri/embed/server/react-router';
+ * import { createQuerriClient } from '@querri-inc/embed/server/react-router';
  * export const querri = createQuerriClient();
  * ```
  */

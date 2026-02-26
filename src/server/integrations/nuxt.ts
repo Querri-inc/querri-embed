@@ -21,7 +21,7 @@ export interface SessionHandlerOptions {
  * @example
  * ```ts
  * // server/api/querri-session.post.ts
- * import { defineQuerriSessionHandler } from '@querri/embed/server/nuxt';
+ * import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
  *
  * const handler = defineQuerriSessionHandler();
  *
@@ -34,7 +34,7 @@ export interface SessionHandlerOptions {
  * @example With custom param resolution:
  * ```ts
  * // server/api/querri-session.post.ts
- * import { defineQuerriSessionHandler } from '@querri/embed/server/nuxt';
+ * import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
  *
  * const handler = defineQuerriSessionHandler({
  *   resolveParams: async ({ body, headers }) => ({
@@ -78,7 +78,7 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
  * @example
  * ```ts
  * // server/api/querri-session.post.ts
- * import { createNuxtSessionHandler } from '@querri/embed/server/nuxt';
+ * import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
  * export default createNuxtSessionHandler();
  * ```
  *
@@ -147,7 +147,7 @@ export const createSessionHandler = createNuxtSessionHandler;
  * @example
  * ```ts
  * // server/utils/querri.ts
- * import { createQuerriClient } from '@querri/embed/server/nuxt';
+ * import { createQuerriClient } from '@querri-inc/embed/server/nuxt';
  * export const querri = createQuerriClient();
  * ```
  */

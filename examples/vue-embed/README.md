@@ -42,11 +42,11 @@ Open http://localhost:3000 in your browser.
 ## How It Works
 
 **Express API server** (`server.js`):
-- Creates a `Querri` client from `@querri/embed/server`
+- Creates a `Querri` client from `@querri-inc/embed/server`
 - Exposes `POST /api/querri-session` which calls `client.getSession()` and returns a `session_token`
 
 **Vue client** (`src/App.vue`):
-- Imports `<QuerriEmbed>` from `@querri/embed/vue`
+- Imports `<QuerriEmbed>` from `@querri-inc/embed/vue`
 - Provides an `auth` config with a `fetchSessionToken` callback
 - The callback calls the Express endpoint to obtain a session token
 

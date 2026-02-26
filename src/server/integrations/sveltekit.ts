@@ -16,7 +16,7 @@ export interface SessionHandlerOptions {
  * @example
  * ```ts
  * // src/routes/api/querri-session/+server.ts
- * import { createSessionHandler } from '@querri/embed/server/sveltekit';
+ * import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
  *
  * export const POST = createSessionHandler({
  *   resolveParams: async ({ locals }) => ({
@@ -60,7 +60,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
  * @example
  * ```ts
  * // src/lib/server/querri.ts
- * import { createQuerriClient } from '@querri/embed/server/sveltekit';
+ * import { createQuerriClient } from '@querri-inc/embed/server/sveltekit';
  * export const querri = createQuerriClient();
  * ```
  */

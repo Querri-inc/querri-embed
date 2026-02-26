@@ -16,7 +16,7 @@ export interface SessionHandlerOptions {
  * @example
  * ```ts
  * // app/api/querri-session/route.ts
- * import { createSessionHandler } from '@querri/embed/server/nextjs';
+ * import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
  *
  * export const POST = createSessionHandler({
  *   resolveParams: async (req) => {
@@ -62,7 +62,7 @@ export function createSessionHandler(
  * @example
  * ```ts
  * // lib/querri.ts
- * import { createQuerriClient } from '@querri/embed/server/nextjs';
+ * import { createQuerriClient } from '@querri-inc/embed/server/nextjs';
  * export const querri = createQuerriClient();
  * ```
  */

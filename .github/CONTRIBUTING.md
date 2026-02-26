@@ -1,4 +1,4 @@
-# Contributing to @querri/embed
+# Contributing to @querri-inc/embed
 
 Thanks for your interest in contributing! This guide will help you get started.
 

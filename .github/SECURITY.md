@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you discover a security vulnerability in `@querri/embed`, please report it responsibly.
+If you discover a security vulnerability in `@querri-inc/embed`, please report it responsibly.
 
 **Do not open a public issue.** Instead, email **security@querri.com** with:
 
@@ -24,7 +24,7 @@ If you discover a security vulnerability in `@querri/embed`, please report it re
 
 ## Scope
 
-This policy applies to the `@querri/embed` npm package. For vulnerabilities in the Querri platform itself, please contact security@querri.com directly.
+This policy applies to the `@querri-inc/embed` npm package. For vulnerabilities in the Querri platform itself, please contact security@querri.com directly.
 
 ## Feedback
 

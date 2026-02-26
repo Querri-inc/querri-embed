@@ -37,7 +37,7 @@ Open http://localhost:3000 in your browser.
 
 **API route** (`app/api/querri-session/route.ts`):
 - Handles POST requests at `/api/querri-session`
-- Uses `createSessionHandler` from `@querri/embed/server/nextjs` to create embed sessions
+- Uses `createSessionHandler` from `@querri-inc/embed/server/nextjs` to create embed sessions
 - Resolves user identity and access params from the request body
 - Returns a `session_token` for authenticating the embed iframe
 

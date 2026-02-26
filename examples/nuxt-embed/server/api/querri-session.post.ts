@@ -1,3 +1,3 @@
-import { createNuxtSessionHandler } from '@querri/embed/server/nuxt';
+import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
 
 export default createNuxtSessionHandler();

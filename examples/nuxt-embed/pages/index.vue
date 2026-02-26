@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { QuerriEmbed } from '@querri/embed/vue';
+import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const config = useRuntimeConfig();
 const serverUrl = config.public.querriUrl as string || 'https://app.querri.com';

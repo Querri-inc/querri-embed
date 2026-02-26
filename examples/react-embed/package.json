@@ -8,7 +8,7 @@
     "start": "react-router-serve ./build/server/index.js"
   },
   "dependencies": {
-    "@querri/embed": "file:../..",
+    "@querri-inc/embed": "file:../..",
     "@react-router/node": "^7.0.0",
     "@react-router/serve": "^7.0.0",
     "react": "^18.0.0",

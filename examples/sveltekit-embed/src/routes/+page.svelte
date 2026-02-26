@@ -1,5 +1,5 @@
 <script>
-  import { QuerriEmbed } from '@querri/embed/svelte';
+  import { QuerriEmbed } from '@querri-inc/embed/svelte';
   import { env } from '$env/dynamic/public';
 
   const PUBLIC_QUERRI_URL = env.PUBLIC_QUERRI_URL || 'https://app.querri.com';

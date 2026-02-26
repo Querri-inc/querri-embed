@@ -35,13 +35,13 @@ Open http://localhost:5173 in your browser.
 
 **Resource route** (`app/routes/api.querri-session.ts`):
 - Exports an `action` function that handles POST requests at `/api/querri-session`
-- Uses `createSessionAction` from `@querri/embed/server/react-router` to create embed sessions
+- Uses `createSessionAction` from `@querri-inc/embed/server/react-router` to create embed sessions
 - No default component export = resource route (API-only, no UI rendered)
 - Resolves user identity and access params from the request body
 - Returns a `session_token` for authenticating the embed iframe
 
 **Client page** (`app/routes/_index.tsx`):
-- Renders the `<QuerriEmbed>` React component from `@querri/embed/react`
+- Renders the `<QuerriEmbed>` React component from `@querri-inc/embed/react`
 - Provides an `auth` config with a `fetchSessionToken` callback (memoized with `useMemo`)
 - The callback calls the resource route to obtain a session token
 - The embed component uses the token to authenticate with Querri

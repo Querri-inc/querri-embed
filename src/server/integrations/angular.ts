@@ -20,7 +20,7 @@ export interface QuerriMiddlewareOptions {
  * ```ts
  * // server.ts
  * import express from 'express';
- * import { createQuerriMiddleware } from '@querri/embed/server/express';
+ * import { createQuerriMiddleware } from '@querri-inc/embed/server/express';
  *
  * const app = express();
  * app.use(express.json());
@@ -69,7 +69,7 @@ export const createSessionHandler = createQuerriMiddleware;
  *
  * @example
  * ```ts
- * import { createQuerriClient } from '@querri/embed/server/express';
+ * import { createQuerriClient } from '@querri-inc/embed/server/express';
  * const querri = createQuerriClient();
  * ```
  */

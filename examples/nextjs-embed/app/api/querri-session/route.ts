@@ -1,4 +1,4 @@
-import { createSessionHandler } from '@querri/embed/server/nextjs';
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
 
 export const POST = createSessionHandler({
   resolveParams: async (req) => {

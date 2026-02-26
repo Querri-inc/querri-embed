@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { QuerriEmbed } from '@querri/embed/vue';
+import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const serverUrl = import.meta.env.VITE_QUERRI_URL || 'https://app.querri.com';
 

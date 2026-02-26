@@ -1,5 +1,5 @@
 'use client';
-import { QuerriEmbed } from '@querri/embed/react';
+import { QuerriEmbed } from '@querri-inc/embed/react';
 import { useMemo } from 'react';
 
 export default function DashboardPage() {
