@@ -1,6 +1,6 @@
 {
   "name": "@querri-inc/embed",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Embed Querri views in your application. Core SDK + React, Vue, Svelte, and Angular components.",
   "type": "module",
   "license": "MIT",
