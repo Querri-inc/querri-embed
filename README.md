@@ -4,6 +4,8 @@
 
 **React** | **Vue** | **Svelte** | **Angular** | **Vanilla JS** | **CDN**
 
+![Querri Embed](assets/screenshot.png)
+
 Querri Embed drops a full analytics experience into your app — dashboards, reports, and data exploration — with built-in authentication, per-user access control, UI customization, and theming. One component, one server endpoint, zero dependencies.
 
 ## Get Started in 60 Seconds
