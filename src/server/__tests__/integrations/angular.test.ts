@@ -21,7 +21,7 @@ describe('createSessionHandler (Express/Angular)', () => {
 
     const middleware = createSessionHandler({ apiKey: 'qk_test' });
     const req = {
-      body: { user: 'ext_user' },
+      body: {},
       headers: {} as Record<string, string | undefined>,
     };
     const jsonFn = vi.fn();
@@ -29,6 +29,27 @@ describe('createSessionHandler (Express/Angular)', () => {
 
     await middleware(req, res);
 
+    expect(jsonFn).toHaveBeenCalledWith(session);
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'embed_anonymous' });
+  });
+
+  it('calls resolveParams when provided', async () => {
+    const session = { session_token: 'tok_456', expires_in: 3600, user_id: 'u_2' };
+    mockGetSession.mockResolvedValue(session);
+
+    const resolveParams = vi.fn().mockResolvedValue({ user: 'resolved_user' });
+    const middleware = createSessionHandler({ apiKey: 'qk_test', resolveParams });
+    const req = {
+      body: {},
+      headers: { authorization: 'Bearer tok' } as Record<string, string | undefined>,
+    };
+    const jsonFn = vi.fn();
+    const res = { json: jsonFn, status: vi.fn().mockReturnValue({ json: vi.fn() }) };
+
+    await middleware(req, res);
+
+    expect(resolveParams).toHaveBeenCalledWith(req);
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'resolved_user' });
     expect(jsonFn).toHaveBeenCalledWith(session);
   });
 

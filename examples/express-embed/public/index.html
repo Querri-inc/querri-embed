@@ -16,15 +16,7 @@
       // Change this to 'https://app.querri.com/builder' for dashboard embeds
       serverUrl: window.__QUERRI_URL__,
       auth: {
-        fetchSessionToken: async () => {
-          const res = await fetch('/api/querri-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: 'demo-user' }),
-          });
-          const data = await res.json();
-          return data.session_token;
-        },
+        sessionEndpoint: '/api/querri-session',
       },
     });
     instance.on('ready', () => console.log('Embed ready'));

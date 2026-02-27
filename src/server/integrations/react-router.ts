@@ -54,7 +54,7 @@ export function createSessionHandler(
       if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(args)
-        : ((await args.request.json()) as GetSessionParams);
+        : { user: 'embed_anonymous' } as GetSessionParams;
 
       const session = await client.getSession(params);
       return Response.json(session);

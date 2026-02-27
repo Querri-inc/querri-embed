@@ -37,9 +37,10 @@ export interface SessionHandlerOptions {
  * import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
  *
  * const handler = defineQuerriSessionHandler({
- *   resolveParams: async ({ body, headers }) => ({
- *     user: { external_id: body.userId, email: body.email },
- *   }),
+ *   resolveParams: async ({ body, headers }) => {
+ *     const user = await getUserFromAuth(headers.authorization);
+ *     return { user: { external_id: user.id, email: user.email } };
+ *   },
  * });
  *
  * export default defineEventHandler(async (event) => {
@@ -62,7 +63,7 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
       return client.getSession(params);
     }
 
-    return client.getSession(input as GetSessionParams);
+    return client.getSession({ user: 'embed_anonymous' } as GetSessionParams);
   }
 
   return handler;
@@ -86,9 +87,10 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
  * @example With custom param resolution:
  * ```ts
  * export default createSessionHandler({
- *   resolveParams: async ({ body, headers }) => ({
- *     user: { external_id: body.userId },
- *   }),
+ *   resolveParams: async ({ body, headers }) => {
+ *     const user = await getUserFromAuth(headers.authorization);
+ *     return { user: { external_id: user.id, email: user.email } };
+ *   },
  * });
  * ```
  */
@@ -121,7 +123,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
         return client.getSession(params);
       }
 
-      return client.getSession(body as GetSessionParams);
+      return client.getSession({ user: 'embed_anonymous' } as GetSessionParams);
     } catch (err) {
       if (err instanceof APIError) {
         throw h3.createError({

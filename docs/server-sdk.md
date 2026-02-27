@@ -1,18 +1,54 @@
 # Querri Server SDK Reference
 
-The Querri server SDK is included in the `@querri-inc/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more.
+The Querri server SDK is included in the `@querri-inc/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more. For most apps, a one-liner `createSessionHandler()` is all you need to create embed sessions.
 
 ```bash
 npm install @querri-inc/embed
 ```
 
-```typescript
-import { Querri } from '@querri-inc/embed/server';
-```
-
 ## Quick Start
 
-### Create a session token (the #1 use case)
+### `createSessionHandler()`
+
+Each framework integration exports a `createSessionHandler` that wraps `client.getSession()` in a framework-native route handler. Import from `@querri-inc/embed/server/<framework>`:
+
+| Framework | Import | Server File | Code |
+|-----------|--------|------------|------|
+| Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
+| SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
+| React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
+| Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
+
+Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
+
+**Adding custom auth logic**
+
+Pass a `resolveParams` callback to extract user identity from your auth system instead of reading the request body directly:
+
+```typescript
+// Next.js -- app/api/querri-session/route.ts
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
+import { getServerSession } from 'next-auth';
+
+export const POST = createSessionHandler({
+  resolveParams: async (req) => {
+    const session = await getServerSession();
+    return {
+      user: { external_id: session!.user!.id, email: session!.user!.email! },
+      access: { sources: ['src_sales'], filters: { tenant_id: session!.user!.orgId } },
+    };
+  },
+});
+```
+
+If you omit `resolveParams`, the handler creates an anonymous session. See the [Framework Integration Guides](#framework-integration-guides) for per-framework `resolveParams` signatures and full examples.
+
+> **Security:** Always derive user identity and access from your server-side auth system. Never read `user` or `access` from the request body — a malicious client can impersonate any user or escalate access.
+
+### Manual setup with the Querri client
+
+For custom servers, non-framework environments, or when you need the full client API beyond session creation:
 
 ```typescript
 import { Querri } from '@querri-inc/embed/server';
@@ -27,20 +63,6 @@ const { session_token } = await client.getSession({
   },
 });
 ```
-
-### Framework one-liners
-
-Every framework integration exports `createSessionHandler` for a consistent API:
-
-| Framework | Import | Server File | Code |
-|-----------|--------|------------|------|
-| Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
-| SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
-| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
-| Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
-
-Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
 
 ### Understanding `filters`
 

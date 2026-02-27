@@ -20,7 +20,7 @@ describe('defineQuerriSessionHandler (Nuxt)', () => {
     vi.clearAllMocks();
   });
 
-  it('calls getSession with body when no resolveParams', async () => {
+  it('uses anonymous user when no resolveParams', async () => {
     const session = { session_token: 'tok_123', expires_in: 3600, user_id: 'u_1' };
     mockGetSession.mockResolvedValue(session);
 
@@ -28,7 +28,7 @@ describe('defineQuerriSessionHandler (Nuxt)', () => {
     const result = await handler({ user: 'ext_user' });
 
     expect(result).toEqual(session);
-    expect(mockGetSession).toHaveBeenCalledWith({ user: 'ext_user' });
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'embed_anonymous' });
   });
 
   it('calls resolveParams when provided', async () => {
@@ -53,13 +53,13 @@ describe('createSessionHandler (Nuxt)', () => {
     vi.clearAllMocks();
   });
 
-  it('reads body from event and calls getSession', async () => {
+  it('uses anonymous user when no resolveParams', async () => {
     const session = { session_token: 'tok_789', expires_in: 3600, user_id: 'u_3' };
     mockGetSession.mockResolvedValue(session);
 
     // Mock h3 module
     vi.doMock('h3', () => ({
-      readBody: vi.fn().mockResolvedValue({ user: 'event_user' }),
+      readBody: vi.fn().mockResolvedValue({}),
       getHeaders: vi.fn().mockReturnValue({ host: 'localhost' }),
     }));
 
@@ -69,7 +69,33 @@ describe('createSessionHandler (Nuxt)', () => {
     const result = await handler(fakeEvent);
 
     expect(result).toEqual(session);
-    expect(mockGetSession).toHaveBeenCalledWith({ user: 'event_user' });
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'embed_anonymous' });
+
+    vi.doUnmock('h3');
+  });
+
+  it('calls resolveParams when provided', async () => {
+    const session = { session_token: 'tok_rp', expires_in: 3600, user_id: 'u_rp' };
+    mockGetSession.mockResolvedValue(session);
+
+    const resolveParams = vi.fn().mockResolvedValue({ user: 'resolved_user' });
+
+    vi.doMock('h3', () => ({
+      readBody: vi.fn().mockResolvedValue({ some: 'data' }),
+      getHeaders: vi.fn().mockReturnValue({ authorization: 'Bearer tok' }),
+    }));
+
+    const handler = createSessionHandler({ apiKey: 'qk_test', resolveParams });
+    const fakeEvent = { node: { req: {}, res: {} } };
+
+    const result = await handler(fakeEvent);
+
+    expect(result).toEqual(session);
+    expect(resolveParams).toHaveBeenCalledWith({
+      body: { some: 'data' },
+      headers: { authorization: 'Bearer tok' },
+    });
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'resolved_user' });
 
     vi.doUnmock('h3');
   });

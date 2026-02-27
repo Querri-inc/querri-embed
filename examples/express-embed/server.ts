@@ -16,6 +16,14 @@ app.get('/', (_req, res) => {
 });
 
 app.use(express.static('public'));
-app.post('/api/querri-session', createSessionHandler());
+app.post('/api/querri-session', createSessionHandler({
+  resolveParams: async () => ({
+    user: {
+      external_id: 'demo-user',
+      email: 'demo@example.com',
+    },
+    ttl: 3600,
+  }),
+}));
 
 app.listen(3000, () => console.log('Server running on http://localhost:3000'));

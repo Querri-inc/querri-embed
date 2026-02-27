@@ -3,15 +3,7 @@ import { useMemo } from 'react';
 
 export default function DashboardPage() {
   const auth = useMemo(() => ({
-    fetchSessionToken: async () => {
-      const res = await fetch('/api/querri-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'demo-user' }),
-      });
-      const { session_token } = await res.json();
-      return session_token;
-    },
+    sessionEndpoint: '/api/querri-session',
   }), []);
 
   return (

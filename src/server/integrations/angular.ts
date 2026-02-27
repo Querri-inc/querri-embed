@@ -26,9 +26,10 @@ export interface QuerriMiddlewareOptions {
  * app.use(express.json());
  *
  * app.post('/api/querri-session', createSessionHandler({
- *   resolveParams: async (req) => ({
- *     user: { external_id: req.body.userId, email: req.body.email },
- *   }),
+ *   resolveParams: async (req) => {
+ *     const user = await getUserFromAuth(req.headers.authorization);
+ *     return { user: { external_id: user.id, email: user.email } };
+ *   },
  * }));
  * ```
  */
@@ -43,7 +44,7 @@ export function createSessionHandler(options?: QuerriMiddlewareOptions) {
       if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(req)
-        : (req.body as GetSessionParams);
+        : { user: 'embed_anonymous' } as GetSessionParams;
 
       const session = await client.getSession(params);
       res.json(session);

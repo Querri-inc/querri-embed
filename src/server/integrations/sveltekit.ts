@@ -33,7 +33,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
       if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(event)
-        : ((await event.request.json()) as GetSessionParams);
+        : { user: 'embed_anonymous' } as GetSessionParams;
 
       const session = await client.getSession(params);
       return new Response(JSON.stringify(session), {

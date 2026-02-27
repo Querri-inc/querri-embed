@@ -5,15 +5,7 @@
   const PUBLIC_QUERRI_URL = env.PUBLIC_QUERRI_URL || 'https://app.querri.com';
 
   const auth = {
-    fetchSessionToken: async () => {
-      const res = await fetch('/api/querri-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'demo-user' }),
-      });
-      const { session_token } = await res.json();
-      return session_token;
-    },
+    sessionEndpoint: '/api/querri-session',
   };
 </script>
 

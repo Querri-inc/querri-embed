@@ -21,12 +21,6 @@ const config = useRuntimeConfig();
 const serverUrl = config.public.querriUrl as string || 'https://app.querri.com';
 
 const auth = {
-  fetchSessionToken: async () => {
-    const { session_token } = await $fetch('/api/querri-session', {
-      method: 'POST',
-      body: { userId: 'demo-user' },
-    });
-    return session_token;
-  },
+  sessionEndpoint: '/api/querri-session',
 };
 </script>

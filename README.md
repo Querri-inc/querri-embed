@@ -2,6 +2,10 @@
 
 > Embed Querri analytics in your app. Zero dependencies. Works everywhere.
 
+**React** | **Vue** | **Svelte** | **Angular** | **Vanilla JS** | **CDN**
+
+Querri Embed drops a full analytics experience into your app — dashboards, reports, and data exploration — with built-in authentication, per-user access control, UI customization, and theming. One component, one server endpoint, zero dependencies.
+
 ## Get Started in 60 Seconds
 
 ### 1. Install
@@ -11,6 +15,56 @@ npm install @querri-inc/embed
 ```
 
 ### 2. Add the embed
+
+```tsx
+import { QuerriEmbed } from '@querri-inc/embed/react';
+
+<QuerriEmbed
+  style={{ width: '100%', height: '600px' }}
+  serverUrl="https://app.querri.com"
+  auth={{ sessionEndpoint: '/api/querri-session' }}
+/>
+```
+
+> Using Vue, Svelte, Angular, or Vanilla JS? See [Framework Examples](#framework-examples) below.
+
+> The `auth` prop supports multiple modes: server tokens, share keys, and popup login. See [Authentication Modes](#authentication-modes) for all options.
+
+### 3. Create a session endpoint
+
+> Only needed for server-token auth (`sessionEndpoint` or `fetchSessionToken`). Skip this step if using [Share Key](#share-key-public-embeds) or [Popup Login](#popup-login-user-accounts).
+
+```typescript
+// app/api/querri-session/route.ts
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
+
+export const POST = createSessionHandler();
+```
+
+Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` [environment variables](#environment-variables).
+
+> `createSessionHandler()` creates an anonymous session. To map sessions to your authenticated users, use [`resolveParams`](#quick-start) in the Server SDK section.
+
+> Using a different framework? See the [Server SDK](#server-sdk) section for all framework handlers.
+
+### 4. Done.
+
+The embed handles auth, token caching, and cleanup automatically.
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Your Server
+    participant Querri API
+
+    Browser->>Your Server: POST /api/querri-session
+    Your Server->>Querri API: getOrCreate user + create session
+    Querri API-->>Your Server: { session_token }
+    Your Server-->>Browser: { session_token }
+    Browser->>Querri API: Load embed with token
+```
+
+## Framework Examples
 
 **React**
 
@@ -91,53 +145,6 @@ QuerriEmbed.create('#container', {
     auth: { shareKey: 'your-share-key', org: 'your-org-id' },
   });
 </script>
-```
-
-### 3. Create a session endpoint
-
-For server-authenticated embeds, add a one-liner session route. Import from `@querri-inc/embed/server/<framework>`.
-
-| Framework | File | Code |
-|-----------|------|------|
-| Next.js | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
-| SvelteKit | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
-| Nuxt | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
-| Express | `server.ts` | `app.post('/api/querri-session', createSessionHandler())` |
-
-Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API key at https://app.querri.com/settings/api-keys.
-
-> **Vite-based frameworks (SvelteKit, Nuxt, React Router v7):** `process.env` is not automatically
-> populated in Vite server routes. Pass credentials explicitly:
->
-> ```ts
-> // SvelteKit — use $env/dynamic/private
-> import { env } from '$env/dynamic/private';
-> export const POST = createSessionHandler({
->   apiKey: env.QUERRI_API_KEY, host: env.QUERRI_URL, orgId: env.QUERRI_ORG_ID,
-> });
->
-> // Nuxt — use useRuntimeConfig() in your server handler
-> const config = useRuntimeConfig();
-> createSessionHandler({
->   apiKey: config.querriApiKey, host: config.querriUrl, orgId: config.querriOrgId,
-> });
-> ```
-
-### 4. Done.
-
-The embed handles auth, token caching, and cleanup automatically.
-
-## Important: Container Sizing
-
-The container element **must** have explicit width and height. Without dimensions, the embed iframe is invisible.
-
-```html
-<!-- Good -->
-<div style="width: 100%; height: 600px">...</div>
-
-<!-- Bad -- the iframe will be 0px tall -->
-<div>...</div>
 ```
 
 ## Authentication Modes
@@ -229,17 +236,6 @@ instance.on('navigation', ({ type, path }) => {
 | `auth_required` | Auth required but no login mode configured |
 | `timeout` | Iframe didn't respond within timeout period (default: 15s, configurable via `timeout` option) |
 
-## Framework Quick Reference
-
-| Framework | Client Import | Server Import | Handler |
-|-----------|---------------|---------------|---------|
-| React + Next.js | `@querri-inc/embed/react` | `@querri-inc/embed/server/nextjs` | `createSessionHandler()` |
-| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionHandler()` |
-| Vue + Nuxt | `@querri-inc/embed/vue` | `@querri-inc/embed/server/nuxt` | `createSessionHandler()` |
-| Svelte + SvelteKit | `@querri-inc/embed/svelte` | `@querri-inc/embed/server/sveltekit` | `createSessionHandler()` |
-| Angular | `@querri-inc/embed/angular` | `@querri-inc/embed/server/express` | `createSessionHandler()` |
-| Vanilla JS / Any | `@querri-inc/embed` or CDN | `@querri-inc/embed/server/express` | `createSessionHandler()` |
-
 ## Instance API
 
 ```javascript
@@ -320,38 +316,11 @@ Access the underlying instance via a template ref or `ViewChild`:
 
 ## Server SDK
 
-The server SDK is included in `@querri-inc/embed` -- no extra package required. Use it to create embed session tokens, manage users, enforce access policies, and interact with the full Querri API from your backend.
-
-### Import
-
-```typescript
-import { Querri } from '@querri-inc/embed/server';
-```
+The server SDK is included in `@querri-inc/embed` -- no extra package required. Use it to create embed session tokens, manage users, enforce access policies, and interact with the full Querri API from your backend. Most apps only need a one-liner session handler.
 
 ### Quick Start
 
-```typescript
-import { Querri } from '@querri-inc/embed/server';
-
-const client = new Querri('qk_your_api_key');
-
-const { session_token, expires_in } = await client.getSession({
-  user: {
-    external_id: 'usr_alice',
-    email: 'alice@example.com',
-  },
-  access: {
-    sources: ['src_sales'],
-    filters: { tenant_id: 'acme' },
-  },
-  ttl: 3600,
-  origin: 'https://myapp.com',
-});
-```
-
-### Framework Integrations
-
-Each framework has a one-liner server handler that wraps `getSession()`:
+Import `createSessionHandler` from your framework's sub-path and export a route handler:
 
 ```typescript
 // Next.js -- app/api/querri-session/route.ts
@@ -375,6 +344,28 @@ import { createSessionHandler } from '@querri-inc/embed/server/express';
 app.post('/api/querri-session', createSessionHandler());
 ```
 
+Pass a `resolveParams` callback to extract user identity from your auth system instead of reading the request body directly:
+
+```typescript
+// Next.js -- app/api/querri-session/route.ts
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
+import { getServerSession } from 'next-auth';
+
+export const POST = createSessionHandler({
+  resolveParams: async (req) => {
+    const session = await getServerSession();
+    return {
+      user: { external_id: session!.user!.id, email: session!.user!.email! },
+      access: { sources: ['src_sales'], filters: { tenant_id: session!.user!.orgId } },
+    };
+  },
+});
+```
+
+If you omit `resolveParams`, the handler creates an anonymous session.
+
+> **Security:** Always derive user identity and access from your server-side auth system. Never read `user` or `access` from the request body — a malicious client can impersonate any user or escalate access.
+
 ### Environment Variables
 
 | Variable | Description | Default |
@@ -382,6 +373,29 @@ app.post('/api/querri-session', createSessionHandler());
 | `QUERRI_API_KEY` | API key (`qk_*` format) | -- |
 | `QUERRI_ORG_ID` | Organization / tenant ID | -- |
 | `QUERRI_URL` | API host URL | `https://app.querri.com` |
+
+### Manual Setup
+
+For custom servers or advanced use cases where you need the full Querri client API:
+
+```typescript
+import { Querri } from '@querri-inc/embed/server';
+
+const client = new Querri('qk_your_api_key');
+
+const { session_token, expires_in } = await client.getSession({
+  user: {
+    external_id: 'usr_alice',
+    email: 'alice@example.com',
+  },
+  access: {
+    sources: ['src_sales'],
+    filters: { tenant_id: 'acme' },
+  },
+  ttl: 3600,
+  origin: 'https://myapp.com',
+});
+```
 
 ### Available Resources
 
