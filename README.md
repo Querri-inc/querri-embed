@@ -17,9 +17,12 @@ npm install @querri-inc/embed
 ```tsx
 import { QuerriEmbed } from '@querri-inc/embed/react';
 
-<div style={{ width: '100%', height: '600px' }}>
-  <QuerriEmbed serverUrl="https://app.querri.com" auth={auth} startView="/builder/dashboard/uuid" />
-</div>
+<QuerriEmbed
+  style={{ width: '100%', height: '600px' }}
+  serverUrl="https://app.querri.com"
+  auth={auth}
+  startView="/builder/dashboard/uuid"
+/>
 ```
 
 **Vue**
@@ -98,7 +101,7 @@ For server-authenticated embeds, add a one-liner session route. Import from `@qu
 |-----------|------|------|
 | Next.js | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
 | SvelteKit | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionAction()` |
 | Nuxt | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
 | Express | `server.ts` | `app.post('/api/querri-session', createSessionHandler())` |
 
@@ -231,7 +234,7 @@ instance.on('navigation', ({ type, path }) => {
 | Framework | Client Import | Server Import | Handler |
 |-----------|---------------|---------------|---------|
 | React + Next.js | `@querri-inc/embed/react` | `@querri-inc/embed/server/nextjs` | `createSessionHandler()` |
-| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionHandler()` |
+| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionAction()` |
 | Vue + Nuxt | `@querri-inc/embed/vue` | `@querri-inc/embed/server/nuxt` | `createNuxtSessionHandler()` |
 | Svelte + SvelteKit | `@querri-inc/embed/svelte` | `@querri-inc/embed/server/sveltekit` | `createSessionHandler()` |
 | Angular | `@querri-inc/embed/angular` | `@querri-inc/embed/server/express` | `createSessionHandler()` |
@@ -360,8 +363,8 @@ import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
 export const POST = createSessionHandler();
 
 // React Router v7 -- app/routes/api.querri-session.ts
-import { createSessionHandler } from '@querri-inc/embed/server/react-router';
-export const action = createSessionHandler();
+import { createSessionAction } from '@querri-inc/embed/server/react-router';
+export const action = createSessionAction();
 
 // Nuxt -- server/api/querri-session.post.ts
 import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
