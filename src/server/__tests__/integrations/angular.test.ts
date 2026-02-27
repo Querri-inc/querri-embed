@@ -1,4 +1,4 @@
-import { createQuerriMiddleware, createSessionHandler, createQuerriClient } from '../../integrations/angular.js';
+import { createSessionHandler, createQuerriMiddleware, createQuerriClient } from '../../integrations/angular.js';
 import { Querri } from '../../client.js';
 import { APIError } from '../../errors.js';
 
@@ -10,7 +10,7 @@ vi.mock('../../client.js', () => ({
   })),
 }));
 
-describe('createQuerriMiddleware (Express/Angular)', () => {
+describe('createSessionHandler (Express/Angular)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -19,7 +19,7 @@ describe('createQuerriMiddleware (Express/Angular)', () => {
     const session = { session_token: 'tok_123', expires_in: 3600, user_id: 'u_1' };
     mockGetSession.mockResolvedValue(session);
 
-    const middleware = createQuerriMiddleware({ apiKey: 'qk_test' });
+    const middleware = createSessionHandler({ apiKey: 'qk_test' });
     const req = {
       body: { user: 'ext_user' },
       headers: {} as Record<string, string | undefined>,
@@ -38,7 +38,7 @@ describe('createQuerriMiddleware (Express/Angular)', () => {
       new APIError(403, { error: 'Forbidden', code: 'permission_denied' }, headers),
     );
 
-    const middleware = createQuerriMiddleware({ apiKey: 'qk_test' });
+    const middleware = createSessionHandler({ apiKey: 'qk_test' });
     const req = { body: { user: 'ext_user' }, headers: {} as Record<string, string | undefined> };
     const errorJson = vi.fn();
     const res = { json: vi.fn(), status: vi.fn().mockReturnValue({ json: errorJson }) };
@@ -52,7 +52,7 @@ describe('createQuerriMiddleware (Express/Angular)', () => {
   it('returns 500 for unknown errors', async () => {
     mockGetSession.mockRejectedValue(new Error('network failure'));
 
-    const middleware = createQuerriMiddleware({ apiKey: 'qk_test' });
+    const middleware = createSessionHandler({ apiKey: 'qk_test' });
     const req = { body: { user: 'ext_user' }, headers: {} as Record<string, string | undefined> };
     const errorJson = vi.fn();
     const res = { json: vi.fn(), status: vi.fn().mockReturnValue({ json: errorJson }) };
@@ -64,9 +64,9 @@ describe('createQuerriMiddleware (Express/Angular)', () => {
   });
 });
 
-describe('createSessionHandler alias (Express/Angular)', () => {
-  it('is the same function as createQuerriMiddleware', () => {
-    expect(createSessionHandler).toBe(createQuerriMiddleware);
+describe('createQuerriMiddleware alias (Express/Angular)', () => {
+  it('is the same function as createSessionHandler', () => {
+    expect(createQuerriMiddleware).toBe(createSessionHandler);
   });
 });
 

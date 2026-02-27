@@ -1,10 +1,10 @@
-import { createSessionAction } from '@querri-inc/embed/server/react-router';
+import { createSessionHandler } from '@querri-inc/embed/server/react-router';
 
 /**
  * Resource route — no default component export, so this is API-only.
  * POST /api/querri-session
  */
-export const action = createSessionAction({
+export const action = createSessionHandler({
   resolveParams: async ({ request }) => {
     const body = await request.json();
     return {

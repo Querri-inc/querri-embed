@@ -101,8 +101,8 @@ For server-authenticated embeds, add a one-liner session route. Import from `@qu
 |-----------|------|------|
 | Next.js | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
 | SvelteKit | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionAction()` |
-| Nuxt | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
+| React Router v7 | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| Nuxt | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
 | Express | `server.ts` | `app.post('/api/querri-session', createSessionHandler())` |
 
 Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API key at https://app.querri.com/settings/api-keys.
@@ -119,7 +119,7 @@ Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API ke
 >
 > // Nuxt — use useRuntimeConfig() in your server handler
 > const config = useRuntimeConfig();
-> createNuxtSessionHandler({
+> createSessionHandler({
 >   apiKey: config.querriApiKey, host: config.querriHost, orgId: config.querriOrgId,
 > });
 > ```
@@ -234,8 +234,8 @@ instance.on('navigation', ({ type, path }) => {
 | Framework | Client Import | Server Import | Handler |
 |-----------|---------------|---------------|---------|
 | React + Next.js | `@querri-inc/embed/react` | `@querri-inc/embed/server/nextjs` | `createSessionHandler()` |
-| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionAction()` |
-| Vue + Nuxt | `@querri-inc/embed/vue` | `@querri-inc/embed/server/nuxt` | `createNuxtSessionHandler()` |
+| React + React Router | `@querri-inc/embed/react` | `@querri-inc/embed/server/react-router` | `createSessionHandler()` |
+| Vue + Nuxt | `@querri-inc/embed/vue` | `@querri-inc/embed/server/nuxt` | `createSessionHandler()` |
 | Svelte + SvelteKit | `@querri-inc/embed/svelte` | `@querri-inc/embed/server/sveltekit` | `createSessionHandler()` |
 | Angular | `@querri-inc/embed/angular` | `@querri-inc/embed/server/express` | `createSessionHandler()` |
 | Vanilla JS / Any | `@querri-inc/embed` or CDN | `@querri-inc/embed/server/express` | `createSessionHandler()` |
@@ -363,12 +363,12 @@ import { createSessionHandler } from '@querri-inc/embed/server/sveltekit';
 export const POST = createSessionHandler();
 
 // React Router v7 -- app/routes/api.querri-session.ts
-import { createSessionAction } from '@querri-inc/embed/server/react-router';
-export const action = createSessionAction();
+import { createSessionHandler } from '@querri-inc/embed/server/react-router';
+export const action = createSessionHandler();
 
 // Nuxt -- server/api/querri-session.post.ts
-import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
-export default createNuxtSessionHandler();
+import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+export default createSessionHandler();
 
 // Express -- server.ts
 import { createSessionHandler } from '@querri-inc/embed/server/express';

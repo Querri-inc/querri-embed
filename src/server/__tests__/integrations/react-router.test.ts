@@ -1,4 +1,4 @@
-import { createSessionAction, createSessionHandler, createQuerriClient } from '../../integrations/react-router.js';
+import { createSessionHandler, createSessionAction, createQuerriClient } from '../../integrations/react-router.js';
 import { Querri } from '../../client.js';
 import { APIError } from '../../errors.js';
 
@@ -10,7 +10,7 @@ vi.mock('../../client.js', () => ({
   })),
 }));
 
-describe('createSessionAction (React Router v7)', () => {
+describe('createSessionHandler (React Router v7)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -19,7 +19,7 @@ describe('createSessionAction (React Router v7)', () => {
     const session = { session_token: 'tok_123', expires_in: 3600, user_id: 'u_1' };
     mockGetSession.mockResolvedValue(session);
 
-    const action = createSessionAction({ apiKey: 'qk_test' });
+    const action = createSessionHandler({ apiKey: 'qk_test' });
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -37,7 +37,7 @@ describe('createSessionAction (React Router v7)', () => {
   it('reads request body as GetSessionParams when no resolveParams', async () => {
     mockGetSession.mockResolvedValue({ session_token: 'tok', expires_in: 3600, user_id: 'u_1' });
 
-    const action = createSessionAction({ apiKey: 'qk_test' });
+    const action = createSessionHandler({ apiKey: 'qk_test' });
     const sessionParams = { user: 'ext_user', ttl: 1800 };
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
@@ -54,7 +54,7 @@ describe('createSessionAction (React Router v7)', () => {
     mockGetSession.mockResolvedValue({ session_token: 'tok', expires_in: 3600, user_id: 'u_1' });
 
     const resolveParams = vi.fn().mockResolvedValue({ user: 'resolved_user' });
-    const action = createSessionAction({ apiKey: 'qk_test', resolveParams });
+    const action = createSessionHandler({ apiKey: 'qk_test', resolveParams });
 
     const request = new Request('http://localhost/api/querri-session', { method: 'POST' });
     const routeParams = { id: '42' };
@@ -72,7 +72,7 @@ describe('createSessionAction (React Router v7)', () => {
       new APIError(403, { error: 'Forbidden', code: 'permission_denied' }, headers),
     );
 
-    const action = createSessionAction({ apiKey: 'qk_test' });
+    const action = createSessionHandler({ apiKey: 'qk_test' });
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,7 +90,7 @@ describe('createSessionAction (React Router v7)', () => {
   it('returns 500 for unknown errors', async () => {
     mockGetSession.mockRejectedValue(new Error('network failure'));
 
-    const action = createSessionAction({ apiKey: 'qk_test' });
+    const action = createSessionHandler({ apiKey: 'qk_test' });
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -105,9 +105,9 @@ describe('createSessionAction (React Router v7)', () => {
   });
 });
 
-describe('createSessionHandler alias (React Router v7)', () => {
-  it('is the same function as createSessionAction', () => {
-    expect(createSessionHandler).toBe(createSessionAction);
+describe('createSessionAction alias (React Router v7)', () => {
+  it('is the same function as createSessionHandler', () => {
+    expect(createSessionAction).toBe(createSessionHandler);
   });
 });
 

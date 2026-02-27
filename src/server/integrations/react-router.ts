@@ -3,7 +3,7 @@ import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
 import { resolveConfig } from './_resolve-config.js';
 
-export interface SessionActionOptions {
+export interface SessionHandlerOptions {
   apiKey?: string;
   orgId?: string;
   host?: string;
@@ -24,9 +24,9 @@ export interface SessionActionOptions {
  * @example
  * ```ts
  * // app/routes/api.querri-session.ts
- * import { createSessionAction } from '@querri-inc/embed/server/react-router';
+ * import { createSessionHandler } from '@querri-inc/embed/server/react-router';
  *
- * export const action = createSessionAction({
+ * export const action = createSessionHandler({
  *   resolveParams: async ({ request, context }) => {
  *     const user = context.user; // from your auth middleware
  *     return {
@@ -36,8 +36,8 @@ export interface SessionActionOptions {
  * });
  * ```
  */
-export function createSessionAction(
-  options?: SessionActionOptions,
+export function createSessionHandler(
+  options?: SessionHandlerOptions,
 ): (args: {
   request: Request;
   params: Record<string, string | undefined>;
@@ -74,12 +74,12 @@ export function createSessionAction(
 }
 
 /**
- * Alias for {@link createSessionAction} — provides a consistent name
- * across all framework integrations.
+ * Alias for {@link createSessionHandler} — the original framework-idiomatic
+ * name for React Router. Kept for backward compatibility.
  *
- * @see createSessionAction
+ * @see createSessionHandler
  */
-export const createSessionHandler = createSessionAction;
+export const createSessionAction = createSessionHandler;
 
 /**
  * Creates a pre-configured Querri client for use in React Router server code.

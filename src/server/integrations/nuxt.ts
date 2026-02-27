@@ -79,20 +79,20 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
  * @example
  * ```ts
  * // server/api/querri-session.post.ts
- * import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
- * export default createNuxtSessionHandler();
+ * import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+ * export default createSessionHandler();
  * ```
  *
  * @example With custom param resolution:
  * ```ts
- * export default createNuxtSessionHandler({
+ * export default createSessionHandler({
  *   resolveParams: async ({ body, headers }) => ({
  *     user: { external_id: body.userId },
  *   }),
  * });
  * ```
  */
-export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
+export function createSessionHandler(options?: SessionHandlerOptions) {
   let client: Querri | undefined;
 
   return async (event: unknown): Promise<GetSessionResult> => {
@@ -105,7 +105,7 @@ export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
       } catch {
         throw new Error(
           'Could not import h3. If using a monorepo or file: link, pass ' +
-          '{ h3: await import("h3") } to createNuxtSessionHandler(), or use ' +
+          '{ h3: await import("h3") } to createSessionHandler(), or use ' +
           'defineQuerriSessionHandler() with manual readBody/getHeaders calls.',
         );
       }
@@ -136,12 +136,12 @@ export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
 }
 
 /**
- * Alias for {@link createNuxtSessionHandler} — provides a consistent name
- * across all framework integrations.
+ * Alias for {@link createSessionHandler} — the original Nuxt-specific name.
+ * Kept for backward compatibility.
  *
- * @see createNuxtSessionHandler
+ * @see createSessionHandler
  */
-export const createSessionHandler = createNuxtSessionHandler;
+export const createNuxtSessionHandler = createSessionHandler;
 
 /**
  * Creates a pre-configured Querri client for use in Nuxt server code.

@@ -20,19 +20,19 @@ export interface QuerriMiddlewareOptions {
  * ```ts
  * // server.ts
  * import express from 'express';
- * import { createQuerriMiddleware } from '@querri-inc/embed/server/express';
+ * import { createSessionHandler } from '@querri-inc/embed/server/express';
  *
  * const app = express();
  * app.use(express.json());
  *
- * app.post('/api/querri-session', createQuerriMiddleware({
+ * app.post('/api/querri-session', createSessionHandler({
  *   resolveParams: async (req) => ({
  *     user: { external_id: req.body.userId, email: req.body.email },
  *   }),
  * }));
  * ```
  */
-export function createQuerriMiddleware(options?: QuerriMiddlewareOptions) {
+export function createSessionHandler(options?: QuerriMiddlewareOptions) {
   let client: Querri | undefined;
 
   return async (
@@ -58,12 +58,12 @@ export function createQuerriMiddleware(options?: QuerriMiddlewareOptions) {
 }
 
 /**
- * Alias for {@link createQuerriMiddleware} — provides a consistent name
- * across all framework integrations.
+ * Alias for {@link createSessionHandler} — the original Express/Angular-specific
+ * name. Kept for backward compatibility.
  *
- * @see createQuerriMiddleware
+ * @see createSessionHandler
  */
-export const createSessionHandler = createQuerriMiddleware;
+export const createQuerriMiddleware = createSessionHandler;
 
 /**
  * Creates a pre-configured Querri client for use in Express/Angular server-side code.

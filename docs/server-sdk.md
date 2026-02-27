@@ -37,7 +37,7 @@ Every framework integration exports `createSessionHandler` for a consistent API:
 | Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
 | SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
 | React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
-| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
+| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
 | Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
 
 Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
@@ -1659,9 +1659,9 @@ React Router v7 (the Remix successor) supports framework-native "resource routes
 #### Server Route: `app/routes/api.querri-session.ts`
 
 ```typescript
-import { createSessionAction } from '@querri-inc/embed/server/react-router';
+import { createSessionHandler } from '@querri-inc/embed/server/react-router';
 
-export const action = createSessionAction({
+export const action = createSessionHandler({
   resolveParams: async ({ request, context }) => {
     // `context` comes from your server adapter's getLoadContext()
     const user = (context as any).user;
@@ -1678,7 +1678,7 @@ export const action = createSessionAction({
 
 If you omit `resolveParams`, the handler reads the request body as `GetSessionParams` directly.
 
-> **Tip:** `createSessionAction` is the framework-idiomatic name for React Router. The alias `createSessionHandler` also works for consistency with other framework integrations.
+> **Tip:** The legacy alias `createSessionAction` also works but `createSessionHandler` is the standard name across all framework integrations.
 
 #### Client Component: `app/routes/_index.tsx`
 
@@ -1713,7 +1713,7 @@ export default function DashboardPage() {
 
 1. The React component's `fetchSessionToken` is called when the embed mounts.
 2. The POST request hits your resource route's `action` function.
-3. `createSessionAction` resolves the authenticated user, creates/reuses access policies, and returns a session token.
+3. `createSessionHandler` resolves the authenticated user, creates/reuses access policies, and returns a session token.
 4. The embed uses the token to authenticate the iframe connection.
 
 #### Direct Client Access
@@ -1732,18 +1732,18 @@ export const querri = createQuerriClient();
 
 #### Server Route: `server/api/querri-session.post.ts`
 
-The simplest setup is a one-liner using `createNuxtSessionHandler`:
+The simplest setup is a one-liner using `createSessionHandler`:
 
 ```typescript
 // server/api/querri-session.post.ts
-import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
-export default createNuxtSessionHandler();
+import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+export default createSessionHandler();
 ```
 
 With custom param resolution:
 
 ```typescript
-export default createNuxtSessionHandler({
+export default createSessionHandler({
   resolveParams: async ({ body, headers }) => ({
     user: { external_id: body.userId, email: body.email },
   }),
@@ -1812,7 +1812,7 @@ function onError(err) { console.error(err); }
 
 1. The Vue component calls `fetchSessionToken()` at mount time.
 2. Nuxt's `$fetch` sends a POST to `/api/querri-session`.
-3. `createNuxtSessionHandler` processes the body, resolves access, and returns a session token.
+3. `createSessionHandler` processes the body, resolves access, and returns a session token.
 4. The token is passed to the embed iframe for authentication.
 
 #### Direct Client Access
@@ -1858,7 +1858,7 @@ app.post('/api/querri-session', createSessionHandler({
 > **Note:** For Angular SSR projects, you can also import from `@querri-inc/embed/server/angular` (same module):
 >
 > ```typescript
-> import { createQuerriMiddleware } from '@querri-inc/embed/server/angular';
+> import { createSessionHandler } from '@querri-inc/embed/server/angular';
 > ```
 
 #### Client Component: `src/app/dashboard/dashboard.component.ts`
@@ -1909,7 +1909,7 @@ export class DashboardComponent {
 #### How It Works
 
 1. The Angular component's `fetchSessionToken` callback fires when the embed initializes.
-2. The POST request hits the Express middleware created by `createQuerriMiddleware`.
+2. The POST request hits the Express middleware created by `createSessionHandler`.
 3. The middleware resolves the user, manages access policies, and returns a session token as JSON.
 4. The embed component authenticates the iframe with the returned token.
 

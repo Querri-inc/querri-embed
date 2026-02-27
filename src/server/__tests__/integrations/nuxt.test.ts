@@ -1,7 +1,7 @@
 import {
   defineQuerriSessionHandler,
-  createNuxtSessionHandler,
   createSessionHandler,
+  createNuxtSessionHandler,
   createQuerriClient,
 } from '../../integrations/nuxt.js';
 import { Querri } from '../../client.js';
@@ -48,7 +48,7 @@ describe('defineQuerriSessionHandler (Nuxt)', () => {
   });
 });
 
-describe('createNuxtSessionHandler', () => {
+describe('createSessionHandler (Nuxt)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -63,7 +63,7 @@ describe('createNuxtSessionHandler', () => {
       getHeaders: vi.fn().mockReturnValue({ host: 'localhost' }),
     }));
 
-    const handler = createNuxtSessionHandler({ apiKey: 'qk_test' });
+    const handler = createSessionHandler({ apiKey: 'qk_test' });
     const fakeEvent = { node: { req: {}, res: {} } };
 
     const result = await handler(fakeEvent);
@@ -75,7 +75,7 @@ describe('createNuxtSessionHandler', () => {
   });
 });
 
-describe('createNuxtSessionHandler error handling', () => {
+describe('createSessionHandler error handling (Nuxt)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -95,7 +95,7 @@ describe('createNuxtSessionHandler error handling', () => {
       }),
     }));
 
-    const handler = createNuxtSessionHandler({ apiKey: 'qk_test' });
+    const handler = createSessionHandler({ apiKey: 'qk_test' });
     const fakeEvent = { node: { req: {}, res: {} } };
 
     // Handler should throw — either via h3.createError (APIError path) or directly (re-throw)
@@ -114,7 +114,7 @@ describe('createNuxtSessionHandler error handling', () => {
       createError: vi.fn(),
     }));
 
-    const handler = createNuxtSessionHandler({ apiKey: 'qk_test' });
+    const handler = createSessionHandler({ apiKey: 'qk_test' });
     const fakeEvent = { node: { req: {}, res: {} } };
 
     await expect(handler(fakeEvent)).rejects.toThrow('Something went wrong');
@@ -123,9 +123,9 @@ describe('createNuxtSessionHandler error handling', () => {
   });
 });
 
-describe('createSessionHandler alias (Nuxt)', () => {
-  it('is the same function as createNuxtSessionHandler', () => {
-    expect(createSessionHandler).toBe(createNuxtSessionHandler);
+describe('createNuxtSessionHandler alias (Nuxt)', () => {
+  it('is the same function as createSessionHandler', () => {
+    expect(createNuxtSessionHandler).toBe(createSessionHandler);
   });
 });
 
