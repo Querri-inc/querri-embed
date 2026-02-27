@@ -95,6 +95,7 @@ describe('Auth mode routing', () => {
       auth: { shareKey: 'sk-123', org: 'org-456' },
     });
     expect(instance.iframe!.src).toContain('/embed?share=sk-123&org=org-456');
+    expect(instance.iframe!.src).toContain('&startView=%2Fhome');
     instance.destroy();
   });
 

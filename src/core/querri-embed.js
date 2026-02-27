@@ -247,9 +247,7 @@ QuerriInstance.prototype._init = function () {
 QuerriInstance.prototype._initShareKey = function (auth) {
   var url = this._serverUrl + '/embed?share=' + encodeURIComponent(auth.shareKey) +
     '&org=' + encodeURIComponent(auth.org);
-  if (this._options.startView) {
-    url += '&startView=' + encodeURIComponent(this._options.startView);
-  }
+  url += '&startView=' + encodeURIComponent(this._options.startView || '/home');
   this._createIframe(url);
   this._setupMessageListener();
 };
@@ -458,7 +456,7 @@ QuerriInstance.prototype._sendToIframe = function (msg) {
 QuerriInstance.prototype._buildConfig = function () {
   var opts = this._options;
   return {
-    startView: opts.startView || null,
+    startView: opts.startView || '/home',
     chrome: opts.chrome || {},
     theme: opts.theme || {},
   };

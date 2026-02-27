@@ -191,7 +191,7 @@ auth: 'login'
 |--------|------|----------|-------------|
 | `serverUrl` | `string` | Yes | Querri server URL. Use `'https://app.querri.com'` for web-app embeds or `'https://app.querri.com/builder'` for dashboard embeds. |
 | `auth` | `QuerriAuth` | Yes | Authentication mode (see above) |
-| `startView` | `string` | No | Initial view path (e.g. `'/builder/dashboard/uuid'`) |
+| `startView` | `string` | No | Initial view path (e.g. `'/builder/dashboard/uuid'`). Defaults to `'/home'` |
 | `chrome` | `object` | No | UI chrome visibility |
 | `chrome.sidebar` | `{ show?: boolean }` | No | Sidebar visibility (default: hidden) |
 | `chrome.header` | `{ show?: boolean }` | No | Header visibility (default: shown) |

@@ -51,7 +51,7 @@ export interface QuerriEmbedOptions {
   serverUrl: string;
   /** Authentication mode — `'login'`, share key object, session endpoint, or token callback. */
   auth: QuerriAuth;
-  /** Initial view path (e.g. `'/builder/dashboard/uuid'`). */
+  /** Initial view path (e.g. `'/builder/dashboard/uuid'`). @default '/home' */
   startView?: string;
   /** Chrome UI visibility overrides. */
   chrome?: QuerriChromeConfig;
