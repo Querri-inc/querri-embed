@@ -14,7 +14,7 @@
   <script>
     const instance = QuerriEmbed.create(document.getElementById('embed-container'), {
       // Change this to 'https://app.querri.com/builder' for dashboard embeds
-      serverUrl: 'https://app.querri.com',
+      serverUrl: window.__QUERRI_URL__,
       auth: {
         fetchSessionToken: async () => {
           const res = await fetch('/api/querri-session', {

@@ -46,7 +46,7 @@ export class Querri {
     }
 
     const orgId = resolved.orgId ?? process.env.QUERRI_ORG_ID;
-    const host = resolved.host ?? process.env.QUERRI_HOST ?? 'https://app.querri.com';
+    const host = resolved.host ?? process.env.QUERRI_URL ?? 'https://app.querri.com';
 
     this._httpClient = new HttpClient({
       ...resolved,

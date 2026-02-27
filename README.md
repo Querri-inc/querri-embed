@@ -114,13 +114,13 @@ Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. Find your API ke
 > // SvelteKit — use $env/dynamic/private
 > import { env } from '$env/dynamic/private';
 > export const POST = createSessionHandler({
->   apiKey: env.QUERRI_API_KEY, host: env.QUERRI_HOST, orgId: env.QUERRI_ORG_ID,
+>   apiKey: env.QUERRI_API_KEY, host: env.QUERRI_URL, orgId: env.QUERRI_ORG_ID,
 > });
 >
 > // Nuxt — use useRuntimeConfig() in your server handler
 > const config = useRuntimeConfig();
 > createSessionHandler({
->   apiKey: config.querriApiKey, host: config.querriHost, orgId: config.querriOrgId,
+>   apiKey: config.querriApiKey, host: config.querriUrl, orgId: config.querriOrgId,
 > });
 > ```
 
@@ -381,7 +381,7 @@ app.post('/api/querri-session', createSessionHandler());
 |---|---|---|
 | `QUERRI_API_KEY` | API key (`qk_*` format) | -- |
 | `QUERRI_ORG_ID` | Organization / tenant ID | -- |
-| `QUERRI_HOST` | API host URL | `https://app.querri.com` |
+| `QUERRI_URL` | API host URL | `https://app.querri.com` |
 
 ### Available Resources
 

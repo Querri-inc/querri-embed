@@ -84,6 +84,7 @@ The SDK auto-creates and caches a named access policy from this specification.
 - [Framework Integration Guides](#framework-integration-guides)
   - [SvelteKit](#sveltekit)
   - [Next.js](#nextjs)
+  - [React Router](#react-router)
   - [Nuxt](#nuxt)
   - [Angular / Express](#angular--express)
   - [Vue + Vite (Standalone)](#vue--vite-standalone)
@@ -128,7 +129,7 @@ The client reads these environment variables as fallbacks when values are not pr
 |---|---|---|
 | `QUERRI_API_KEY` | `apiKey` | API key for authentication |
 | `QUERRI_ORG_ID` | `orgId` | Organization / tenant ID |
-| `QUERRI_HOST` | `host` | API host URL |
+| `QUERRI_URL` | `host` | API host URL |
 
 Resolution order: explicit config value > environment variable > default value.
 
@@ -1502,7 +1503,7 @@ The maximum number of retries defaults to 3 and can be configured via `maxRetrie
 
 ## Framework Integration Guides
 
-Each integration provides a `createSessionHandler` (or equivalent) that wraps `client.getSession()` in a framework-native route handler, plus a `createQuerriClient` factory for direct SDK access.
+Each integration provides a `createSessionHandler` that wraps `client.getSession()` in a framework-native route handler, plus a `createQuerriClient` factory for direct SDK access.
 
 ### SvelteKit
 
