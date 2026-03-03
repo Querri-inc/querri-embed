@@ -407,6 +407,8 @@ The client exposes these resource namespaces: `users`, `embed`, `policies`, `pro
 
 See **[docs/server-sdk.md](docs/server-sdk.md)** for complete API documentation, including every method signature, pagination, streaming, error handling, and detailed framework integration guides.
 
+For raw HTTP integration without the SDK, see **[docs/api-guide.md](docs/api-guide.md)**.
+
 ## Troubleshooting
 
 ### Embed is blank or has zero height
