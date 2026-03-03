@@ -492,6 +492,10 @@ QuerriInstance.prototype._setupMessageListener = function () {
           clearTimeout(self._readyTimer);
           self._readyTimer = null;
         }
+        // Guard against duplicate 'ready' messages from the iframe
+        // (e.g. embed layout + root layout both sending 'ready' before auth completes)
+        if (self._iframeReady) break;
+        self._iframeReady = true;
         // iframe loaded — send initial config
         if (self._pendingCachedToken) {
           // Mode 3: Try cached token
@@ -535,12 +539,12 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'auth-required':
-        // No valid session — need login
+        // No valid session — need login or re-fetch
         if (self._options.auth === 'login') {
           clearCachedToken(self._serverUrl);
           self._showLoginOverlay();
-        } else if (self._options.auth && typeof self._options.auth === 'object' && typeof self._options.auth.fetchSessionToken === 'function') {
-          // Re-fetch token
+        } else if (self._fetchTokenFn) {
+          // Re-fetch token (works for both fetchSessionToken and sessionEndpoint modes)
           self._handleFetchToken();
         } else {
           self._emitError('auth_required', 'Authentication required but no login mode configured');
@@ -609,6 +613,7 @@ QuerriInstance.prototype._emitError = function (code, message) {
 QuerriInstance.prototype.destroy = function () {
   this._destroyed = true;
   this.ready = false;
+  this._iframeReady = false;
 
   if (this._messageHandler) {
     window.removeEventListener('message', this._messageHandler);
