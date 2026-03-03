@@ -14,8 +14,14 @@ export interface QuerriShareKeyAuth {
 /**
  * Server-token authentication.
  * Your backend exchanges an API key for a session token; the callback
- * supplies that token to the embed. The SDK automatically retries up to
- * 3 times with exponential backoff on failure.
+ * supplies that token to the embed.
+ *
+ * **Retry behaviour:** Each fetch cycle retries up to 3 times with
+ * exponential backoff (1 s, 2 s). If the iframe rejects the token and
+ * requests re-authentication, a new fetch cycle begins automatically.
+ * A maximum of 3 fetch cycles are allowed before the SDK emits a
+ * `token_fetch_exhausted` error and stops retrying. The cycle counter
+ * resets whenever the iframe confirms successful authentication.
  */
 export interface QuerriTokenAuth {
   /** Async function that returns a session token string (e.g. via `fetch('/api/querri-session')`). */
@@ -75,6 +81,7 @@ export type QuerriEventType = 'ready' | 'error' | 'session-expired' | 'navigatio
 export type QuerriErrorCode =
   | 'invalid_auth'
   | 'token_fetch_failed'
+  | 'token_fetch_exhausted'
   | 'popup_blocked'
   | 'auth_failed'
   | 'auth_required'

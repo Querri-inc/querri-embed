@@ -834,6 +834,192 @@ describe('Token fetch deduplication', () => {
   });
 });
 
+describe('Token fetch cycle circuit breaker', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = createContainer();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('emits token_fetch_exhausted after 3 auth-required re-fetch cycles', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('bad-token'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1: iframe ready triggers initial fetch
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(1);
+
+    // iframe rejects the token -> auth-required -> cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(2);
+
+    // iframe rejects again -> auth-required -> cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+
+    // iframe rejects again -> auth-required -> circuit breaker trips
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3); // NOT called a 4th time
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'token_fetch_exhausted',
+        message: expect.stringContaining('3 fetch cycles'),
+      })
+    );
+    instance.destroy();
+  });
+
+  it('resets cycle count after successful authentication', async () => {
+    let callCount = 0;
+    const fetchToken = vi.fn(() => {
+      callCount++;
+      return Promise.resolve('token-' + callCount);
+    });
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(1);
+
+    // iframe rejects -> cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(2);
+
+    // This time iframe accepts -> authenticated resets counter
+    sendMessage('authenticated');
+
+    // Later, session expires -> new cycle 1 (counter was reset)
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+
+    // iframe rejects -> new cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(4);
+
+    // iframe rejects -> new cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(5);
+
+    // No exhausted error should have been emitted
+    expect(errorCb).not.toHaveBeenCalled();
+    instance.destroy();
+  });
+
+  it('trips after 3 cycles where each cycle exhausts all retries', async () => {
+    const fetchToken = vi.fn(() => Promise.reject(new Error('network error')));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1: 3 retries with backoff
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);       // attempt 1
+    await vi.advanceTimersByTimeAsync(1000);     // backoff -> attempt 2
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);     // backoff -> attempt 3
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_failed' })
+    );
+    errorCb.mockClear();
+
+    // auth-required triggers cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(6);
+    errorCb.mockClear();
+
+    // auth-required triggers cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(9);
+    errorCb.mockClear();
+
+    // auth-required -> cycle 4 attempt -> circuit breaker trips
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(9); // no more calls
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_exhausted' })
+    );
+    instance.destroy();
+  });
+
+  it('session-expired also respects the circuit breaker', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('bad-token'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0); // cycle 1
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 2
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 3
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 4 -> blocked
+
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_exhausted' })
+    );
+    instance.destroy();
+  });
+});
+
 describe('SSR guard', () => {
   it('throws descriptive error when document is undefined', () => {
     const originalDocument = globalThis.document;

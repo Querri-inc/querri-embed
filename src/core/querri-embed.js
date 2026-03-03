@@ -135,6 +135,7 @@ function QuerriInstance(container, options) {
   this._readyTimer = null;
   this._retryTimer = null;
   this._fetchInFlight = false;
+  this._fetchCycleCount = 0;
   this._destroyed = false;
 
   this.iframe = null;
@@ -269,6 +270,18 @@ QuerriInstance.prototype._handleFetchToken = function () {
 
   // Deduplication: skip if a fetch is already in progress
   if (this._fetchInFlight) return;
+
+  // Circuit breaker: stop if we've exhausted all re-fetch cycles
+  var maxCycles = 3;
+  if (this._fetchCycleCount >= maxCycles) {
+    this._emitError('token_fetch_exhausted',
+      'Token fetch circuit breaker: exceeded ' + maxCycles +
+      ' fetch cycles. Call destroy() and re-create the embed, or check your fetchSessionToken implementation.'
+    );
+    return;
+  }
+  this._fetchCycleCount++;
+
   this._fetchInFlight = true;
 
   var maxRetries = 3;
@@ -511,6 +524,7 @@ QuerriInstance.prototype._setupMessageListener = function () {
         // Session validated, content is rendering — emit only once
         if (!self.ready) {
           self.ready = true;
+          self._fetchCycleCount = 0;
           if (self._loader) {
             self._loader.remove();
             self._loader = null;
@@ -617,6 +631,7 @@ QuerriInstance.prototype.destroy = function () {
     this._retryTimer = null;
   }
   this._fetchInFlight = false;
+  this._fetchCycleCount = 0;
   if (this._popup && !this._popup.closed) {
     this._popup.close();
     this._popup = null;
