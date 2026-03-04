@@ -69,6 +69,12 @@ export interface UserDeleteResponse {
   deleted: boolean;
 }
 
+export interface ExternalIdDeleteResponse {
+  external_id: string;
+  user_id: string;
+  deleted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Embed Sessions
 // ---------------------------------------------------------------------------

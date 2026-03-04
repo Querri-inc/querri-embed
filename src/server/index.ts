@@ -28,6 +28,7 @@ export type {
   UserCreateParams,
   UserUpdateParams,
   UserDeleteResponse,
+  ExternalIdDeleteResponse,
   EmbedSession,
   EmbedSessionListItem,
   EmbedSessionList,
