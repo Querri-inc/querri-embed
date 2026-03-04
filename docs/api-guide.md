@@ -371,16 +371,16 @@ The iframe and your page communicate through a strict message protocol:
 ```mermaid
 stateDiagram-v2
     [*] --> iframe_loading: iframe src loaded
-    iframe_loading --> ready: iframe sends { type: 'ready' }
-    ready --> init_sent: parent sends { type: 'init', sessionToken, config }
-    init_sent --> authenticated: iframe sends { type: 'authenticated' }
-    init_sent --> auth_required: iframe sends { type: 'auth-required' }
+    iframe_loading --> ready: iframe sends 'ready'
+    ready --> init_sent: parent sends 'init' with sessionToken, config
+    init_sent --> authenticated: iframe sends 'authenticated'
+    init_sent --> auth_required: iframe sends 'auth-required'
     authenticated --> active: Embed is live
-    active --> session_expired: iframe sends { type: 'session-expired' }
+    active --> session_expired: iframe sends 'session-expired'
     session_expired --> ready: re-fetch token, send new init
     auth_required --> ready: re-fetch token, send new init
-    active --> navigation: iframe sends { type: 'navigation' }
-    active --> error: iframe sends { type: 'error' }
+    active --> navigation: iframe sends 'navigation'
+    active --> error: iframe sends 'error'
     navigation --> active
     error --> active
 ```
