@@ -1,6 +1,6 @@
 {
   "name": "@querri-inc/embed",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Embed Querri views in your application. Core SDK + React, Vue, Svelte, and Angular components.",
   "type": "module",
   "license": "MIT",
@@ -111,17 +111,39 @@
   "types": "./dist/core/index.d.ts",
   "typesVersions": {
     "*": {
-      "react": ["dist/react/index.d.ts"],
-      "vue": ["dist/vue/index.d.ts"],
-      "svelte": ["dist/svelte/index.d.ts"],
-      "angular": ["dist/angular/index.d.ts"],
-      "server": ["dist/server/index.d.ts"],
-      "server/sveltekit": ["dist/server/integrations/sveltekit.d.ts"],
-      "server/nextjs": ["dist/server/integrations/nextjs.d.ts"],
-      "server/nuxt": ["dist/server/integrations/nuxt.d.ts"],
-      "server/angular": ["dist/server/integrations/angular.d.ts"],
-      "server/react-router": ["dist/server/integrations/react-router.d.ts"],
-      "server/express": ["dist/server/integrations/express.d.ts"]
+      "react": [
+        "dist/react/index.d.ts"
+      ],
+      "vue": [
+        "dist/vue/index.d.ts"
+      ],
+      "svelte": [
+        "dist/svelte/index.d.ts"
+      ],
+      "angular": [
+        "dist/angular/index.d.ts"
+      ],
+      "server": [
+        "dist/server/index.d.ts"
+      ],
+      "server/sveltekit": [
+        "dist/server/integrations/sveltekit.d.ts"
+      ],
+      "server/nextjs": [
+        "dist/server/integrations/nextjs.d.ts"
+      ],
+      "server/nuxt": [
+        "dist/server/integrations/nuxt.d.ts"
+      ],
+      "server/angular": [
+        "dist/server/integrations/angular.d.ts"
+      ],
+      "server/react-router": [
+        "dist/server/integrations/react-router.d.ts"
+      ],
+      "server/express": [
+        "dist/server/integrations/express.d.ts"
+      ]
     }
   },
   "peerDependencies": {
