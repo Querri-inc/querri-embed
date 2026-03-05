@@ -32,4 +32,21 @@ export class EmbedResource extends BaseResource {
       `/embed/sessions/${sessionId}`,
     );
   }
+
+  /**
+   * Revoke all embed sessions for a given user ID.
+   * Lists active sessions and revokes those matching the user.
+   * @returns Number of sessions revoked.
+   */
+  async revokeUserSessions(userId: string): Promise<number> {
+    const { data } = await this.listSessions();
+    let revoked = 0;
+    for (const session of data) {
+      if (session.user_id === userId) {
+        await this.revokeSession(session.session_token);
+        revoked++;
+      }
+    }
+    return revoked;
+  }
 }
