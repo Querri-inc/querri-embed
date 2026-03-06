@@ -1,5 +1,6 @@
 // Client
 export { Querri } from './client.js';
+export { UserQuerri } from './user-client.js';
 
 // Errors
 export {
@@ -23,6 +24,7 @@ export {
 // Types
 export type {
   QuerriConfig,
+  SessionConfig,
   CursorPageResponse,
   User,
   UserCreateParams,

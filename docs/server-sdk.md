@@ -100,6 +100,7 @@ The SDK auto-creates and caches a named access policy from this specification.
   - [Audit](#audit)
   - [Usage](#usage)
 - [getSession() Deep Dive](#getsession-deep-dive)
+- [User-Scoped Client (asUser)](#user-scoped-client-asuser)
 - [Pagination](#pagination)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
@@ -473,16 +474,20 @@ const project = await client.projects.retrieve('proj_abc');
 
 #### `client.projects.list(params?)`
 
-List projects with cursor-based pagination.
+List projects with cursor-based pagination. Pass `user_id` to return only projects the user has FGA access to.
 
 ```typescript
-list(params?: { limit?: number; after?: string }): Promise<CursorPage<Project>>
+list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Project>>
 ```
 
 ```typescript
+// All projects in the org
 for await (const project of client.projects.list()) {
   console.log(project.name);
 }
+
+// Only projects a specific user can access (FGA-filtered)
+const userProjects = await client.projects.list({ user_id: 'ext_alice' });
 ```
 
 #### `client.projects.update(projectId, params)`
@@ -703,14 +708,18 @@ const dashboard = await client.dashboards.retrieve('dash_abc');
 
 #### `client.dashboards.list(params?)`
 
-List all dashboards.
+List all dashboards. Pass `user_id` to return only dashboards the user has FGA access to.
 
 ```typescript
-list(params?: { limit?: number; after?: string }): Promise<Dashboard[]>
+list(params?: { limit?: number; after?: string; user_id?: string }): Promise<Dashboard[]>
 ```
 
 ```typescript
+// All dashboards in the org
 const dashboards = await client.dashboards.list();
+
+// Only dashboards a specific user can access (FGA-filtered)
+const userDashboards = await client.dashboards.list({ user_id: 'ext_alice' });
 ```
 
 #### `client.dashboards.update(dashboardId, params)`
@@ -1290,6 +1299,80 @@ On subsequent calls with the same sources and filters, the SDK finds the existin
 |---|---|---|---|
 | `ttl` | `number` | `3600` | Session lifetime in seconds |
 | `origin` | `string` | `undefined` | Allowed origin for the embed iframe. Used for CORS validation. |
+
+---
+
+## User-Scoped Client (asUser)
+
+> **Tip:** For simple filtered lists, you can pass `user_id` directly to `projects.list()` or `dashboards.list()` without creating a user-scoped client:
+> ```typescript
+> const projects = await client.projects.list({ user_id: 'ext_alice' });
+> ```
+> Use `asUser()` when you need a full user-scoped client for multiple operations.
+
+After creating a session with `getSession()`, you can create a **user-scoped client** that calls the internal API using the user's embed session token. The internal API applies Fine-Grained Authorization (FGA) filtering automatically, so resource lists only return items the user has access to.
+
+### Basic Usage
+
+```typescript
+import { Querri } from '@querri-inc/embed/server';
+
+const client = new Querri();
+
+// Step 1: Create an embed session
+const session = await client.getSession({
+  user: { external_id: 'usr_alice', email: 'alice@example.com' },
+  access: { sources: ['src_sales'], filters: { tenant_id: 'acme' } },
+});
+
+// Step 2: Create a user-scoped client
+const userClient = client.asUser(session);
+
+// Step 3: Call resources — results are FGA-filtered
+const projects = await userClient.projects.list();
+// Only returns projects the user has been granted access to via sharing
+```
+
+### How It Works
+
+| | `client` (Querri) | `userClient` (UserQuerri) |
+|---|---|---|
+| **Auth** | API key (`Authorization: Bearer qk_…`) | Session token (`X-Embed-Session: es_…`) |
+| **Base URL** | `/api/v1` (public API) | `/api` (internal API) |
+| **Scope** | Org-wide (all resources) | User-scoped (FGA-filtered) |
+| **Resources** | All 13 resources | 5 resources: projects, dashboards, sources, data, chats |
+
+### `client.asUser(session)`
+
+| Parameter | Type | Description |
+|---|---|---|
+| `session` | `GetSessionResult` | The session object returned by `getSession()` |
+
+**Returns:** `UserQuerri` — a user-scoped client with 5 resource accessors.
+
+### UserQuerri Resources
+
+The `UserQuerri` client exposes the same resource classes as the main client, but only the subset that supports user-scoped access:
+
+```typescript
+userClient.projects     // ProjectsResource — list, retrieve, etc.
+userClient.dashboards   // DashboardsResource — list, retrieve, etc.
+userClient.sources      // SourcesResource — list, retrieve, etc.
+userClient.data         // DataResource — query, sources, etc.
+userClient.chats        // ChatsResource — create, stream, etc.
+```
+
+### Granting Access
+
+For a user to see resources via `userClient`, they must be granted access. Use `sharing.shareProject()` on the main client:
+
+```typescript
+// Grant user access to a specific project
+await client.sharing.shareProject(projectId, { user_id: session.user_id });
+
+// Now the user's client will include this project
+const projects = await userClient.projects.list();
+```
 
 ---
 

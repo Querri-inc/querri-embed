@@ -399,6 +399,24 @@ const { session_token, expires_in } = await client.getSession({
 });
 ```
 
+### Per-User Filtering
+
+Pass `user_id` to get FGA-filtered results for a specific user:
+
+```typescript
+// List only projects the user has access to
+const projects = await client.projects.list({ user_id: 'ext_alice' });
+```
+
+For a full user-scoped client (multiple operations with session auth), use `asUser()`:
+
+```typescript
+const session = await client.getSession({ user: 'ext_alice' });
+const userClient = client.asUser(session);
+
+const projects = await userClient.projects.list(); // FGA-filtered
+```
+
 ### Available Resources
 
 The client exposes these resource namespaces: `users`, `embed`, `policies`, `projects`, `chats`, `dashboards`, `data`, `files`, `sources`, `keys`, `sharing`, `audit`, `usage`.

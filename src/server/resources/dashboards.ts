@@ -18,7 +18,7 @@ export class DashboardsResource extends BaseResource {
     return this._get<Dashboard>(`/dashboards/${dashboardId}`);
   }
 
-  list(params?: { limit?: number; after?: string }): Promise<Dashboard[]> {
+  list(params?: { limit?: number; after?: string; user_id?: string }): Promise<Dashboard[]> {
     return this._get<Dashboard[]>('/dashboards', params);
   }
 

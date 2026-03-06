@@ -1,4 +1,4 @@
-import type { QuerriConfig } from '../types.js';
+import type { QuerriConfig, SessionConfig } from '../types.js';
 import {
   APIError,
   APIConnectionError,
@@ -22,18 +22,31 @@ export interface RequestOptions {
 }
 
 export class HttpClient {
-  private readonly apiKey: string;
+  private readonly apiKey: string | undefined;
   private readonly orgId: string | undefined;
+  private readonly sessionToken: string | undefined;
   private readonly baseUrl: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
   private readonly fetchFn: typeof globalThis.fetch;
 
-  constructor(config: QuerriConfig) {
-    this.apiKey = config.apiKey;
-    this.orgId = config.orgId;
+  constructor(config: QuerriConfig | SessionConfig) {
     const host = (config.host ?? 'https://app.querri.com').replace(/\/+$/, '');
-    this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
+
+    if ('sessionToken' in config) {
+      // Session mode — internal API at /api
+      this.sessionToken = config.sessionToken;
+      this.apiKey = undefined;
+      this.orgId = undefined;
+      this.baseUrl = `${host}/api`;
+    } else {
+      // API key mode — public API at /api/v1
+      this.sessionToken = undefined;
+      this.apiKey = config.apiKey;
+      this.orgId = config.orgId;
+      this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
+    }
+
     this.timeout = config.timeout ?? 30_000;
     this.maxRetries = config.maxRetries ?? 3;
     this.fetchFn = config.fetch ?? globalThis.fetch;
@@ -152,13 +165,17 @@ export class HttpClient {
     body?: unknown,
   ): Record<string, string> {
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.apiKey}`,
       Accept: 'application/json',
       'User-Agent': `querri-node/${VERSION}`,
     };
 
-    if (this.orgId) {
-      headers['X-Tenant-ID'] = this.orgId;
+    if (this.sessionToken) {
+      headers['X-Embed-Session'] = this.sessionToken;
+    } else {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      if (this.orgId) {
+        headers['X-Tenant-ID'] = this.orgId;
+      }
     }
 
     // Only set Content-Type for JSON bodies (not FormData)

@@ -21,7 +21,7 @@ export class ProjectsResource extends BaseResource {
     return this._get<Project>(`/projects/${projectId}`);
   }
 
-  list(params?: { limit?: number; after?: string }): Promise<CursorPage<Project>> {
+  list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Project>> {
     return this._list<Project>('/projects', params);
   }
 

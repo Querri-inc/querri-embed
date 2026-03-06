@@ -18,6 +18,20 @@ export interface QuerriConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+/** Configuration for a session-scoped client created via `asUser()`. */
+export interface SessionConfig {
+  /** Embed session token from `getSession()`. */
+  sessionToken: string;
+  /** API host URL. @default `'https://app.querri.com'` */
+  host?: string;
+  /** Request timeout in milliseconds. @default 30000 */
+  timeout?: number;
+  /** Max automatic retries on 429/5xx errors. @default 2 */
+  maxRetries?: number;
+  /** Custom `fetch` implementation (e.g. for testing or proxies). */
+  fetch?: typeof globalThis.fetch;
+}
+
 // ---------------------------------------------------------------------------
 // Pagination
 // ---------------------------------------------------------------------------
