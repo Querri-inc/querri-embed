@@ -254,6 +254,18 @@ const user = await client.users.getOrCreate('usr_alice', {
 });
 ```
 
+#### `client.users.removeExternalId(externalId)`
+
+Remove an external ID mapping without deleting the user.
+
+```typescript
+removeExternalId(externalId: string): Promise<ExternalIdDeleteResponse>
+```
+
+```typescript
+const result = await client.users.removeExternalId('usr_alice');
+```
+
 ---
 
 ### Embed
@@ -1486,7 +1498,7 @@ For a user to see resources via `userClient`, they must be granted access. Use `
 
 ```typescript
 // Grant user access to a specific project
-await client.sharing.shareProject(projectId, { user_id: session.user_id });
+await client.sharing.shareProject(projectId, session.user_id);
 
 // Now the user's client will include this project
 const projects = await userClient.projects.list();
@@ -1660,6 +1672,7 @@ All `APIError` subclasses expose:
 | `message` | `string` | Human-readable error message |
 | `type` | `string \| undefined` | Error type from the API |
 | `code` | `string \| undefined` | Error code from the API |
+| `docUrl` | `string \| undefined` | Link to relevant documentation |
 | `requestId` | `string \| undefined` | Request ID for support |
 | `body` | `unknown` | Raw response body |
 | `headers` | `Headers` | Response headers |
