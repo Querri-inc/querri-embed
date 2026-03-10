@@ -1,4 +1,5 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import type {
   ApiKey,
   ApiKeyCreateParams,
@@ -14,11 +15,18 @@ export class KeysResource extends BaseResource {
     return this._get<ApiKey>(`/keys/${keyId}`);
   }
 
-  list(): Promise<ApiKey[]> {
-    return this._get<ApiKey[]>('/keys');
+  list(
+    params?: { limit?: number; after?: string },
+  ): Promise<CursorPage<ApiKey>> {
+    return this._list<ApiKey>('/keys', params);
   }
 
   del(keyId: string): Promise<Record<string, unknown>> {
     return this._delete<Record<string, unknown>>(`/keys/${keyId}`);
+  }
+
+  /** Alias for `del()` — revoke and delete an API key. */
+  revoke(keyId: string): Promise<Record<string, unknown>> {
+    return this.del(keyId);
   }
 }

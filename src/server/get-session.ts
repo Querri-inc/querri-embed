@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { CursorPage } from './pagination/cursor-page.js';
 import type {
   GetSessionParams,
   GetSessionResult,
@@ -19,7 +20,7 @@ interface QuerriLike {
     ): Promise<{ id: string; external_id: string | null }>;
   };
   policies: {
-    list(params?: { name?: string }): Promise<Policy[]>;
+    list(params?: { name?: string }): Promise<CursorPage<Policy>>;
     create(params: {
       name: string;
       description?: string;
@@ -145,6 +146,6 @@ async function findPolicyByName(
   client: QuerriLike,
   name: string,
 ): Promise<Policy | null> {
-  const policies = await client.policies.list({ name });
-  return policies.find((p) => p.name === name) ?? null;
+  const page = await client.policies.list({ name });
+  return page.data.find((p) => p.name === name) ?? null;
 }

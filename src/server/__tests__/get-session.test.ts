@@ -10,7 +10,7 @@ function makeMockClient() {
       }),
     },
     policies: {
-      list: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
       create: vi.fn().mockResolvedValue({
         id: 'pol_new',
         name: 'sdk_auto_test',
@@ -127,7 +127,7 @@ describe('getSession', () => {
       updated_at: null,
     };
 
-    client.policies.list.mockResolvedValue([existingPolicy]);
+    client.policies.list.mockResolvedValue({ data: [existingPolicy], hasMore: false, nextCursor: null });
 
     await getSession(client, {
       user: 'ext_1',

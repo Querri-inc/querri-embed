@@ -1,4 +1,5 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import type { FileObject } from '../types.js';
 
 export class FilesResource extends BaseResource {
@@ -20,8 +21,10 @@ export class FilesResource extends BaseResource {
     return this._get<FileObject>(`/files/${fileId}`);
   }
 
-  list(): Promise<FileObject[]> {
-    return this._get<FileObject[]>('/files');
+  list(
+    params?: { limit?: number; after?: string },
+  ): Promise<CursorPage<FileObject>> {
+    return this._list<FileObject>('/files', params);
   }
 
   del(fileId: string): Promise<void> {

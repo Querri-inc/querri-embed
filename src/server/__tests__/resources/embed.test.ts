@@ -64,7 +64,7 @@ describe('EmbedResource', () => {
 
   it('listSessions sends GET /api/v1/embed/sessions', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse({ data: [], count: 0 }),
+      jsonResponse({ data: [], has_more: false, next_cursor: null }),
     );
 
     const client = makeClient();

@@ -289,17 +289,17 @@ refreshSession(sessionToken: string): Promise<EmbedSession>
 const refreshed = await client.embed.refreshSession('sess_token_...');
 ```
 
-#### `client.embed.listSessions(limit?)`
+#### `client.embed.listSessions(params?)`
 
 List active embed sessions.
 
 ```typescript
-listSessions(limit?: number): Promise<EmbedSessionList>
+listSessions(params?: { limit?: number; after?: string }): Promise<EmbedSessionList>
 ```
 
 ```typescript
-const sessions = await client.embed.listSessions(50);
-// { data: [...], count: 12 }
+const sessions = await client.embed.listSessions({ limit: 50 });
+// { data: [...], has_more: false, next_cursor: null }
 ```
 
 #### `client.embed.revokeSession(sessionId)`
@@ -313,6 +313,19 @@ revokeSession(sessionId: string): Promise<EmbedSessionRevokeResponse>
 ```typescript
 const result = await client.embed.revokeSession('sess_abc');
 // { session_id: 'sess_abc', revoked: true }
+```
+
+#### `client.embed.revokeUserSessions(userId)`
+
+Revoke all embed sessions for a given user. Lists active sessions, filters by user ID, and revokes each one.
+
+```typescript
+revokeUserSessions(userId: string): Promise<number>
+```
+
+```typescript
+const count = await client.embed.revokeUserSessions('user_abc123');
+// 3 (number of sessions revoked)
 ```
 
 ---
@@ -351,15 +364,20 @@ const policy = await client.policies.retrieve('pol_abc');
 
 #### `client.policies.list(params?)`
 
-List all policies. Optionally filter by name.
+List policies with cursor-based pagination. Optionally filter by name.
 
 ```typescript
-list(params?: { name?: string }): Promise<Policy[]>
+list(params?: { name?: string; limit?: number; after?: string }): Promise<CursorPage<Policy>>
 ```
 
 ```typescript
-const policies = await client.policies.list();
+const page = await client.policies.list();
 const specific = await client.policies.list({ name: 'acme-corp-policy' });
+
+// Async iteration over all pages
+for await (const policy of client.policies.list()) {
+  console.log(policy.name);
+}
 ```
 
 #### `client.policies.update(policyId, params)`
@@ -614,16 +632,21 @@ retrieve(projectId: string, chatId: string): Promise<Chat>
 const chat = await client.chats.retrieve('proj_abc', 'chat_xyz');
 ```
 
-#### `client.chats.list(projectId, limit?)`
+#### `client.chats.list(projectId, params?)`
 
-List chats within a project.
+List chats within a project with cursor-based pagination.
 
 ```typescript
-list(projectId: string, limit?: number): Promise<Chat[]>
+list(projectId: string, params?: { limit?: number; after?: string }): Promise<CursorPage<Chat>>
 ```
 
 ```typescript
-const chats = await client.chats.list('proj_abc', 10);
+const page = await client.chats.list('proj_abc', { limit: 10 });
+
+// Async iteration
+for await (const chat of client.chats.list('proj_abc')) {
+  console.log(chat.name);
+}
 ```
 
 #### `client.chats.stream(projectId, chatId, params)`
@@ -708,15 +731,17 @@ const dashboard = await client.dashboards.retrieve('dash_abc');
 
 #### `client.dashboards.list(params?)`
 
-List all dashboards. Pass `user_id` to return only dashboards the user has FGA access to.
+List dashboards with cursor-based pagination. Pass `user_id` to return only dashboards the user has FGA access to.
 
 ```typescript
-list(params?: { limit?: number; after?: string; user_id?: string }): Promise<Dashboard[]>
+list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Dashboard>>
 ```
 
 ```typescript
 // All dashboards in the org
-const dashboards = await client.dashboards.list();
+for await (const dashboard of client.dashboards.list()) {
+  console.log(dashboard.name);
+}
 
 // Only dashboards a specific user can access (FGA-filtered)
 const userDashboards = await client.dashboards.list({ user_id: 'ext_alice' });
@@ -775,19 +800,22 @@ const status = await client.dashboards.refreshStatus('dash_abc');
 
 ### Data
 
-Query data sources directly.
+Query and manage data sources.
 
-#### `client.data.sources()`
+#### `client.data.sources(params?)`
 
-List all available data sources.
+List all available data sources with cursor-based pagination.
 
 ```typescript
-sources(): Promise<DataSource[]>
+sources(params?: { limit?: number; after?: string }): Promise<CursorPage<DataSource>>
 ```
 
 ```typescript
-const sources = await client.data.sources();
-// [{ id, name, columns, row_count, updated_at }]
+const page = await client.data.sources();
+
+for await (const src of client.data.sources()) {
+  console.log(src.name);
+}
 ```
 
 #### `client.data.source(sourceId)`
@@ -835,6 +863,66 @@ sourceData(
 const page = await client.data.sourceData('src_1', { page: 1, page_size: 50 });
 ```
 
+#### `client.data.createSource(params)`
+
+Create a new data source with inline JSON rows.
+
+```typescript
+createSource(params: DataSourceCreateParams): Promise<DataSourceCreateResult>
+```
+
+```typescript
+const source = await client.data.createSource({
+  name: 'Sales Data',
+  rows: [
+    { region: 'US', revenue: 1000 },
+    { region: 'EU', revenue: 800 },
+  ],
+});
+// { id: 'src_new', name: 'Sales Data', columns: ['region', 'revenue'], row_count: 2, updated_at: '...' }
+```
+
+#### `client.data.appendRows(sourceId, params)`
+
+Append rows to an existing data source. New columns are union-merged automatically.
+
+```typescript
+appendRows(sourceId: string, params: { rows: Record<string, unknown>[] }): Promise<DataWriteResult>
+```
+
+```typescript
+await client.data.appendRows('src_1', {
+  rows: [{ region: 'APAC', revenue: 600 }],
+});
+```
+
+#### `client.data.replaceData(sourceId, params)`
+
+Replace all data in a source with new rows.
+
+```typescript
+replaceData(sourceId: string, params: { rows: Record<string, unknown>[] }): Promise<DataWriteResult>
+```
+
+```typescript
+await client.data.replaceData('src_1', {
+  rows: [{ region: 'US', revenue: 1200 }],
+});
+```
+
+#### `client.data.deleteSource(sourceId)`
+
+Delete a data source and all its associated data.
+
+```typescript
+deleteSource(sourceId: string): Promise<DataSourceDeleteResult>
+```
+
+```typescript
+await client.data.deleteSource('src_1');
+// { id: 'src_1', deleted: true }
+```
+
 ---
 
 ### Files
@@ -868,16 +956,16 @@ retrieve(fileId: string): Promise<FileObject>
 const file = await client.files.retrieve('file_abc');
 ```
 
-#### `client.files.list()`
+#### `client.files.list(params?)`
 
-List all files.
+List all files with cursor-based pagination.
 
 ```typescript
-list(): Promise<FileObject[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<FileObject>>
 ```
 
 ```typescript
-const files = await client.files.list();
+const page = await client.files.list();
 ```
 
 #### `client.files.del(fileId)`
@@ -898,16 +986,16 @@ await client.files.del('file_abc');
 
 Manage data source connections (connectors).
 
-#### `client.sources.listConnectors()`
+#### `client.sources.listConnectors(params?)`
 
-List available connector types (e.g., PostgreSQL, BigQuery, CSV).
+List available connector types (e.g., PostgreSQL, BigQuery, CSV) with cursor-based pagination.
 
 ```typescript
-listConnectors(): Promise<Record<string, unknown>[]>
+listConnectors(params?: { limit?: number; after?: string }): Promise<CursorPage<Connector>>
 ```
 
 ```typescript
-const connectors = await client.sources.listConnectors();
+const page = await client.sources.listConnectors();
 ```
 
 #### `client.sources.create(params)`
@@ -926,16 +1014,16 @@ const source = await client.sources.create({
 });
 ```
 
-#### `client.sources.list()`
+#### `client.sources.list(params?)`
 
-List all configured sources.
+List all configured sources with cursor-based pagination.
 
 ```typescript
-list(): Promise<Source[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<Source>>
 ```
 
 ```typescript
-const sources = await client.sources.list();
+const page = await client.sources.list();
 ```
 
 #### `client.sources.update(sourceId, params)`
@@ -1009,28 +1097,29 @@ retrieve(keyId: string): Promise<ApiKey>
 const key = await client.keys.retrieve('key_abc');
 ```
 
-#### `client.keys.list()`
+#### `client.keys.list(params?)`
 
-List all API keys.
+List all API keys with cursor-based pagination.
 
 ```typescript
-list(): Promise<ApiKey[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<ApiKey>>
 ```
 
 ```typescript
-const keys = await client.keys.list();
+const page = await client.keys.list();
 ```
 
-#### `client.keys.del(keyId)`
+#### `client.keys.del(keyId)` / `client.keys.revoke(keyId)`
 
-Revoke and delete an API key.
+Revoke and delete an API key. `revoke()` is an alias for `del()`.
 
 ```typescript
 del(keyId: string): Promise<Record<string, unknown>>
+revoke(keyId: string): Promise<Record<string, unknown>>
 ```
 
 ```typescript
-await client.keys.del('key_abc');
+await client.keys.revoke('key_abc');
 ```
 
 ---
@@ -1111,6 +1200,30 @@ listDashboardShares(dashboardId: string): Promise<ShareEntry[]>
 const shares = await client.sharing.listDashboardShares('dash_abc');
 ```
 
+#### `client.sharing.shareSource(sourceId, params)`
+
+Share a data source with a user. Default permission is `'view'`.
+
+```typescript
+shareSource(sourceId: string, params: SourceShareParams): Promise<ShareEntry>
+```
+
+```typescript
+await client.sharing.shareSource('src_1', { user_id: 'user_1', permission: 'edit' });
+```
+
+#### `client.sharing.orgShareSource(sourceId, params)`
+
+Enable or disable org-wide sharing for a data source.
+
+```typescript
+orgShareSource(sourceId: string, params: OrgShareSourceParams): Promise<Record<string, unknown>>
+```
+
+```typescript
+await client.sharing.orgShareSource('src_1', { enabled: true, permission: 'view' });
+```
+
 ---
 
 ### Audit
@@ -1119,22 +1232,27 @@ Query the audit log.
 
 #### `client.audit.list(params?)`
 
-List audit events with optional filters.
+List audit events with optional filters and cursor-based pagination.
 
 ```typescript
-list(params?: AuditListParams): Promise<AuditEvent[]>
+list(params?: AuditListParams): Promise<CursorPage<AuditEvent>>
 ```
 
 ```typescript
-const events = await client.audit.list({
+const page = await client.audit.list({
   action: 'project.run',
   start_date: '2025-01-01',
   end_date: '2025-01-31',
-  page_size: 50,
+  limit: 50,
 });
+
+// Async iteration
+for await (const event of client.audit.list()) {
+  console.log(event.action);
+}
 ```
 
-`AuditListParams` fields: `actor_id`, `target_id`, `action`, `start_date`, `end_date`, `page`, `page_size`.
+`AuditListParams` fields: `actor_id`, `target_id`, `action`, `start_date`, `end_date`, `limit`, `after`.
 
 ---
 

@@ -1,4 +1,5 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import type {
   Policy,
   PolicyCreateParams,
@@ -20,8 +21,10 @@ export class PoliciesResource extends BaseResource {
     return this._get<Policy>(`/access/policies/${policyId}`);
   }
 
-  list(params?: { name?: string }): Promise<Policy[]> {
-    return this._get<Policy[]>('/access/policies', params);
+  list(
+    params?: { name?: string; limit?: number; after?: string },
+  ): Promise<CursorPage<Policy>> {
+    return this._list<Policy>('/access/policies', params);
   }
 
   update(

@@ -113,7 +113,8 @@ export interface EmbedSessionListItem {
 
 export interface EmbedSessionList {
   data: EmbedSessionListItem[];
-  count: number;
+  has_more: boolean;
+  next_cursor: string | null;
 }
 
 export interface EmbedSessionRevokeResponse {
@@ -391,6 +392,29 @@ export interface DataPage {
   columns: string[] | null;
 }
 
+export interface DataSourceCreateParams {
+  name: string;
+  rows: Record<string, unknown>[];
+}
+
+export interface DataSourceCreateResult {
+  id: string;
+  name: string;
+  columns: string[];
+  row_count: number;
+  updated_at: string | null;
+}
+
+export interface DataWriteResult {
+  source_id: string;
+  rows_affected: number;
+}
+
+export interface DataSourceDeleteResult {
+  id: string;
+  deleted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Files
 // ---------------------------------------------------------------------------
@@ -489,6 +513,16 @@ export interface ShareEntry {
   expires_at: string | null;
 }
 
+export interface SourceShareParams {
+  user_id: string;
+  permission?: 'view' | 'edit';
+}
+
+export interface OrgShareSourceParams {
+  enabled: boolean;
+  permission?: 'view' | 'edit';
+}
+
 // ---------------------------------------------------------------------------
 // Audit
 // ---------------------------------------------------------------------------
@@ -511,8 +545,8 @@ export interface AuditListParams {
   action?: string;
   start_date?: string;
   end_date?: string;
-  page?: number;
-  page_size?: number;
+  limit?: number;
+  after?: string;
 }
 
 // ---------------------------------------------------------------------------

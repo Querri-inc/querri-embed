@@ -1,4 +1,5 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import { ChatStream } from '../streaming/chat-stream.js';
 import type {
   Chat,
@@ -17,10 +18,11 @@ export class ChatsResource extends BaseResource {
     return this._get<Chat>(`/projects/${projectId}/chats/${chatId}`);
   }
 
-  list(projectId: string, limit?: number): Promise<Chat[]> {
-    return this._get<Chat[]>(`/projects/${projectId}/chats`, {
-      limit: limit ?? 25,
-    });
+  list(
+    projectId: string,
+    params?: { limit?: number; after?: string },
+  ): Promise<CursorPage<Chat>> {
+    return this._list<Chat>(`/projects/${projectId}/chats`, params);
   }
 
   async stream(

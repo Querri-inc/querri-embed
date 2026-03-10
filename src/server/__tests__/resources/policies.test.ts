@@ -55,12 +55,15 @@ describe('PoliciesResource', () => {
   });
 
   it('list() sends GET /access/policies', async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([POLICY_STUB]));
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ data: [POLICY_STUB], has_more: false, next_cursor: null }),
+    );
     const client = makeClient();
 
-    const policies = await client.policies.list();
+    const page = await client.policies.list();
 
-    expect(policies).toHaveLength(1);
+    expect(page.data).toHaveLength(1);
+    expect(page.hasMore).toBe(false);
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain('/api/v1/access/policies');
     expect(opts.method).toBe('GET');

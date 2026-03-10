@@ -21,9 +21,12 @@ export class EmbedResource extends BaseResource {
     });
   }
 
-  listSessions(limit?: number): Promise<EmbedSessionList> {
+  listSessions(
+    params?: { limit?: number; after?: string },
+  ): Promise<EmbedSessionList> {
     return this._get<EmbedSessionList>('/embed/sessions', {
-      limit: limit ?? 100,
+      limit: params?.limit ?? 100,
+      after: params?.after,
     });
   }
 
@@ -36,6 +39,10 @@ export class EmbedResource extends BaseResource {
   /**
    * Revoke all embed sessions for a given user ID.
    * Lists active sessions and revokes those matching the user.
+   *
+   * Note: The embed sessions endpoint uses Redis SCAN and always returns
+   * has_more=false, so a single request fetches all available sessions.
+   *
    * @returns Number of sessions revoked.
    */
   async revokeUserSessions(userId: string): Promise<number> {
