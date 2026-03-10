@@ -442,6 +442,25 @@ removeUser(policyId: string, userId: string): Promise<PolicyRemoveUserResponse>
 await client.policies.removeUser('pol_abc', 'user_1');
 ```
 
+#### `client.policies.replaceUserPolicies(userId, params)`
+
+Atomically replace ALL policy assignments for a user. Removes every existing assignment, then assigns exactly the listed policies. Pass an empty array to remove all policies.
+
+This is the correct method for mid-session policy switching — it prevents the accumulation bug where `assignUsers()` only adds.
+
+```typescript
+replaceUserPolicies(userId: string, params: { policy_ids: string[] }): Promise<PolicyReplaceResponse>
+```
+
+```typescript
+// Replace all policies for a user with exactly these two
+await client.policies.replaceUserPolicies('user_1', { policy_ids: ['pol_abc', 'pol_def'] });
+// Returns: { user_id, policy_ids, added, removed }
+
+// Remove all policy assignments (grants full access)
+await client.policies.replaceUserPolicies('user_1', { policy_ids: [] });
+```
+
 #### `client.policies.resolve(userId, sourceId)`
 
 Resolve the effective access for a user on a specific data source, taking all assigned policies into account.
@@ -1307,9 +1326,11 @@ const usage = await client.usage.userUsage('user_abc123', 'current_month');
 
 ```
 1. User Resolution      -->  users.getOrCreate()
-2. Access Policy Setup   -->  policies.create() + policies.assignUsers()
+2. Access Policy Setup   -->  policies.create() + policies.replaceUserPolicies()
 3. Session Creation      -->  embed.createSession()
 ```
+
+> **Note:** Step 2 uses `replaceUserPolicies()` (not `assignUsers()`) to atomically replace all policy assignments. This prevents policy accumulation when the same user is given different access filters across sessions.
 
 ### Basic Usage
 

@@ -189,6 +189,13 @@ export interface PolicyRemoveUserResponse {
   removed: boolean;
 }
 
+export interface PolicyReplaceResponse {
+  user_id: string;
+  policy_ids: string[];
+  added: string[];
+  removed: string[];
+}
+
 export interface ResolvedAccess {
   user_id: string;
   source_id: string;

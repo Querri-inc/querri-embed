@@ -44,6 +44,7 @@ export type {
   PolicyUpdateResponse,
   PolicyAssignResponse,
   PolicyRemoveUserResponse,
+  PolicyReplaceResponse,
   ResolvedAccess,
   ColumnInfo,
   SourceColumns,

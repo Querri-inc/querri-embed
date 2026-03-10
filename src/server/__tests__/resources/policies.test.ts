@@ -108,6 +108,23 @@ describe('PoliciesResource', () => {
     expect(JSON.parse(opts.body)).toEqual({ user_ids: ['u1', 'u2'] });
   });
 
+  it('replaceUserPolicies sends PUT /access/users/{id}/policies', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ user_id: 'u1', policy_ids: ['pol_1'], added: ['pol_1'], removed: ['pol_2'] }),
+    );
+    const client = makeClient();
+
+    const result = await client.policies.replaceUserPolicies('u1', { policy_ids: ['pol_1'] });
+
+    expect(result.policy_ids).toEqual(['pol_1']);
+    expect(result.added).toEqual(['pol_1']);
+    expect(result.removed).toEqual(['pol_2']);
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain('/api/v1/access/users/u1/policies');
+    expect(opts.method).toBe('PUT');
+    expect(JSON.parse(opts.body)).toEqual({ policy_ids: ['pol_1'] });
+  });
+
   it('removeUser sends DELETE /access/policies/{id}/users/{userId}', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ policy_id: 'pol_1', user_id: 'u1', removed: true }),

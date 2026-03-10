@@ -8,6 +8,7 @@ import type {
   PolicyDeleteResponse,
   PolicyAssignResponse,
   PolicyRemoveUserResponse,
+  PolicyReplaceResponse,
   ResolvedAccess,
   SourceColumns,
 } from '../types.js';
@@ -57,6 +58,22 @@ export class PoliciesResource extends BaseResource {
   ): Promise<PolicyRemoveUserResponse> {
     return this._delete<PolicyRemoveUserResponse>(
       `/access/policies/${policyId}/users/${userId}`,
+    );
+  }
+
+  /**
+   * Atomically replace ALL policy assignments for a user.
+   *
+   * Removes every existing assignment, then assigns exactly the listed
+   * policies. Pass an empty array to remove all policies.
+   */
+  replaceUserPolicies(
+    userId: string,
+    params: { policy_ids: string[] },
+  ): Promise<PolicyReplaceResponse> {
+    return this._put<PolicyReplaceResponse>(
+      `/access/users/${userId}/policies`,
+      params,
     );
   }
 

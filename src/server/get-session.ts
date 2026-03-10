@@ -27,9 +27,9 @@ interface QuerriLike {
       source_ids?: string[];
       row_filters?: RowFilter[];
     }): Promise<Policy>;
-    assignUsers(
-      policyId: string,
-      params: { user_ids: string[] },
+    replaceUserPolicies(
+      userId: string,
+      params: { policy_ids: string[] },
     ): Promise<unknown>;
   };
   embed: {
@@ -94,9 +94,11 @@ export async function getSession(
       policyIds = [existing.id];
     }
 
-    for (const policyId of policyIds) {
-      await client.policies.assignUsers(policyId, { user_ids: [userId] });
-    }
+    // Atomically replace all policy assignments for this user.
+    // This removes any previously assigned policies (e.g., from a prior
+    // getSession() call with different filters) and assigns exactly the
+    // new set, preventing policy accumulation.
+    await client.policies.replaceUserPolicies(userId, { policy_ids: policyIds });
   }
 
   // --- Step 3: Create Embed Session ---
