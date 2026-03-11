@@ -84,9 +84,12 @@ export class PoliciesResource extends BaseResource {
     });
   }
 
-  columns(sourceId?: string): Promise<SourceColumns[]> {
-    return this._get<SourceColumns[]>('/access/columns', {
-      source_id: sourceId,
-    });
+  async columns(sourceId?: string): Promise<SourceColumns[]> {
+    const response = await this._get<{ data: SourceColumns[] } | SourceColumns[]>(
+      '/access/columns',
+      { source_id: sourceId },
+    );
+    // Unwrap {data: [...]} envelope returned by the API
+    return Array.isArray(response) ? response : response.data;
   }
 }

@@ -7,7 +7,7 @@ import {
 } from '../errors.js';
 import { isIdempotent, shouldRetry, calculateDelay, getRetryAfter, sleep } from './retry.js';
 
-const VERSION = '0.0.0-test';
+const VERSION = '0.1.22';
 
 export interface RequestOptions {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

@@ -43,7 +43,8 @@ export abstract class BaseResource {
       if (cursor) {
         q.after = cursor;
       }
-      const response = await this._get<CursorPageResponse<T>>(path, q);
+      const raw = await this._get<CursorPageResponse<T> | Record<string, unknown>>(path, q);
+      const response = normalizePage<T>(raw);
       return new CursorPage<T>(response, fetchPage);
     };
     return fetchPage(query?.after as string | undefined);
@@ -58,4 +59,35 @@ export abstract class BaseResource {
       headers: { Accept: 'text/event-stream' },
     });
   }
+}
+
+/**
+ * Normalize a list response into the `CursorPageResponse<T>` shape.
+ *
+ * The public API (`/api/v1`) already returns `{data, has_more, next_cursor}`.
+ * The internal API (`/api/`) returns collection-keyed envelopes like
+ * `{projects: [...], has_more, next_cursor}` or `{sources: [...], ...}`.
+ * This function detects the latter and maps it into the standard shape so
+ * `CursorPage` can consume it uniformly.
+ */
+function normalizePage<T>(raw: Record<string, unknown>): CursorPageResponse<T> {
+  if (Array.isArray(raw.data)) {
+    return raw as unknown as CursorPageResponse<T>;
+  }
+
+  // Find the first array-valued key that isn't a known metadata field
+  const META_KEYS = new Set(['has_more', 'next_cursor', 'total']);
+  for (const [key, value] of Object.entries(raw)) {
+    if (Array.isArray(value) && !META_KEYS.has(key)) {
+      return {
+        data: value as T[],
+        has_more: (raw.has_more as boolean) ?? false,
+        next_cursor: (raw.next_cursor as string | null) ?? null,
+        total: raw.total as number | undefined,
+      };
+    }
+  }
+
+  // Fallback: treat as empty page
+  return { data: [], has_more: false, next_cursor: null };
 }
