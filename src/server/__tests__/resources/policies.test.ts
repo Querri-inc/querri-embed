@@ -154,9 +154,9 @@ describe('PoliciesResource', () => {
     expect(JSON.parse(opts.body)).toEqual({ user_id: 'u1', source_id: 's1' });
   });
 
-  it('columns sends GET /access/columns', async () => {
+  it('columns sends GET /access/columns and unwraps {data} envelope', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse([{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }]),
+      jsonResponse({ data: [{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }] }),
     );
     const client = makeClient();
 
@@ -167,5 +167,17 @@ describe('PoliciesResource', () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain('/api/v1/access/columns');
     expect(opts.method).toBe('GET');
+  });
+
+  it('columns handles raw array response for backwards compatibility', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }]),
+    );
+    const client = makeClient();
+
+    const result = await client.policies.columns('s1');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].source_name).toBe('Sales');
   });
 });

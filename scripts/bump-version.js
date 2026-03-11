@@ -24,7 +24,7 @@ const targets = [
   },
   {
     file: 'src/server/http/base-client.ts',
-    pattern: /const VERSION = '\d+\.\d+\.\d+'/,
+    pattern: /const VERSION = '\d+\.\d+\.\d+[^']*'/,
     replacement: `const VERSION = '${version}'`,
   },
   // Test files
