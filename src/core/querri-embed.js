@@ -610,6 +610,23 @@ QuerriInstance.prototype._emitError = function (code, message) {
 
 // ─── Public Methods ───────────────────────────────────────
 
+QuerriInstance.prototype.sendPrompt = function (text, options) {
+  if (!this.ready) {
+    this._emitError('send_prompt_failed', 'Cannot send prompt: embed is not ready');
+    return;
+  }
+  if (typeof text !== 'string' || !text.trim()) {
+    this._emitError('send_prompt_failed', 'sendPrompt requires a non-empty string');
+    return;
+  }
+  var opts = options || {};
+  this._sendToIframe({
+    type: 'send-prompt',
+    text: text,
+    autoSubmit: opts.autoSubmit === true,
+  });
+};
+
 QuerriInstance.prototype.destroy = function () {
   this._destroyed = true;
   this.ready = false;

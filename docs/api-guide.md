@@ -381,6 +381,7 @@ stateDiagram-v2
     auth_required --> ready: re-fetch token, send new init
     active --> navigation: iframe sends 'navigation'
     active --> error: iframe sends 'error'
+    active --> active: parent sends 'send-prompt'
     navigation --> active
     error --> active
 ```
@@ -391,7 +392,13 @@ stateDiagram-v2
 2. **Parent sends `init`** — Your page sends the session token and display configuration.
 3. **iframe sends `authenticated`** — The token was validated. The embed is now interactive.
 
-**Error messages the iframe may send:**
+**Messages the parent can send to the iframe (after `authenticated`):**
+
+| Message type | Payload | Description |
+|--------------|---------|-------------|
+| `send-prompt` | `{ type, text, autoSubmit }` | Set or submit text in the chat prompt. `autoSubmit: true` submits immediately without displaying. |
+
+**Messages the iframe may send to the parent:**
 
 | Message type | When | What to do |
 |--------------|------|------------|
@@ -495,8 +502,20 @@ function initQuerriEmbed(container, sessionEndpoint, config) {
 
   window.addEventListener('message', onMessage);
 
-  // Return a cleanup function
+  // Return an interface for the embed
   return {
+    /**
+     * Set or submit text in the chat prompt.
+     * @param {string} text - Prompt text
+     * @param {{ autoSubmit?: boolean }} [options]
+     */
+    sendPrompt(text, options) {
+      iframe.contentWindow.postMessage({
+        type: 'send-prompt',
+        text: text,
+        autoSubmit: (options && options.autoSubmit) === true,
+      }, QUERRI_ORIGIN);
+    },
     destroy() {
       window.removeEventListener('message', onMessage);
       iframe.remove();
@@ -510,6 +529,12 @@ const embed = initQuerriEmbed(
   '/api/querri/session',
   { startView: '/home', chrome: { sidebar: { show: false } } }
 );
+
+// Set text in the prompt for the user to review:
+// embed.sendPrompt('What were my sales last quarter?');
+
+// Or submit directly without displaying:
+// embed.sendPrompt('What were my sales last quarter?', { autoSubmit: true });
 
 // Later, to clean up:
 // embed.destroy();
@@ -779,6 +804,13 @@ A self-contained page that loads the embed:
           break;
       }
     });
+
+    // To programmatically send a prompt after the embed is authenticated:
+    // iframe.contentWindow.postMessage({
+    //   type: 'send-prompt',
+    //   text: 'What were my sales last quarter?',
+    //   autoSubmit: true  // false to just place text in the input
+    // }, QUERRI_ORIGIN);
   </script>
 </body>
 </html>
