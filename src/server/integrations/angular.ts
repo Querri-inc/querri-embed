@@ -46,6 +46,11 @@ export function createSessionHandler(options?: QuerriMiddlewareOptions) {
         ? await options.resolveParams(req)
         : { user: 'embed_anonymous' } as GetSessionParams;
 
+      // Auto-extract origin from request headers if not explicitly set
+      if (!params.origin) {
+        params.origin = req.headers['origin'] ?? undefined;
+      }
+
       const session = await client.getSession(params);
       res.json(session);
     } catch (err) {
