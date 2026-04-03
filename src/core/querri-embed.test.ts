@@ -1318,3 +1318,153 @@ describe('sessionEndpoint auth mode', () => {
     instance.destroy();
   });
 });
+
+describe('sendPrompt', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = createContainer();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('emits error when embed is not ready', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Not yet authenticated, so ready is false
+    instance.sendPrompt('hello');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('not ready') })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for empty string', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('non-empty') })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for whitespace-only string', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('   ');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed' })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for non-string input', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt(42 as any);
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed' })
+    );
+    instance.destroy();
+  });
+
+  it('sends postMessage to iframe when ready', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello world');
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      { type: 'send-prompt', text: 'hello world', autoSubmit: false }
+    );
+    instance.destroy();
+  });
+
+  it('sends autoSubmit flag when specified', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello', { autoSubmit: true });
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      { type: 'send-prompt', text: 'hello', autoSubmit: true }
+    );
+    instance.destroy();
+  });
+
+  it('defaults autoSubmit to false when options omitted', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello');
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ autoSubmit: false })
+    );
+    instance.destroy();
+  });
+
+  it('forwards iframe error response through error event', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('hello');
+
+    // Simulate iframe responding with an error
+    sendMessage('error', { code: 'send_prompt_failed', message: 'No prompt input available on the current view' });
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: 'No prompt input available on the current view' })
+    );
+    instance.destroy();
+  });
+});

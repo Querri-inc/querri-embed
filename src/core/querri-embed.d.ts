@@ -85,7 +85,8 @@ export type QuerriErrorCode =
   | 'popup_blocked'
   | 'auth_failed'
   | 'auth_required'
-  | 'timeout';
+  | 'timeout'
+  | 'send_prompt_failed';
 
 /** Payload for the `'error'` event. */
 export interface QuerriErrorEvent {
@@ -108,6 +109,17 @@ export type QuerriEventCallback<T extends QuerriEventType> =
   T extends 'navigation' ? (data: QuerriNavigationEvent) => void :
   never;
 
+/** Options for {@link QuerriInstance.sendPrompt}. */
+export interface SendPromptOptions {
+  /**
+   * If `true`, submit the prompt immediately without displaying it in the
+   * input panel. If `false` (default), the text is placed in the prompt
+   * panel for the user to see and edit before sending.
+   * @default false
+   */
+  autoSubmit?: boolean;
+}
+
 // ─── Instance ─────────────────────────────────────────────
 
 /** A running embed instance returned by `QuerriEmbed.create()`. */
@@ -126,6 +138,13 @@ export interface QuerriInstance {
    * @returns `this` for chaining.
    */
   off<T extends QuerriEventType>(event: T, callback: QuerriEventCallback<T>): QuerriInstance;
+  /**
+   * Set text in the embedded prompt input, optionally auto-submitting it.
+   * Requires {@link ready} to be `true`. Emits an `'error'` event with code
+   * `'send_prompt_failed'` if the embed is not ready or the current view
+   * has no prompt input.
+   */
+  sendPrompt(text: string, options?: SendPromptOptions): void;
   /** Remove the iframe, clear timers, and detach all event listeners. */
   destroy(): void;
 }

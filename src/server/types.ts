@@ -619,7 +619,11 @@ export interface GetSessionParams {
   user: string | GetSessionUserParams;
   /** Access policy: pass `policy_ids` for pre-created policies, or inline `sources` + `filters`. */
   access?: GetSessionPolicyAccess | GetSessionInlineAccess;
-  /** Allowed origin for the embed iframe (e.g. `'https://myapp.com'`). */
+  /**
+   * Allowed origin for the embed iframe (e.g. `'https://myapp.com'`).
+   * Automatically extracted from the request `Origin` header by framework
+   * handlers (`createSessionHandler`) when not explicitly set.
+   */
   origin?: string;
   /** Session TTL in seconds. @default 3600 */
   ttl?: number;

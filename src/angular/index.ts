@@ -10,4 +10,5 @@ export type {
   QuerriEventCallback,
   QuerriErrorEvent,
   QuerriNavigationEvent,
+  SendPromptOptions,
 } from '../core/querri-embed.js';

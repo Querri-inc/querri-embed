@@ -237,6 +237,7 @@ instance.on('navigation', ({ type, path }) => {
 | `auth_failed` | Authentication failed after popup login |
 | `auth_required` | Auth required but no login mode configured |
 | `timeout` | Iframe didn't respond within timeout period (default: 15s, configurable via `timeout` option) |
+| `send_prompt_failed` | `sendPrompt()` failed — embed not ready, text empty, or current view has no prompt input |
 
 ## Instance API
 
@@ -245,6 +246,7 @@ const querri = QuerriEmbed.create('#container', options);
 
 querri.on('ready', callback);     // Subscribe to event (chainable)
 querri.off('ready', callback);    // Unsubscribe (chainable)
+querri.sendPrompt(text, options); // Set or submit text in the chat prompt
 querri.destroy();                 // Clean up iframe and listeners
 
 querri.ready;    // boolean -- true when authenticated
@@ -252,6 +254,24 @@ querri.iframe;   // HTMLIFrameElement | null
 
 QuerriEmbed.version;  // SDK version string (e.g. '0.1.0')
 ```
+
+### `sendPrompt(text, options?)`
+
+Programmatically set text in the embedded chat prompt, or submit it directly.
+
+```javascript
+// Place text in the prompt panel for the user to review and send
+querri.sendPrompt('What were my sales last quarter?');
+
+// Submit immediately without displaying in the prompt panel
+querri.sendPrompt('What were my sales last quarter?', { autoSubmit: true });
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `autoSubmit` | `boolean` | `false` | If `true`, submit the prompt immediately without showing it in the input |
+
+Requires `ready` to be `true`. Emits an `error` event with code `send_prompt_failed` if the embed is not ready, the text is empty, or the current view has no prompt input.
 
 ## Framework Component API
 
@@ -457,6 +477,13 @@ The login popup requires a user gesture (e.g., a button click). Browsers block p
 
 Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 automatic retries (1s, 2s backoff). Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
 
+### `send_prompt_failed`
+
+`sendPrompt()` could not deliver the text. Common causes:
+- The embed is not yet `ready` (wait for the `ready` event before calling `sendPrompt`).
+- The `text` argument is empty or not a string.
+- The current view has no chat prompt input (e.g., the user is viewing a dashboard instead of the chat).
+
 ## TypeScript
 
 All types are exported from every entry point:
@@ -474,6 +501,7 @@ import type {
   QuerriEventCallback,
   QuerriErrorEvent,
   QuerriNavigationEvent,
+  SendPromptOptions,
 } from '@querri-inc/embed';
 
 // Framework wrappers re-export all core types, plus their own:

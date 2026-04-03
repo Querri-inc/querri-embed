@@ -60,10 +60,24 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
         ? input as { body: unknown; headers: Record<string, string | undefined> }
         : { body: input, headers: {} };
       const params = await options.resolveParams(event);
+
+      // Auto-extract origin from headers if not explicitly set
+      if (!params.origin) {
+        params.origin = event.headers?.['origin'] ?? undefined;
+      }
+
       return client.getSession(params);
     }
 
-    return client.getSession({ user: 'embed_anonymous' } as GetSessionParams);
+    const params = { user: 'embed_anonymous' } as GetSessionParams;
+
+    // Auto-extract origin from headers if caller passed { body, headers }
+    if (!params.origin && typeof input === 'object' && input !== null && 'headers' in input) {
+      const headers = (input as { headers: Record<string, string | undefined> }).headers;
+      params.origin = headers?.['origin'] ?? undefined;
+    }
+
+    return client.getSession(params);
   }
 
   return handler;
@@ -117,13 +131,27 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
       if (!client) client = new Querri(resolveConfig(options));
       const body = await h3.readBody(event);
 
+      const headers = h3.getHeaders(event);
+
       if (options?.resolveParams) {
-        const headers = h3.getHeaders(event);
         const params = await options.resolveParams({ body, headers });
+
+        // Auto-extract origin from headers if not explicitly set
+        if (!params.origin) {
+          params.origin = headers['origin'] ?? undefined;
+        }
+
         return client.getSession(params);
       }
 
-      return client.getSession({ user: 'embed_anonymous' } as GetSessionParams);
+      const params = { user: 'embed_anonymous' } as GetSessionParams;
+
+      // Auto-extract origin from headers if not explicitly set
+      if (!params.origin) {
+        params.origin = headers['origin'] ?? undefined;
+      }
+
+      return client.getSession(params);
     } catch (err) {
       if (err instanceof APIError) {
         throw h3.createError({

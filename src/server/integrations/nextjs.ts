@@ -40,6 +40,11 @@ export function createSessionHandler(
         ? await options.resolveParams(req)
         : { user: 'embed_anonymous' } as GetSessionParams;
 
+      // Auto-extract origin from request if not explicitly set
+      if (!params.origin) {
+        params.origin = req.headers.get('origin') ?? undefined;
+      }
+
       const session = await client.getSession(params);
       return Response.json(session);
     } catch (err) {
