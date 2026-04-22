@@ -28,8 +28,8 @@ export class ProjectsResource extends BaseResource {
     return this._put<Project>(`/projects/${projectId}`, params);
   }
 
-  del(projectId: string): Promise<void> {
-    return this._delete(`/projects/${projectId}`);
+  del(projectId: string): Promise<ProjectDeleteResponse> {
+    return this._delete<ProjectDeleteResponse>(`/projects/${projectId}`);
   }
 
   run(projectId: string, userId: string): Promise<ProjectRunResponse> {

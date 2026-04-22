@@ -42,7 +42,7 @@ export class ChatsResource extends BaseResource {
     );
   }
 
-  del(projectId: string, chatId: string): Promise<void> {
-    return this._delete(`/projects/${projectId}/chats/${chatId}`);
+  del(projectId: string, chatId: string): Promise<ChatDeleteResponse> {
+    return this._delete<ChatDeleteResponse>(`/projects/${projectId}/chats/${chatId}`);
   }
 }

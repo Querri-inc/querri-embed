@@ -34,8 +34,8 @@ export class DashboardsResource extends BaseResource {
     );
   }
 
-  del(dashboardId: string): Promise<void> {
-    return this._delete(`/dashboards/${dashboardId}`);
+  del(dashboardId: string): Promise<DashboardDeleteResponse> {
+    return this._delete<DashboardDeleteResponse>(`/dashboards/${dashboardId}`);
   }
 
   refresh(dashboardId: string): Promise<DashboardRefreshResponse> {
