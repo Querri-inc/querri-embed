@@ -1,12 +1,25 @@
 /**
  * RLS Integration Tests for querri-embed JS SDK
  *
- * Runs against a live Querri instance at http://localhost.
- * Execute with: npx tsx tests/rls-integration.test.ts
+ * Runs against a live Querri instance (defaults to http://localhost).
+ *
+ * Required env vars:
+ *   QUERRI_API_KEY       API key for the target Querri instance
+ *   QUERRI_ORG_ID        Organization id
+ *   RLS_TEST_CSV_PATH    Absolute path to the RLS test CSV
+ *
+ * Optional:
+ *   QUERRI_HOST          Defaults to http://localhost
+ *
+ * Execute with:
+ *   QUERRI_API_KEY=... QUERRI_ORG_ID=... RLS_TEST_CSV_PATH=... \
+ *     npx tsx tests/rls-integration.test.ts
  */
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Querri } from '../src/server/client.js';
 import type {
   User,
@@ -19,10 +32,22 @@ import type {
 // Config
 // ---------------------------------------------------------------------------
 
-const API_KEY = 'qk_EwCqd9DCIUHR6WgbhCme3X92NvKVJ7FUrVoMIb4Ur6-IxbuWgliXtHeGDmG-eFb7';
-const ORG_ID = 'org_01JBETJ7PYNGXVMXV0BD3CFNA8';
-const HOST = 'http://localhost';
-const CSV_PATH = '/Users/davidingram/Q/Querri/documentation/rls/test_data/rls_test_js_sales.csv';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `${name} environment variable is required. See the header comment for the full list of required env vars.`,
+    );
+  }
+  return value;
+}
+
+const API_KEY = requireEnv('QUERRI_API_KEY');
+const ORG_ID = requireEnv('QUERRI_ORG_ID');
+const HOST = process.env.QUERRI_HOST ?? 'http://localhost';
+const CSV_PATH = requireEnv('RLS_TEST_CSV_PATH');
 
 const client = new Querri({ apiKey: API_KEY, orgId: ORG_ID, host: HOST });
 
@@ -786,7 +811,7 @@ async function main(): Promise<void> {
   // Write results markdown
   const md = generateMarkdown(results, passed, failed, skipped, totalMs);
   const fs = await import('node:fs');
-  fs.writeFileSync('/Users/davidingram/Q/querri-embed/tests/rls-integration-results.md', md);
+  fs.writeFileSync(resolve(__dirname, 'rls-integration-results.md'), md);
   console.log('Results written to tests/rls-integration-results.md');
 
   // Cleanup
