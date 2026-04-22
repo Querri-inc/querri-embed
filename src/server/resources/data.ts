@@ -12,17 +12,17 @@ import type {
 } from '../types.js';
 
 export class DataResource extends BaseResource {
-  sources(
+  list(
     params?: { limit?: number; after?: string },
   ): Promise<CursorPage<DataSource>> {
     return this._list<DataSource>('/data/sources', params);
   }
 
-  source(sourceId: string): Promise<DataSource> {
+  retrieve(sourceId: string): Promise<DataSource> {
     return this._get<DataSource>(`/data/sources/${sourceId}`);
   }
 
-  createSource(params: DataSourceCreateParams): Promise<DataSourceCreateResult> {
+  create(params: DataSourceCreateParams): Promise<DataSourceCreateResult> {
     return this._post<DataSourceCreateResult>('/data/sources', params);
   }
 
@@ -36,7 +36,7 @@ export class DataResource extends BaseResource {
     );
   }
 
-  replaceData(
+  replaceRows(
     sourceId: string,
     params: { rows: Record<string, unknown>[] },
   ): Promise<DataWriteResult> {
@@ -46,7 +46,7 @@ export class DataResource extends BaseResource {
     );
   }
 
-  deleteSource(sourceId: string): Promise<DataSourceDeleteResult> {
+  del(sourceId: string): Promise<DataSourceDeleteResult> {
     return this._delete<DataSourceDeleteResult>(`/data/sources/${sourceId}`);
   }
 
@@ -54,7 +54,7 @@ export class DataResource extends BaseResource {
     return this._post<QueryResult>('/data/query', params);
   }
 
-  sourceData(
+  getSourceData(
     sourceId: string,
     params?: { page?: number; page_size?: number },
   ): Promise<DataPage> {
