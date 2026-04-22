@@ -3,14 +3,6 @@ import { QuerriEmbedComponent } from './querri-embed.component.js';
 import { SimpleChange } from '@angular/core';
 
 // Mock the core SDK
-const mockInstance = {
-  on: vi.fn().mockReturnThis(),
-  off: vi.fn().mockReturnThis(),
-  destroy: vi.fn(),
-  iframe: document.createElement('iframe'),
-  ready: false,
-};
-
 vi.mock('../core/querri-embed.js', () => ({
   QuerriEmbed: {
     create: vi.fn(() => ({
