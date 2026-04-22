@@ -12,7 +12,7 @@ export interface QuerriConfig {
   host?: string;
   /** Request timeout in milliseconds. @default 30000 */
   timeout?: number;
-  /** Max automatic retries on 429/5xx errors. @default 2 */
+  /** Max automatic retries on 429/5xx errors. @default 3 */
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
@@ -26,7 +26,7 @@ export interface SessionConfig {
   host?: string;
   /** Request timeout in milliseconds. @default 30000 */
   timeout?: number;
-  /** Max automatic retries on 429/5xx errors. @default 2 */
+  /** Max automatic retries on 429/5xx errors. @default 3 */
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
