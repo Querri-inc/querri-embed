@@ -2,6 +2,7 @@ import { HttpClient } from './http/base-client.js';
 import { ConfigError } from './errors.js';
 import type { QuerriConfig, GetSessionParams, GetSessionResult } from './types.js';
 import { getSession } from './get-session.js';
+import { UserQuerri } from './user-client.js';
 
 import { UsersResource } from './resources/users.js';
 import { EmbedResource } from './resources/embed.js';
@@ -19,6 +20,10 @@ import { UsageResource } from './resources/usage.js';
 
 export class Querri {
   private readonly _httpClient: HttpClient;
+  private readonly _host: string;
+  private readonly _timeout: number | undefined;
+  private readonly _maxRetries: number | undefined;
+  private readonly _fetchFn: typeof globalThis.fetch | undefined;
 
   private _users?: UsersResource;
   private _embed?: EmbedResource;
@@ -46,7 +51,12 @@ export class Querri {
     }
 
     const orgId = resolved.orgId ?? process.env.QUERRI_ORG_ID;
-    const host = resolved.host ?? process.env.QUERRI_HOST ?? 'https://app.querri.com';
+    const host = resolved.host ?? process.env.QUERRI_URL ?? 'https://app.querri.com';
+
+    this._host = host;
+    this._timeout = resolved.timeout;
+    this._maxRetries = resolved.maxRetries;
+    this._fetchFn = resolved.fetch;
 
     this._httpClient = new HttpClient({
       ...resolved,
@@ -114,5 +124,25 @@ export class Querri {
    */
   getSession(params: GetSessionParams): Promise<GetSessionResult> {
     return getSession(this, params);
+  }
+
+  /**
+   * Create a user-scoped client that calls the internal API with the user's
+   * embed session token. The internal API applies FGA filtering automatically.
+   *
+   * @example
+   * ```ts
+   * const session = await client.getSession({ user: 'ext_123' });
+   * const userClient = client.asUser(session);
+   * const projects = await userClient.projects.list(); // FGA-filtered
+   * ```
+   */
+  asUser(session: GetSessionResult): UserQuerri {
+    return new UserQuerri(session, {
+      host: this._host,
+      timeout: this._timeout,
+      maxRetries: this._maxRetries,
+      fetch: this._fetchFn,
+    });
   }
 }

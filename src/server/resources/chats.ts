@@ -1,10 +1,10 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import { ChatStream } from '../streaming/chat-stream.js';
 import type {
   Chat,
   ChatCreateParams,
   ChatStreamParams,
-  ChatDeleteResponse,
   ChatCancelResponse,
 } from '../types.js';
 
@@ -17,10 +17,11 @@ export class ChatsResource extends BaseResource {
     return this._get<Chat>(`/projects/${projectId}/chats/${chatId}`);
   }
 
-  list(projectId: string, limit?: number): Promise<Chat[]> {
-    return this._get<Chat[]>(`/projects/${projectId}/chats`, {
-      limit: limit ?? 25,
-    });
+  list(
+    projectId: string,
+    params?: { limit?: number; after?: string },
+  ): Promise<CursorPage<Chat>> {
+    return this._list<Chat>(`/projects/${projectId}/chats`, params);
   }
 
   async stream(
@@ -41,7 +42,7 @@ export class ChatsResource extends BaseResource {
     );
   }
 
-  del(projectId: string, chatId: string): Promise<void> {
-    return this._delete(`/projects/${projectId}/chats/${chatId}`);
+  del(projectId: string, chatId: string): Promise<ChatDeleteResponse> {
+    return this._delete<ChatDeleteResponse>(`/projects/${projectId}/chats/${chatId}`);
   }
 }

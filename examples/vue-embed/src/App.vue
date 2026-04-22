@@ -18,14 +18,6 @@ import { QuerriEmbed } from '@querri-inc/embed/vue';
 const serverUrl = import.meta.env.VITE_QUERRI_URL || 'https://app.querri.com';
 
 const auth = {
-  fetchSessionToken: async () => {
-    const res = await fetch('/api/querri-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'demo-user' }),
-    });
-    const data = await res.json();
-    return data.session_token;
-  },
+  sessionEndpoint: '/api/querri-session',
 };
 </script>

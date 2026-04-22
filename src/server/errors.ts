@@ -20,8 +20,8 @@
  */
 
 export class QuerriError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'QuerriError';
   }
 }
@@ -34,12 +34,9 @@ export class ConfigError extends QuerriError {
 }
 
 export class APIConnectionError extends QuerriError {
-  readonly cause: Error | undefined;
-
   constructor(message: string, cause?: Error) {
-    super(message);
+    super(message, cause ? { cause } : undefined);
     this.name = 'APIConnectionError';
-    this.cause = cause;
   }
 }
 
@@ -75,9 +72,18 @@ export class APIError extends QuerriError {
 
     if (body && typeof body === 'object') {
       const b = body as Record<string, unknown>;
-      this.type = typeof b.type === 'string' ? b.type : undefined;
-      this.code = typeof b.code === 'string' ? b.code : undefined;
-      this.docUrl = typeof b.doc_url === 'string' ? b.doc_url : undefined;
+      // Support both flat and Stripe-style nested error: { error: { type, code, message } }
+      const errObj =
+        b.error && typeof b.error === 'object'
+          ? (b.error as Record<string, unknown>)
+          : b;
+      this.type = typeof errObj.type === 'string' ? errObj.type : undefined;
+      this.code = typeof errObj.code === 'string' ? errObj.code : undefined;
+      this.docUrl =
+        typeof errObj.doc_url === 'string' ? errObj.doc_url : undefined;
+      if (!this.requestId && typeof errObj.request_id === 'string') {
+        this.requestId = errObj.request_id;
+      }
     }
   }
 

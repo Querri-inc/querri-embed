@@ -12,7 +12,21 @@ export interface QuerriConfig {
   host?: string;
   /** Request timeout in milliseconds. @default 30000 */
   timeout?: number;
-  /** Max automatic retries on 429/5xx errors. @default 2 */
+  /** Max automatic retries on 429/5xx errors. @default 3 */
+  maxRetries?: number;
+  /** Custom `fetch` implementation (e.g. for testing or proxies). */
+  fetch?: typeof globalThis.fetch;
+}
+
+/** Configuration for a session-scoped client created via `asUser()`. */
+export interface SessionConfig {
+  /** Embed session token from `getSession()`. */
+  sessionToken: string;
+  /** API host URL. @default `'https://app.querri.com'` */
+  host?: string;
+  /** Request timeout in milliseconds. @default 30000 */
+  timeout?: number;
+  /** Max automatic retries on 429/5xx errors. @default 3 */
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
@@ -69,6 +83,12 @@ export interface UserDeleteResponse {
   deleted: boolean;
 }
 
+export interface ExternalIdDeleteResponse {
+  external_id: string;
+  user_id: string;
+  deleted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Embed Sessions
 // ---------------------------------------------------------------------------
@@ -93,12 +113,28 @@ export interface EmbedSessionListItem {
 
 export interface EmbedSessionList {
   data: EmbedSessionListItem[];
-  count: number;
+  has_more: boolean;
+  next_cursor: string | null;
 }
 
 export interface EmbedSessionRevokeResponse {
   session_id: string;
   revoked: boolean;
+}
+
+export interface FilesDeleteResponse {
+  id: string;
+  deleted: boolean;
+}
+
+export interface SourcesDeleteResponse {
+  id: string;
+  deleted: boolean;
+}
+
+export interface KeysDeleteResponse {
+  id: string;
+  deleted: boolean;
 }
 
 export interface CreateSessionParams {
@@ -166,6 +202,13 @@ export interface PolicyRemoveUserResponse {
   policy_id: string;
   user_id: string;
   removed: boolean;
+}
+
+export interface PolicyReplaceResponse {
+  user_id: string;
+  policy_ids: string[];
+  added: string[];
+  removed: string[];
 }
 
 export interface ResolvedAccess {
@@ -371,6 +414,29 @@ export interface DataPage {
   columns: string[] | null;
 }
 
+export interface DataSourceCreateParams {
+  name: string;
+  rows: Record<string, unknown>[];
+}
+
+export interface DataSourceCreateResult {
+  id: string;
+  name: string;
+  columns: string[];
+  row_count: number;
+  updated_at: string | null;
+}
+
+export interface DataWriteResult {
+  source_id: string;
+  rows_affected: number;
+}
+
+export interface DataSourceDeleteResult {
+  id: string;
+  deleted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Files
 // ---------------------------------------------------------------------------
@@ -469,6 +535,35 @@ export interface ShareEntry {
   expires_at: string | null;
 }
 
+/** Allowed values for a share's permission level. */
+export type SharePermission = 'view' | 'edit';
+
+/** Shared parameters for shareProject / shareDashboard / shareSource. */
+export interface ShareParams {
+  user_id: string;
+  permission?: SharePermission;
+  expires_at?: string;
+}
+
+/** @deprecated Use {@link ShareParams} — kept for backward compatibility. */
+export type SourceShareParams = ShareParams;
+
+export interface OrgShareSourceParams {
+  enabled: boolean;
+  permission?: SharePermission;
+}
+
+/** Response returned after revoking a share (revokeProjectShare / revokeDashboardShare). */
+export interface ShareRevokeResponse {
+  deleted: boolean;
+}
+
+/** Parameters for {@link PoliciesResource.resolve}. */
+export interface ResolveAccessParams {
+  user_id: string;
+  source_id: string;
+}
+
 // ---------------------------------------------------------------------------
 // Audit
 // ---------------------------------------------------------------------------
@@ -491,8 +586,8 @@ export interface AuditListParams {
   action?: string;
   start_date?: string;
   end_date?: string;
-  page?: number;
-  page_size?: number;
+  limit?: number;
+  after?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -558,7 +653,11 @@ export interface GetSessionParams {
   user: string | GetSessionUserParams;
   /** Access policy: pass `policy_ids` for pre-created policies, or inline `sources` + `filters`. */
   access?: GetSessionPolicyAccess | GetSessionInlineAccess;
-  /** Allowed origin for the embed iframe (e.g. `'https://myapp.com'`). */
+  /**
+   * Allowed origin for the embed iframe (e.g. `'https://myapp.com'`).
+   * Automatically extracted from the request `Origin` header by framework
+   * handlers (`createSessionHandler`) when not explicitly set.
+   */
   origin?: string;
   /** Session TTL in seconds. @default 3600 */
   ttl?: number;

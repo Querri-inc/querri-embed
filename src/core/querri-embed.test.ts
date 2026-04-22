@@ -95,6 +95,7 @@ describe('Auth mode routing', () => {
       auth: { shareKey: 'sk-123', org: 'org-456' },
     });
     expect(instance.iframe!.src).toContain('/embed?share=sk-123&org=org-456');
+    expect(instance.iframe!.src).toContain('&startView=%2Fhome');
     instance.destroy();
   });
 
@@ -487,7 +488,7 @@ describe('Container setup', () => {
 describe('QuerriEmbed.version', () => {
   it('exposes a version string', () => {
     expect(typeof QuerriEmbed.version).toBe('string');
-    expect(QuerriEmbed.version).toBe('0.1.0');
+    expect(QuerriEmbed.version).toBe('0.0.0-test');
   });
 });
 
@@ -833,6 +834,192 @@ describe('Token fetch deduplication', () => {
   });
 });
 
+describe('Token fetch cycle circuit breaker', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = createContainer();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('emits token_fetch_exhausted after 3 auth-required re-fetch cycles', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('bad-token'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1: iframe ready triggers initial fetch
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(1);
+
+    // iframe rejects the token -> auth-required -> cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(2);
+
+    // iframe rejects again -> auth-required -> cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+
+    // iframe rejects again -> auth-required -> circuit breaker trips
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3); // NOT called a 4th time
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'token_fetch_exhausted',
+        message: expect.stringContaining('3 fetch cycles'),
+      })
+    );
+    instance.destroy();
+  });
+
+  it('resets cycle count after successful authentication', async () => {
+    let callCount = 0;
+    const fetchToken = vi.fn(() => {
+      callCount++;
+      return Promise.resolve('token-' + callCount);
+    });
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(1);
+
+    // iframe rejects -> cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(2);
+
+    // This time iframe accepts -> authenticated resets counter
+    sendMessage('authenticated');
+
+    // Later, session expires -> new cycle 1 (counter was reset)
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+
+    // iframe rejects -> new cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(4);
+
+    // iframe rejects -> new cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchToken).toHaveBeenCalledTimes(5);
+
+    // No exhausted error should have been emitted
+    expect(errorCb).not.toHaveBeenCalled();
+    instance.destroy();
+  });
+
+  it('trips after 3 cycles where each cycle exhausts all retries', async () => {
+    const fetchToken = vi.fn(() => Promise.reject(new Error('network error')));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Cycle 1: 3 retries with backoff
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);       // attempt 1
+    await vi.advanceTimersByTimeAsync(1000);     // backoff -> attempt 2
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);     // backoff -> attempt 3
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_failed' })
+    );
+    errorCb.mockClear();
+
+    // auth-required triggers cycle 2
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(6);
+    errorCb.mockClear();
+
+    // auth-required triggers cycle 3
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(9);
+    errorCb.mockClear();
+
+    // auth-required -> cycle 4 attempt -> circuit breaker trips
+    sendMessage('auth-required');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchToken).toHaveBeenCalledTimes(9); // no more calls
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_exhausted' })
+    );
+    instance.destroy();
+  });
+
+  it('session-expired also respects the circuit breaker', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('bad-token'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0); // cycle 1
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 2
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 3
+
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0); // cycle 4 -> blocked
+
+    expect(fetchToken).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'token_fetch_exhausted' })
+    );
+    instance.destroy();
+  });
+});
+
 describe('SSR guard', () => {
   it('throws descriptive error when document is undefined', () => {
     const originalDocument = globalThis.document;
@@ -1128,6 +1315,156 @@ describe('sessionEndpoint auth mode', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
 
     vi.unstubAllGlobals();
+    instance.destroy();
+  });
+});
+
+describe('sendPrompt', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = createContainer();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('emits error when embed is not ready', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    // Not yet authenticated, so ready is false
+    instance.sendPrompt('hello');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('not ready') })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for empty string', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('non-empty') })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for whitespace-only string', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('   ');
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed' })
+    );
+    instance.destroy();
+  });
+
+  it('emits error for non-string input', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt(42 as any);
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed' })
+    );
+    instance.destroy();
+  });
+
+  it('sends postMessage to iframe when ready', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello world');
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      { type: 'send-prompt', text: 'hello world', autoSubmit: false }
+    );
+    instance.destroy();
+  });
+
+  it('sends autoSubmit flag when specified', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello', { autoSubmit: true });
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      { type: 'send-prompt', text: 'hello', autoSubmit: true }
+    );
+    instance.destroy();
+  });
+
+  it('defaults autoSubmit to false when options omitted', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+    instance.sendPrompt('hello');
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ autoSubmit: false })
+    );
+    instance.destroy();
+  });
+
+  it('forwards iframe error response through error event', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    sendMessage('authenticated');
+    instance.sendPrompt('hello');
+
+    // Simulate iframe responding with an error
+    sendMessage('error', { code: 'send_prompt_failed', message: 'No prompt input available on the current view' });
+
+    expect(errorCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'send_prompt_failed', message: 'No prompt input available on the current view' })
+    );
     instance.destroy();
   });
 });

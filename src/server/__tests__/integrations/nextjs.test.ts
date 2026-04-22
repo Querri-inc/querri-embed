@@ -22,8 +22,6 @@ describe('createSessionHandler (Next.js)', () => {
     const handler = createSessionHandler({ apiKey: 'qk_test' });
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: 'ext_user' }),
     });
 
     const response = await handler(request);
@@ -34,20 +32,17 @@ describe('createSessionHandler (Next.js)', () => {
     expect(body).toEqual(session);
   });
 
-  it('reads request body as GetSessionParams when no resolveParams', async () => {
+  it('uses anonymous user when no resolveParams', async () => {
     mockGetSession.mockResolvedValue({ session_token: 'tok', expires_in: 3600, user_id: 'u_1' });
 
     const handler = createSessionHandler({ apiKey: 'qk_test' });
-    const sessionParams = { user: 'ext_user', ttl: 1800 };
     const request = new Request('http://localhost/api/querri-session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sessionParams),
     });
 
     await handler(request);
 
-    expect(mockGetSession).toHaveBeenCalledWith(sessionParams);
+    expect(mockGetSession).toHaveBeenCalledWith({ user: 'embed_anonymous' });
   });
 
   it('calls resolveParams with request when provided', async () => {

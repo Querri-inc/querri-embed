@@ -55,12 +55,15 @@ describe('PoliciesResource', () => {
   });
 
   it('list() sends GET /access/policies', async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([POLICY_STUB]));
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ data: [POLICY_STUB], has_more: false, next_cursor: null }),
+    );
     const client = makeClient();
 
-    const policies = await client.policies.list();
+    const page = await client.policies.list();
 
-    expect(policies).toHaveLength(1);
+    expect(page.data).toHaveLength(1);
+    expect(page.hasMore).toBe(false);
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain('/api/v1/access/policies');
     expect(opts.method).toBe('GET');
@@ -105,6 +108,23 @@ describe('PoliciesResource', () => {
     expect(JSON.parse(opts.body)).toEqual({ user_ids: ['u1', 'u2'] });
   });
 
+  it('replaceUserPolicies sends PUT /access/users/{id}/policies', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ user_id: 'u1', policy_ids: ['pol_1'], added: ['pol_1'], removed: ['pol_2'] }),
+    );
+    const client = makeClient();
+
+    const result = await client.policies.replaceUserPolicies('u1', { policy_ids: ['pol_1'] });
+
+    expect(result.policy_ids).toEqual(['pol_1']);
+    expect(result.added).toEqual(['pol_1']);
+    expect(result.removed).toEqual(['pol_2']);
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain('/api/v1/access/users/u1/policies');
+    expect(opts.method).toBe('PUT');
+    expect(JSON.parse(opts.body)).toEqual({ policy_ids: ['pol_1'] });
+  });
+
   it('removeUser sends DELETE /access/policies/{id}/users/{userId}', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ policy_id: 'pol_1', user_id: 'u1', removed: true }),
@@ -125,7 +145,7 @@ describe('PoliciesResource', () => {
     );
     const client = makeClient();
 
-    const result = await client.policies.resolve('u1', 's1');
+    const result = await client.policies.resolve({ user_id: 'u1', source_id: 's1' });
 
     expect(result.where_clause).toBe('1=1');
     const [url, opts] = mockFetch.mock.calls[0];
@@ -134,9 +154,9 @@ describe('PoliciesResource', () => {
     expect(JSON.parse(opts.body)).toEqual({ user_id: 'u1', source_id: 's1' });
   });
 
-  it('columns sends GET /access/columns', async () => {
+  it('columns sends GET /access/columns and unwraps {data} envelope', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse([{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }]),
+      jsonResponse({ data: [{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }] }),
     );
     const client = makeClient();
 
@@ -147,5 +167,17 @@ describe('PoliciesResource', () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain('/api/v1/access/columns');
     expect(opts.method).toBe('GET');
+  });
+
+  it('columns handles raw array response for backwards compatibility', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ source_id: 's1', source_name: 'Sales', columns: [{ name: 'region', type: 'text' }] }]),
+    );
+    const client = makeClient();
+
+    const result = await client.policies.columns('s1');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].source_name).toBe('Sales');
   });
 });

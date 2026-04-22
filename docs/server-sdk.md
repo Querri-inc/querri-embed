@@ -1,18 +1,54 @@
 # Querri Server SDK Reference
 
-The Querri server SDK is included in the `@querri-inc/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more.
+The Querri server SDK is included in the `@querri-inc/embed` package. It provides a fully typed Node.js client for the Querri API, covering user management, embed session creation, access policies, projects, dashboards, chat streaming, and more. For most apps, a one-liner `createSessionHandler()` is all you need to create embed sessions.
 
 ```bash
 npm install @querri-inc/embed
 ```
 
-```typescript
-import { Querri } from '@querri-inc/embed/server';
-```
-
 ## Quick Start
 
-### Create a session token (the #1 use case)
+### `createSessionHandler()`
+
+Each framework integration exports a `createSessionHandler` that wraps `client.getSession()` in a framework-native route handler. Import from `@querri-inc/embed/server/<framework>`:
+
+| Framework | Import | Server File | Code |
+|-----------|--------|------------|------|
+| Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
+| SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
+| React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
+| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createSessionHandler()` |
+| Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
+
+Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
+
+**Adding custom auth logic**
+
+Pass a `resolveParams` callback to extract user identity from your auth system instead of reading the request body directly:
+
+```typescript
+// Next.js -- app/api/querri-session/route.ts
+import { createSessionHandler } from '@querri-inc/embed/server/nextjs';
+import { getServerSession } from 'next-auth';
+
+export const POST = createSessionHandler({
+  resolveParams: async (req) => {
+    const session = await getServerSession();
+    return {
+      user: { external_id: session!.user!.id, email: session!.user!.email! },
+      access: { sources: ['src_sales'], filters: { tenant_id: session!.user!.orgId } },
+    };
+  },
+});
+```
+
+If you omit `resolveParams`, the handler creates an anonymous session. See the [Framework Integration Guides](#framework-integration-guides) for per-framework `resolveParams` signatures and full examples.
+
+> **Security:** Always derive user identity and access from your server-side auth system. Never read `user` or `access` from the request body — a malicious client can impersonate any user or escalate access.
+
+### Manual setup with the Querri client
+
+For custom servers, non-framework environments, or when you need the full client API beyond session creation:
 
 ```typescript
 import { Querri } from '@querri-inc/embed/server';
@@ -27,20 +63,6 @@ const { session_token } = await client.getSession({
   },
 });
 ```
-
-### Framework one-liners
-
-Every framework integration exports `createSessionHandler` for a consistent API:
-
-| Framework | Import | Server File | Code |
-|-----------|--------|------------|------|
-| Next.js | `@querri-inc/embed/server/nextjs` | `app/api/querri-session/route.ts` | `export const POST = createSessionHandler()` |
-| SvelteKit | `@querri-inc/embed/server/sveltekit` | `src/routes/api/querri-session/+server.ts` | `export const POST = createSessionHandler()` |
-| React Router v7 | `@querri-inc/embed/server/react-router` | `app/routes/api.querri-session.ts` | `export const action = createSessionHandler()` |
-| Nuxt | `@querri-inc/embed/server/nuxt` | `server/api/querri-session.post.ts` | `export default createNuxtSessionHandler()` |
-| Express | `@querri-inc/embed/server/express` | `server.ts` | `app.post('/path', createSessionHandler())` |
-
-Set `QUERRI_API_KEY` and `QUERRI_ORG_ID` environment variables. All handlers read from env automatically.
 
 ### Understanding `filters`
 
@@ -78,12 +100,14 @@ The SDK auto-creates and caches a named access policy from this specification.
   - [Audit](#audit)
   - [Usage](#usage)
 - [getSession() Deep Dive](#getsession-deep-dive)
+- [User-Scoped Client (asUser)](#user-scoped-client-asuser)
 - [Pagination](#pagination)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [Framework Integration Guides](#framework-integration-guides)
   - [SvelteKit](#sveltekit)
   - [Next.js](#nextjs)
+  - [React Router](#react-router)
   - [Nuxt](#nuxt)
   - [Angular / Express](#angular--express)
   - [Vue + Vite (Standalone)](#vue--vite-standalone)
@@ -128,7 +152,7 @@ The client reads these environment variables as fallbacks when values are not pr
 |---|---|---|
 | `QUERRI_API_KEY` | `apiKey` | API key for authentication |
 | `QUERRI_ORG_ID` | `orgId` | Organization / tenant ID |
-| `QUERRI_HOST` | `host` | API host URL |
+| `QUERRI_URL` | `host` | API host URL |
 
 Resolution order: explicit config value > environment variable > default value.
 
@@ -230,6 +254,18 @@ const user = await client.users.getOrCreate('usr_alice', {
 });
 ```
 
+#### `client.users.removeExternalId(externalId)`
+
+Remove an external ID mapping without deleting the user.
+
+```typescript
+removeExternalId(externalId: string): Promise<ExternalIdDeleteResponse>
+```
+
+```typescript
+const result = await client.users.removeExternalId('usr_alice');
+```
+
 ---
 
 ### Embed
@@ -265,30 +301,43 @@ refreshSession(sessionToken: string): Promise<EmbedSession>
 const refreshed = await client.embed.refreshSession('sess_token_...');
 ```
 
-#### `client.embed.listSessions(limit?)`
+#### `client.embed.listSessions(params?)`
 
 List active embed sessions.
 
 ```typescript
-listSessions(limit?: number): Promise<EmbedSessionList>
+listSessions(params?: { limit?: number; after?: string }): Promise<EmbedSessionList>
 ```
 
 ```typescript
-const sessions = await client.embed.listSessions(50);
-// { data: [...], count: 12 }
+const sessions = await client.embed.listSessions({ limit: 50 });
+// { data: [...], has_more: false, next_cursor: null }
 ```
 
-#### `client.embed.revokeSession(sessionId)`
+#### `client.embed.revokeSession(sessionToken)`
 
-Revoke (invalidate) an embed session.
+Revoke (invalidate) an embed session. Pass the session's opaque token (`EmbedSession.session_token` / `EmbedSessionListItem.session_token`), not a database id.
 
 ```typescript
-revokeSession(sessionId: string): Promise<EmbedSessionRevokeResponse>
+revokeSession(sessionToken: string): Promise<EmbedSessionRevokeResponse>
 ```
 
 ```typescript
-const result = await client.embed.revokeSession('sess_abc');
+const result = await client.embed.revokeSession(session.session_token);
 // { session_id: 'sess_abc', revoked: true }
+```
+
+#### `client.embed.revokeUserSessions(userId)`
+
+Revoke all embed sessions for a given user. Lists active sessions, filters by user ID, and revokes each one.
+
+```typescript
+revokeUserSessions(userId: string): Promise<number>
+```
+
+```typescript
+const count = await client.embed.revokeUserSessions('user_abc123');
+// 3 (number of sessions revoked)
 ```
 
 ---
@@ -327,15 +376,20 @@ const policy = await client.policies.retrieve('pol_abc');
 
 #### `client.policies.list(params?)`
 
-List all policies. Optionally filter by name.
+List policies with cursor-based pagination. Optionally filter by name.
 
 ```typescript
-list(params?: { name?: string }): Promise<Policy[]>
+list(params?: { name?: string; limit?: number; after?: string }): Promise<CursorPage<Policy>>
 ```
 
 ```typescript
-const policies = await client.policies.list();
+const page = await client.policies.list();
 const specific = await client.policies.list({ name: 'acme-corp-policy' });
+
+// Async iteration over all pages
+for await (const policy of client.policies.list()) {
+  console.log(policy.name);
+}
 ```
 
 #### `client.policies.update(policyId, params)`
@@ -388,16 +442,35 @@ removeUser(policyId: string, userId: string): Promise<PolicyRemoveUserResponse>
 await client.policies.removeUser('pol_abc', 'user_1');
 ```
 
-#### `client.policies.resolve(userId, sourceId)`
+#### `client.policies.replaceUserPolicies(userId, params)`
+
+Atomically replace ALL policy assignments for a user. Removes every existing assignment, then assigns exactly the listed policies. Pass an empty array to remove all policies.
+
+This is the correct method for mid-session policy switching — it prevents the accumulation bug where `assignUsers()` only adds.
+
+```typescript
+replaceUserPolicies(userId: string, params: { policy_ids: string[] }): Promise<PolicyReplaceResponse>
+```
+
+```typescript
+// Replace all policies for a user with exactly these two
+await client.policies.replaceUserPolicies('user_1', { policy_ids: ['pol_abc', 'pol_def'] });
+// Returns: { user_id, policy_ids, added, removed }
+
+// Remove all policy assignments (grants full access)
+await client.policies.replaceUserPolicies('user_1', { policy_ids: [] });
+```
+
+#### `client.policies.resolve(params)`
 
 Resolve the effective access for a user on a specific data source, taking all assigned policies into account.
 
 ```typescript
-resolve(userId: string, sourceId: string): Promise<ResolvedAccess>
+resolve(params: { user_id: string; source_id: string }): Promise<ResolvedAccess>
 ```
 
 ```typescript
-const access = await client.policies.resolve('user_1', 'src_1');
+const access = await client.policies.resolve({ user_id: 'user_1', source_id: 'src_1' });
 // { user_id, source_id, resolved_filters, where_clause }
 ```
 
@@ -450,16 +523,20 @@ const project = await client.projects.retrieve('proj_abc');
 
 #### `client.projects.list(params?)`
 
-List projects with cursor-based pagination.
+List projects with cursor-based pagination. Pass `user_id` to return only projects the user has FGA access to.
 
 ```typescript
-list(params?: { limit?: number; after?: string }): Promise<CursorPage<Project>>
+list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Project>>
 ```
 
 ```typescript
+// All projects in the org
 for await (const project of client.projects.list()) {
   console.log(project.name);
 }
+
+// Only projects a specific user can access (FGA-filtered)
+const userProjects = await client.projects.list({ user_id: 'ext_alice' });
 ```
 
 #### `client.projects.update(projectId, params)`
@@ -586,16 +663,21 @@ retrieve(projectId: string, chatId: string): Promise<Chat>
 const chat = await client.chats.retrieve('proj_abc', 'chat_xyz');
 ```
 
-#### `client.chats.list(projectId, limit?)`
+#### `client.chats.list(projectId, params?)`
 
-List chats within a project.
+List chats within a project with cursor-based pagination.
 
 ```typescript
-list(projectId: string, limit?: number): Promise<Chat[]>
+list(projectId: string, params?: { limit?: number; after?: string }): Promise<CursorPage<Chat>>
 ```
 
 ```typescript
-const chats = await client.chats.list('proj_abc', 10);
+const page = await client.chats.list('proj_abc', { limit: 10 });
+
+// Async iteration
+for await (const chat of client.chats.list('proj_abc')) {
+  console.log(chat.name);
+}
 ```
 
 #### `client.chats.stream(projectId, chatId, params)`
@@ -680,14 +762,20 @@ const dashboard = await client.dashboards.retrieve('dash_abc');
 
 #### `client.dashboards.list(params?)`
 
-List all dashboards.
+List dashboards with cursor-based pagination. Pass `user_id` to return only dashboards the user has FGA access to.
 
 ```typescript
-list(params?: { limit?: number; after?: string }): Promise<Dashboard[]>
+list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Dashboard>>
 ```
 
 ```typescript
-const dashboards = await client.dashboards.list();
+// All dashboards in the org
+for await (const dashboard of client.dashboards.list()) {
+  console.log(dashboard.name);
+}
+
+// Only dashboards a specific user can access (FGA-filtered)
+const userDashboards = await client.dashboards.list({ user_id: 'ext_alice' });
 ```
 
 #### `client.dashboards.update(dashboardId, params)`
@@ -743,19 +831,22 @@ const status = await client.dashboards.refreshStatus('dash_abc');
 
 ### Data
 
-Query data sources directly.
+Query and manage data sources.
 
-#### `client.data.sources()`
+#### `client.data.sources(params?)`
 
-List all available data sources.
+List all available data sources with cursor-based pagination.
 
 ```typescript
-sources(): Promise<DataSource[]>
+sources(params?: { limit?: number; after?: string }): Promise<CursorPage<DataSource>>
 ```
 
 ```typescript
-const sources = await client.data.sources();
-// [{ id, name, columns, row_count, updated_at }]
+const page = await client.data.sources();
+
+for await (const src of client.data.sources()) {
+  console.log(src.name);
+}
 ```
 
 #### `client.data.source(sourceId)`
@@ -803,6 +894,66 @@ sourceData(
 const page = await client.data.sourceData('src_1', { page: 1, page_size: 50 });
 ```
 
+#### `client.data.createSource(params)`
+
+Create a new data source with inline JSON rows.
+
+```typescript
+createSource(params: DataSourceCreateParams): Promise<DataSourceCreateResult>
+```
+
+```typescript
+const source = await client.data.createSource({
+  name: 'Sales Data',
+  rows: [
+    { region: 'US', revenue: 1000 },
+    { region: 'EU', revenue: 800 },
+  ],
+});
+// { id: 'src_new', name: 'Sales Data', columns: ['region', 'revenue'], row_count: 2, updated_at: '...' }
+```
+
+#### `client.data.appendRows(sourceId, params)`
+
+Append rows to an existing data source. New columns are union-merged automatically.
+
+```typescript
+appendRows(sourceId: string, params: { rows: Record<string, unknown>[] }): Promise<DataWriteResult>
+```
+
+```typescript
+await client.data.appendRows('src_1', {
+  rows: [{ region: 'APAC', revenue: 600 }],
+});
+```
+
+#### `client.data.replaceData(sourceId, params)`
+
+Replace all data in a source with new rows.
+
+```typescript
+replaceData(sourceId: string, params: { rows: Record<string, unknown>[] }): Promise<DataWriteResult>
+```
+
+```typescript
+await client.data.replaceData('src_1', {
+  rows: [{ region: 'US', revenue: 1200 }],
+});
+```
+
+#### `client.data.deleteSource(sourceId)`
+
+Delete a data source and all its associated data.
+
+```typescript
+deleteSource(sourceId: string): Promise<DataSourceDeleteResult>
+```
+
+```typescript
+await client.data.deleteSource('src_1');
+// { id: 'src_1', deleted: true }
+```
+
 ---
 
 ### Files
@@ -836,16 +987,16 @@ retrieve(fileId: string): Promise<FileObject>
 const file = await client.files.retrieve('file_abc');
 ```
 
-#### `client.files.list()`
+#### `client.files.list(params?)`
 
-List all files.
+List all files with cursor-based pagination.
 
 ```typescript
-list(): Promise<FileObject[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<FileObject>>
 ```
 
 ```typescript
-const files = await client.files.list();
+const page = await client.files.list();
 ```
 
 #### `client.files.del(fileId)`
@@ -866,16 +1017,16 @@ await client.files.del('file_abc');
 
 Manage data source connections (connectors).
 
-#### `client.sources.listConnectors()`
+#### `client.sources.listConnectors(params?)`
 
-List available connector types (e.g., PostgreSQL, BigQuery, CSV).
+List available connector types (e.g., PostgreSQL, BigQuery, CSV) with cursor-based pagination.
 
 ```typescript
-listConnectors(): Promise<Record<string, unknown>[]>
+listConnectors(params?: { limit?: number; after?: string }): Promise<CursorPage<Connector>>
 ```
 
 ```typescript
-const connectors = await client.sources.listConnectors();
+const page = await client.sources.listConnectors();
 ```
 
 #### `client.sources.create(params)`
@@ -894,16 +1045,16 @@ const source = await client.sources.create({
 });
 ```
 
-#### `client.sources.list()`
+#### `client.sources.list(params?)`
 
-List all configured sources.
+List all configured sources with cursor-based pagination.
 
 ```typescript
-list(): Promise<Source[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<Source>>
 ```
 
 ```typescript
-const sources = await client.sources.list();
+const page = await client.sources.list();
 ```
 
 #### `client.sources.update(sourceId, params)`
@@ -977,28 +1128,30 @@ retrieve(keyId: string): Promise<ApiKey>
 const key = await client.keys.retrieve('key_abc');
 ```
 
-#### `client.keys.list()`
+#### `client.keys.list(params?)`
 
-List all API keys.
+List all API keys with cursor-based pagination.
 
 ```typescript
-list(): Promise<ApiKey[]>
+list(params?: { limit?: number; after?: string }): Promise<CursorPage<ApiKey>>
 ```
 
 ```typescript
-const keys = await client.keys.list();
+const page = await client.keys.list();
 ```
 
-#### `client.keys.del(keyId)`
+#### `client.keys.del(keyId)` / `client.keys.revoke(keyId)`
 
-Revoke and delete an API key.
+Revoke and delete an API key. `revoke()` is an alias for `del()`.
 
 ```typescript
-del(keyId: string): Promise<Record<string, unknown>>
+del(keyId: string): Promise<KeysDeleteResponse>
+revoke(keyId: string): Promise<KeysDeleteResponse>
+// KeysDeleteResponse = { id: string; deleted: boolean }
 ```
 
 ```typescript
-await client.keys.del('key_abc');
+await client.keys.revoke('key_abc');
 ```
 
 ---
@@ -1007,16 +1160,17 @@ await client.keys.del('key_abc');
 
 Share projects and dashboards with users.
 
-#### `client.sharing.shareProject(projectId, userId, permission?)`
+#### `client.sharing.shareProject(projectId, params)`
 
 Share a project with a user. Default permission is `'view'`.
 
 ```typescript
-shareProject(projectId: string, userId: string, permission?: string): Promise<ShareEntry>
+shareProject(projectId: string, params: ShareParams): Promise<ShareEntry>
+// ShareParams = { user_id: string; permission?: 'view' | 'edit'; expires_at?: string }
 ```
 
 ```typescript
-await client.sharing.shareProject('proj_abc', 'user_1', 'edit');
+await client.sharing.shareProject('proj_abc', { user_id: 'user_1', permission: 'edit' });
 ```
 
 #### `client.sharing.revokeProjectShare(projectId, userId)`
@@ -1024,7 +1178,8 @@ await client.sharing.shareProject('proj_abc', 'user_1', 'edit');
 Revoke a user's access to a project.
 
 ```typescript
-revokeProjectShare(projectId: string, userId: string): Promise<Record<string, unknown>>
+revokeProjectShare(projectId: string, userId: string): Promise<ShareRevokeResponse>
+// ShareRevokeResponse = { deleted: boolean }
 ```
 
 ```typescript
@@ -1043,16 +1198,17 @@ listProjectShares(projectId: string): Promise<ShareEntry[]>
 const shares = await client.sharing.listProjectShares('proj_abc');
 ```
 
-#### `client.sharing.shareDashboard(dashboardId, userId, permission?)`
+#### `client.sharing.shareDashboard(dashboardId, params)`
 
 Share a dashboard with a user. Default permission is `'view'`.
 
 ```typescript
-shareDashboard(dashboardId: string, userId: string, permission?: string): Promise<ShareEntry>
+shareDashboard(dashboardId: string, params: ShareParams): Promise<ShareEntry>
+// ShareParams = { user_id: string; permission?: 'view' | 'edit'; expires_at?: string }
 ```
 
 ```typescript
-await client.sharing.shareDashboard('dash_abc', 'user_1');
+await client.sharing.shareDashboard('dash_abc', { user_id: 'user_1' });
 ```
 
 #### `client.sharing.revokeDashboardShare(dashboardId, userId)`
@@ -1060,7 +1216,8 @@ await client.sharing.shareDashboard('dash_abc', 'user_1');
 Revoke a user's access to a dashboard.
 
 ```typescript
-revokeDashboardShare(dashboardId: string, userId: string): Promise<Record<string, unknown>>
+revokeDashboardShare(dashboardId: string, userId: string): Promise<ShareRevokeResponse>
+// ShareRevokeResponse = { deleted: boolean }
 ```
 
 ```typescript
@@ -1079,6 +1236,30 @@ listDashboardShares(dashboardId: string): Promise<ShareEntry[]>
 const shares = await client.sharing.listDashboardShares('dash_abc');
 ```
 
+#### `client.sharing.shareSource(sourceId, params)`
+
+Share a data source with a user. Default permission is `'view'`.
+
+```typescript
+shareSource(sourceId: string, params: SourceShareParams): Promise<ShareEntry>
+```
+
+```typescript
+await client.sharing.shareSource('src_1', { user_id: 'user_1', permission: 'edit' });
+```
+
+#### `client.sharing.orgShareSource(sourceId, params)`
+
+Enable or disable org-wide sharing for a data source.
+
+```typescript
+orgShareSource(sourceId: string, params: OrgShareSourceParams): Promise<Record<string, unknown>>
+```
+
+```typescript
+await client.sharing.orgShareSource('src_1', { enabled: true, permission: 'view' });
+```
+
 ---
 
 ### Audit
@@ -1087,22 +1268,27 @@ Query the audit log.
 
 #### `client.audit.list(params?)`
 
-List audit events with optional filters.
+List audit events with optional filters and cursor-based pagination.
 
 ```typescript
-list(params?: AuditListParams): Promise<AuditEvent[]>
+list(params?: AuditListParams): Promise<CursorPage<AuditEvent>>
 ```
 
 ```typescript
-const events = await client.audit.list({
+const page = await client.audit.list({
   action: 'project.run',
   start_date: '2025-01-01',
   end_date: '2025-01-31',
-  page_size: 50,
+  limit: 50,
 });
+
+// Async iteration
+for await (const event of client.audit.list()) {
+  console.log(event.action);
+}
 ```
 
-`AuditListParams` fields: `actor_id`, `target_id`, `action`, `start_date`, `end_date`, `page`, `page_size`.
+`AuditListParams` fields: `actor_id`, `target_id`, `action`, `start_date`, `end_date`, `limit`, `after`.
 
 ---
 
@@ -1145,9 +1331,11 @@ const usage = await client.usage.userUsage('user_abc123', 'current_month');
 
 ```
 1. User Resolution      -->  users.getOrCreate()
-2. Access Policy Setup   -->  policies.create() + policies.assignUsers()
+2. Access Policy Setup   -->  policies.create() + policies.replaceUserPolicies()
 3. Session Creation      -->  embed.createSession()
 ```
+
+> **Note:** Step 2 uses `replaceUserPolicies()` (not `assignUsers()`) to atomically replace all policy assignments. This prevents policy accumulation when the same user is given different access filters across sessions.
 
 ### Basic Usage
 
@@ -1267,6 +1455,80 @@ On subsequent calls with the same sources and filters, the SDK finds the existin
 |---|---|---|---|
 | `ttl` | `number` | `3600` | Session lifetime in seconds |
 | `origin` | `string` | `undefined` | Allowed origin for the embed iframe. Used for CORS validation. |
+
+---
+
+## User-Scoped Client (asUser)
+
+> **Tip:** For simple filtered lists, you can pass `user_id` directly to `projects.list()` or `dashboards.list()` without creating a user-scoped client:
+> ```typescript
+> const projects = await client.projects.list({ user_id: 'ext_alice' });
+> ```
+> Use `asUser()` when you need a full user-scoped client for multiple operations.
+
+After creating a session with `getSession()`, you can create a **user-scoped client** that calls the internal API using the user's embed session token. The internal API applies Fine-Grained Authorization (FGA) filtering automatically, so resource lists only return items the user has access to.
+
+### Basic Usage
+
+```typescript
+import { Querri } from '@querri-inc/embed/server';
+
+const client = new Querri();
+
+// Step 1: Create an embed session
+const session = await client.getSession({
+  user: { external_id: 'usr_alice', email: 'alice@example.com' },
+  access: { sources: ['src_sales'], filters: { tenant_id: 'acme' } },
+});
+
+// Step 2: Create a user-scoped client
+const userClient = client.asUser(session);
+
+// Step 3: Call resources — results are FGA-filtered
+const projects = await userClient.projects.list();
+// Only returns projects the user has been granted access to via sharing
+```
+
+### How It Works
+
+| | `client` (Querri) | `userClient` (UserQuerri) |
+|---|---|---|
+| **Auth** | API key (`Authorization: Bearer qk_…`) | Session token (`X-Embed-Session: es_…`) |
+| **Base URL** | `/api/v1` (public API) | `/api` (internal API) |
+| **Scope** | Org-wide (all resources) | User-scoped (FGA-filtered) |
+| **Resources** | All 13 resources | 5 resources: projects, dashboards, sources, data, chats |
+
+### `client.asUser(session)`
+
+| Parameter | Type | Description |
+|---|---|---|
+| `session` | `GetSessionResult` | The session object returned by `getSession()` |
+
+**Returns:** `UserQuerri` — a user-scoped client with 5 resource accessors.
+
+### UserQuerri Resources
+
+The `UserQuerri` client exposes the same resource classes as the main client, but only the subset that supports user-scoped access:
+
+```typescript
+userClient.projects     // ProjectsResource — list, retrieve, etc.
+userClient.dashboards   // DashboardsResource — list, retrieve, etc.
+userClient.sources      // SourcesResource — list, retrieve, etc.
+userClient.data         // DataResource — query, sources, etc.
+userClient.chats        // ChatsResource — create, stream, etc.
+```
+
+### Granting Access
+
+For a user to see resources via `userClient`, they must be granted access. Use `sharing.shareProject()` on the main client:
+
+```typescript
+// Grant user access to a specific project
+await client.sharing.shareProject(projectId, session.user_id);
+
+// Now the user's client will include this project
+const projects = await userClient.projects.list();
+```
 
 ---
 
@@ -1436,6 +1698,7 @@ All `APIError` subclasses expose:
 | `message` | `string` | Human-readable error message |
 | `type` | `string \| undefined` | Error type from the API |
 | `code` | `string \| undefined` | Error code from the API |
+| `docUrl` | `string \| undefined` | Link to relevant documentation |
 | `requestId` | `string \| undefined` | Request ID for support |
 | `body` | `unknown` | Raw response body |
 | `headers` | `Headers` | Response headers |
@@ -1502,7 +1765,7 @@ The maximum number of retries defaults to 3 and can be configured via `maxRetrie
 
 ## Framework Integration Guides
 
-Each integration provides a `createSessionHandler` (or equivalent) that wraps `client.getSession()` in a framework-native route handler, plus a `createQuerriClient` factory for direct SDK access.
+Each integration provides a `createSessionHandler` that wraps `client.getSession()` in a framework-native route handler, plus a `createQuerriClient` factory for direct SDK access.
 
 ### SvelteKit
 
@@ -1659,9 +1922,9 @@ React Router v7 (the Remix successor) supports framework-native "resource routes
 #### Server Route: `app/routes/api.querri-session.ts`
 
 ```typescript
-import { createSessionAction } from '@querri-inc/embed/server/react-router';
+import { createSessionHandler } from '@querri-inc/embed/server/react-router';
 
-export const action = createSessionAction({
+export const action = createSessionHandler({
   resolveParams: async ({ request, context }) => {
     // `context` comes from your server adapter's getLoadContext()
     const user = (context as any).user;
@@ -1678,7 +1941,7 @@ export const action = createSessionAction({
 
 If you omit `resolveParams`, the handler reads the request body as `GetSessionParams` directly.
 
-> **Tip:** `createSessionAction` is the framework-idiomatic name for React Router. The alias `createSessionHandler` also works for consistency with other framework integrations.
+> **Tip:** The legacy alias `createSessionAction` also works but `createSessionHandler` is the standard name across all framework integrations.
 
 #### Client Component: `app/routes/_index.tsx`
 
@@ -1713,7 +1976,7 @@ export default function DashboardPage() {
 
 1. The React component's `fetchSessionToken` is called when the embed mounts.
 2. The POST request hits your resource route's `action` function.
-3. `createSessionAction` resolves the authenticated user, creates/reuses access policies, and returns a session token.
+3. `createSessionHandler` resolves the authenticated user, creates/reuses access policies, and returns a session token.
 4. The embed uses the token to authenticate the iframe connection.
 
 #### Direct Client Access
@@ -1732,18 +1995,18 @@ export const querri = createQuerriClient();
 
 #### Server Route: `server/api/querri-session.post.ts`
 
-The simplest setup is a one-liner using `createNuxtSessionHandler`:
+The simplest setup is a one-liner using `createSessionHandler`:
 
 ```typescript
 // server/api/querri-session.post.ts
-import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
-export default createNuxtSessionHandler();
+import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+export default createSessionHandler();
 ```
 
 With custom param resolution:
 
 ```typescript
-export default createNuxtSessionHandler({
+export default createSessionHandler({
   resolveParams: async ({ body, headers }) => ({
     user: { external_id: body.userId, email: body.email },
   }),
@@ -1812,7 +2075,7 @@ function onError(err) { console.error(err); }
 
 1. The Vue component calls `fetchSessionToken()` at mount time.
 2. Nuxt's `$fetch` sends a POST to `/api/querri-session`.
-3. `createNuxtSessionHandler` processes the body, resolves access, and returns a session token.
+3. `createSessionHandler` processes the body, resolves access, and returns a session token.
 4. The token is passed to the embed iframe for authentication.
 
 #### Direct Client Access
@@ -1858,7 +2121,7 @@ app.post('/api/querri-session', createSessionHandler({
 > **Note:** For Angular SSR projects, you can also import from `@querri-inc/embed/server/angular` (same module):
 >
 > ```typescript
-> import { createQuerriMiddleware } from '@querri-inc/embed/server/angular';
+> import { createSessionHandler } from '@querri-inc/embed/server/angular';
 > ```
 
 #### Client Component: `src/app/dashboard/dashboard.component.ts`
@@ -1909,7 +2172,7 @@ export class DashboardComponent {
 #### How It Works
 
 1. The Angular component's `fetchSessionToken` callback fires when the embed initializes.
-2. The POST request hits the Express middleware created by `createQuerriMiddleware`.
+2. The POST request hits the Express middleware created by `createSessionHandler`.
 3. The middleware resolves the user, manages access policies, and returns a session token as JSON.
 4. The embed component authenticates the iframe with the returned token.
 

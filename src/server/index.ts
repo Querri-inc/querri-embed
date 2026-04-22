@@ -1,5 +1,6 @@
 // Client
 export { Querri } from './client.js';
+export { UserQuerri } from './user-client.js';
 
 // Errors
 export {
@@ -23,11 +24,13 @@ export {
 // Types
 export type {
   QuerriConfig,
+  SessionConfig,
   CursorPageResponse,
   User,
   UserCreateParams,
   UserUpdateParams,
   UserDeleteResponse,
+  ExternalIdDeleteResponse,
   EmbedSession,
   EmbedSessionListItem,
   EmbedSessionList,
@@ -41,6 +44,7 @@ export type {
   PolicyUpdateResponse,
   PolicyAssignResponse,
   PolicyRemoveUserResponse,
+  PolicyReplaceResponse,
   ResolvedAccess,
   ColumnInfo,
   SourceColumns,
@@ -66,6 +70,10 @@ export type {
   DashboardRefreshResponse,
   DashboardRefreshStatus,
   DataSource,
+  DataSourceCreateParams,
+  DataSourceCreateResult,
+  DataWriteResult,
+  DataSourceDeleteResult,
   QueryResult,
   QueryParams,
   DataPage,
@@ -79,6 +87,8 @@ export type {
   ApiKeyCreateParams,
   ApiKeyCreated,
   ShareEntry,
+  SourceShareParams,
+  OrgShareSourceParams,
   AuditEvent,
   AuditListParams,
   UsageReport,

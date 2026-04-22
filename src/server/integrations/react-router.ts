@@ -1,9 +1,9 @@
 import { Querri } from '../client.js';
 import { APIError } from '../errors.js';
-import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
+import type { QuerriConfig, GetSessionParams } from '../types.js';
 import { resolveConfig } from './_resolve-config.js';
 
-export interface SessionActionOptions {
+export interface SessionHandlerOptions {
   apiKey?: string;
   orgId?: string;
   host?: string;
@@ -24,9 +24,9 @@ export interface SessionActionOptions {
  * @example
  * ```ts
  * // app/routes/api.querri-session.ts
- * import { createSessionAction } from '@querri-inc/embed/server/react-router';
+ * import { createSessionHandler } from '@querri-inc/embed/server/react-router';
  *
- * export const action = createSessionAction({
+ * export const action = createSessionHandler({
  *   resolveParams: async ({ request, context }) => {
  *     const user = context.user; // from your auth middleware
  *     return {
@@ -36,14 +36,14 @@ export interface SessionActionOptions {
  * });
  * ```
  */
-export function createSessionAction(
-  options?: SessionActionOptions,
+export function createSessionHandler(
+  options?: SessionHandlerOptions,
 ): (args: {
   request: Request;
   params: Record<string, string | undefined>;
   context?: unknown;
 }) => Promise<Response> {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (args: {
     request: Request;
@@ -51,9 +51,15 @@ export function createSessionAction(
     context?: unknown;
   }): Promise<Response> => {
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(args)
-        : ((await args.request.json()) as GetSessionParams);
+        : { user: 'embed_anonymous' } as GetSessionParams;
+
+      // Auto-extract origin from request if not explicitly set
+      if (!params.origin) {
+        params.origin = args.request.headers.get('origin') ?? undefined;
+      }
 
       const session = await client.getSession(params);
       return Response.json(session);
@@ -73,12 +79,9 @@ export function createSessionAction(
 }
 
 /**
- * Alias for {@link createSessionAction} — provides a consistent name
- * across all framework integrations.
- *
- * @see createSessionAction
+ * @deprecated Use {@link createSessionHandler} instead. Kept for backward compatibility.
  */
-export const createSessionHandler = createSessionAction;
+export const createSessionAction = createSessionHandler;
 
 /**
  * Creates a pre-configured Querri client for use in React Router server code.

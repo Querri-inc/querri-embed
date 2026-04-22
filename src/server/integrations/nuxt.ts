@@ -3,13 +3,44 @@ import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
 import { resolveConfig } from './_resolve-config.js';
 
+/**
+ * Minimal structural type for the `h3` module's runtime surface used here.
+ * Typed as a local interface so consumers need not depend on h3's types at
+ * compile time (h3 is a Nuxt-managed runtime dependency).
+ */
+interface H3Module {
+  readBody: (event: unknown) => Promise<unknown>;
+  getHeaders: (event: unknown) => Record<string, string | undefined>;
+  createError: (params: {
+    statusCode?: number;
+    statusMessage?: string;
+    data?: unknown;
+  }) => Error;
+}
+
 export interface SessionHandlerOptions {
   apiKey?: string;
   orgId?: string;
   host?: string;
   resolveParams?: (event: { body: unknown; headers: Record<string, string | undefined> }) => Promise<GetSessionParams> | GetSessionParams;
   /** Pass the h3 module if auto-import fails (e.g. in monorepos or file: linked packages). */
-  h3?: { readBody: Function; getHeaders: Function; createError: Function };
+  h3?: H3Module;
+}
+
+type HandlerInput = { body: unknown; headers: Record<string, string | undefined> };
+
+async function resolveSessionFor(
+  client: Querri,
+  input: HandlerInput,
+  options: SessionHandlerOptions | undefined,
+): Promise<GetSessionResult> {
+  const params = options?.resolveParams
+    ? await options.resolveParams(input)
+    : ({ user: 'embed_anonymous' } as GetSessionParams);
+  if (!params.origin) {
+    params.origin = input.headers?.['origin'] ?? undefined;
+  }
+  return client.getSession(params);
 }
 
 /**
@@ -17,6 +48,8 @@ export interface SessionHandlerOptions {
  *
  * The returned function expects to receive the parsed request body as its argument.
  * Wrap it with Nuxt's `defineEventHandler` and `readBody`:
+ *
+ * h3's `defineEventHandler` auto-serializes the returned object as JSON.
  *
  * @example
  * ```ts
@@ -37,9 +70,10 @@ export interface SessionHandlerOptions {
  * import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
  *
  * const handler = defineQuerriSessionHandler({
- *   resolveParams: async ({ body, headers }) => ({
- *     user: { external_id: body.userId, email: body.email },
- *   }),
+ *   resolveParams: async ({ body, headers }) => {
+ *     const user = await getUserFromAuth(headers.authorization);
+ *     return { user: { external_id: user.id, email: user.email } };
+ *   },
  * });
  *
  * export default defineEventHandler(async (event) => {
@@ -50,21 +84,16 @@ export interface SessionHandlerOptions {
  * ```
  */
 export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
-  async function handler(input: unknown): Promise<GetSessionResult> {
-    if (options?.resolveParams) {
-      const event = typeof input === 'object' && input !== null && 'body' in input
-        ? input as { body: unknown; headers: Record<string, string | undefined> }
+  return async (input: unknown): Promise<GetSessionResult> => {
+    if (!client) client = new Querri(resolveConfig(options));
+    const event: HandlerInput =
+      typeof input === 'object' && input !== null && 'body' in input
+        ? (input as HandlerInput)
         : { body: input, headers: {} };
-      const params = await options.resolveParams(event);
-      return client.getSession(params);
-    }
-
-    return client.getSession(input as GetSessionParams);
-  }
-
-  return handler;
+    return resolveSessionFor(client, event, options);
+  };
 }
 
 /**
@@ -74,52 +103,48 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
  * `readBody` and wrapping with `defineEventHandler`.
  *
  * Requires `h3` (automatically available in all Nuxt server routes).
+ * The returned handler returns a plain object; h3 auto-serializes it as JSON.
  *
  * @example
  * ```ts
  * // server/api/querri-session.post.ts
- * import { createNuxtSessionHandler } from '@querri-inc/embed/server/nuxt';
- * export default createNuxtSessionHandler();
+ * import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+ * export default createSessionHandler();
  * ```
  *
  * @example With custom param resolution:
  * ```ts
- * export default createNuxtSessionHandler({
- *   resolveParams: async ({ body, headers }) => ({
- *     user: { external_id: body.userId },
- *   }),
+ * export default createSessionHandler({
+ *   resolveParams: async ({ body, headers }) => {
+ *     const user = await getUserFromAuth(headers.authorization);
+ *     return { user: { external_id: user.id, email: user.email } };
+ *   },
  * });
  * ```
  */
-export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
-  const client = new Querri(resolveConfig(options));
+export function createSessionHandler(options?: SessionHandlerOptions) {
+  let client: Querri | undefined;
 
   return async (event: unknown): Promise<GetSessionResult> => {
-    // Resolve h3: prefer explicit option, then dynamic import
-    let h3: any = options?.h3;
+    let h3: H3Module | undefined = options?.h3;
     if (!h3) {
       try {
         const h3ModuleName = 'h3';
-        h3 = await import(h3ModuleName);
+        h3 = (await import(h3ModuleName)) as H3Module;
       } catch {
         throw new Error(
           'Could not import h3. If using a monorepo or file: link, pass ' +
-          '{ h3: await import("h3") } to createNuxtSessionHandler(), or use ' +
+          '{ h3: await import("h3") } to createSessionHandler(), or use ' +
           'defineQuerriSessionHandler() with manual readBody/getHeaders calls.',
         );
       }
     }
 
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const body = await h3.readBody(event);
-
-      if (options?.resolveParams) {
-        const headers = h3.getHeaders(event);
-        const params = await options.resolveParams({ body, headers });
-        return client.getSession(params);
-      }
-
-      return client.getSession(body as GetSessionParams);
+      const headers = h3.getHeaders(event);
+      return await resolveSessionFor(client, { body, headers }, options);
     } catch (err) {
       if (err instanceof APIError) {
         throw h3.createError({
@@ -134,12 +159,9 @@ export function createNuxtSessionHandler(options?: SessionHandlerOptions) {
 }
 
 /**
- * Alias for {@link createNuxtSessionHandler} — provides a consistent name
- * across all framework integrations.
- *
- * @see createNuxtSessionHandler
+ * @deprecated Use {@link createSessionHandler} instead. Kept for backward compatibility.
  */
-export const createSessionHandler = createNuxtSessionHandler;
+export const createNuxtSessionHandler = createSessionHandler;
 
 /**
  * Creates a pre-configured Querri client for use in Nuxt server code.

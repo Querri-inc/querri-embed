@@ -1,4 +1,5 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import type {
   Policy,
   PolicyCreateParams,
@@ -7,6 +8,8 @@ import type {
   PolicyDeleteResponse,
   PolicyAssignResponse,
   PolicyRemoveUserResponse,
+  PolicyReplaceResponse,
+  ResolveAccessParams,
   ResolvedAccess,
   SourceColumns,
 } from '../types.js';
@@ -20,8 +23,10 @@ export class PoliciesResource extends BaseResource {
     return this._get<Policy>(`/access/policies/${policyId}`);
   }
 
-  list(params?: { name?: string }): Promise<Policy[]> {
-    return this._get<Policy[]>('/access/policies', params);
+  list(
+    params?: { name?: string; limit?: number; after?: string },
+  ): Promise<CursorPage<Policy>> {
+    return this._list<Policy>('/access/policies', params);
   }
 
   update(
@@ -57,16 +62,32 @@ export class PoliciesResource extends BaseResource {
     );
   }
 
-  resolve(userId: string, sourceId: string): Promise<ResolvedAccess> {
-    return this._post<ResolvedAccess>('/access/resolve', {
-      user_id: userId,
-      source_id: sourceId,
-    });
+  /**
+   * Atomically replace ALL policy assignments for a user.
+   *
+   * Removes every existing assignment, then assigns exactly the listed
+   * policies. Pass an empty array to remove all policies.
+   */
+  replaceUserPolicies(
+    userId: string,
+    params: { policy_ids: string[] },
+  ): Promise<PolicyReplaceResponse> {
+    return this._put<PolicyReplaceResponse>(
+      `/access/users/${userId}/policies`,
+      params,
+    );
   }
 
-  columns(sourceId?: string): Promise<SourceColumns[]> {
-    return this._get<SourceColumns[]>('/access/columns', {
-      source_id: sourceId,
-    });
+  resolve(params: ResolveAccessParams): Promise<ResolvedAccess> {
+    return this._post<ResolvedAccess>('/access/resolve', params);
+  }
+
+  async columns(sourceId?: string): Promise<SourceColumns[]> {
+    const response = await this._get<{ data: SourceColumns[] } | SourceColumns[]>(
+      '/access/columns',
+      { source_id: sourceId },
+    );
+    // Unwrap {data: [...]} envelope returned by the API
+    return Array.isArray(response) ? response : response.data;
   }
 }

@@ -8,7 +8,7 @@ describe('resolveConfig', () => {
     process.env = { ...originalEnv };
     delete process.env.QUERRI_API_KEY;
     delete process.env.QUERRI_ORG_ID;
-    delete process.env.QUERRI_HOST;
+    delete process.env.QUERRI_URL;
   });
 
   afterEach(() => {
@@ -46,7 +46,7 @@ describe('resolveConfig', () => {
 
   it('resolves host from env var', () => {
     process.env.QUERRI_API_KEY = 'qk_test';
-    process.env.QUERRI_HOST = 'https://custom.querri.com';
+    process.env.QUERRI_URL = 'https://custom.querri.com';
     const config = resolveConfig();
     expect(config.host).toBe('https://custom.querri.com');
   });

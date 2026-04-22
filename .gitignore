@@ -4,3 +4,22 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .env*
+!.env.example
+test_*/
+
+# Framework build outputs
+.next/
+.nuxt/
+.svelte-kit/
+.react-router/
+
+# Lock files in examples (not managed)
+examples/*/package-lock.json
+
+# Generated config files
+examples/nextjs-embed/next-env.d.ts
+examples/nextjs-embed/tsconfig.json
+
+# Desloppify local state
+.desloppify/
+scorecard.png

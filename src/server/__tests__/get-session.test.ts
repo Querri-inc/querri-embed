@@ -10,7 +10,7 @@ function makeMockClient() {
       }),
     },
     policies: {
-      list: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
       create: vi.fn().mockResolvedValue({
         id: 'pol_new',
         name: 'sdk_auto_test',
@@ -21,9 +21,11 @@ function makeMockClient() {
         created_at: null,
         updated_at: null,
       }),
-      assignUsers: vi.fn().mockResolvedValue({
-        policy_id: 'pol_new',
-        assigned_user_ids: ['u_resolved'],
+      replaceUserPolicies: vi.fn().mockResolvedValue({
+        user_id: 'u_resolved',
+        policy_ids: ['pol_new'],
+        added: ['pol_new'],
+        removed: [],
       }),
     },
     embed: {
@@ -61,7 +63,7 @@ describe('getSession', () => {
     });
   });
 
-  it('policy_ids access assigns user to each policy', async () => {
+  it('policy_ids access replaces user policies atomically', async () => {
     const client = makeMockClient();
 
     await getSession(client, {
@@ -69,9 +71,10 @@ describe('getSession', () => {
       access: { policy_ids: ['pol_a', 'pol_b'] },
     });
 
-    expect(client.policies.assignUsers).toHaveBeenCalledTimes(2);
-    expect(client.policies.assignUsers).toHaveBeenCalledWith('pol_a', { user_ids: ['u_resolved'] });
-    expect(client.policies.assignUsers).toHaveBeenCalledWith('pol_b', { user_ids: ['u_resolved'] });
+    expect(client.policies.replaceUserPolicies).toHaveBeenCalledTimes(1);
+    expect(client.policies.replaceUserPolicies).toHaveBeenCalledWith('u_resolved', {
+      policy_ids: ['pol_a', 'pol_b'],
+    });
   });
 
   it('inline access computes hash and creates policy with sdk_auto_ prefix', async () => {
@@ -97,8 +100,8 @@ describe('getSession', () => {
     expect(createArgs.source_ids).toEqual(['src_1']);
     expect(createArgs.row_filters).toEqual([{ column: 'region', values: ['US'] }]);
 
-    // Should have assigned user
-    expect(client.policies.assignUsers).toHaveBeenCalledTimes(1);
+    // Should have replaced user policies
+    expect(client.policies.replaceUserPolicies).toHaveBeenCalledTimes(1);
   });
 
   it('inline access reuses existing policy and does not create a new one', async () => {
@@ -127,7 +130,7 @@ describe('getSession', () => {
       updated_at: null,
     };
 
-    client.policies.list.mockResolvedValue([existingPolicy]);
+    client.policies.list.mockResolvedValue({ data: [existingPolicy], hasMore: false, nextCursor: null });
 
     await getSession(client, {
       user: 'ext_1',
@@ -137,9 +140,9 @@ describe('getSession', () => {
     // Should NOT create a new policy
     expect(client.policies.create).not.toHaveBeenCalled();
 
-    // Should assign user to the existing policy
-    expect(client.policies.assignUsers).toHaveBeenCalledWith('pol_existing', {
-      user_ids: ['u_resolved'],
+    // Should replace user policies with the existing policy
+    expect(client.policies.replaceUserPolicies).toHaveBeenCalledWith('u_resolved', {
+      policy_ids: ['pol_existing'],
     });
   });
 

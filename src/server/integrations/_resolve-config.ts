@@ -15,7 +15,7 @@ export interface IntegrationOptions {
  * |---------|--------------------|-------------------------------|
  * | apiKey  | `QUERRI_API_KEY`   | *(required — throws if missing)* |
  * | orgId   | `QUERRI_ORG_ID`    | `undefined`                   |
- * | host    | `QUERRI_HOST`      | `'https://app.querri.com'`    |
+ * | host    | `QUERRI_URL`      | `'https://app.querri.com'`    |
  *
  * @throws {ConfigError} If no API key is found in options or env.
  */
@@ -32,6 +32,6 @@ export function resolveConfig(options?: IntegrationOptions): QuerriConfig {
   return {
     apiKey,
     orgId: options?.orgId ?? process.env.QUERRI_ORG_ID,
-    host: options?.host ?? process.env.QUERRI_HOST,
+    host: options?.host ?? process.env.QUERRI_URL,
   };
 }

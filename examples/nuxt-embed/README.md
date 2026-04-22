@@ -14,6 +14,16 @@ cd examples/nuxt-embed
 npm install
 ```
 
+## Local Development
+
+To develop against a local copy of the SDK, replace the dependency version in `package.json`:
+
+```json
+"@querri-inc/embed": "file:../../"
+```
+
+Then re-run `npm install`.
+
 ## Environment Variables
 
 Set the following before running:
@@ -35,7 +45,7 @@ Open http://localhost:3000 in your browser.
 
 **Server route** (`server/api/querri-session.post.ts`):
 - Handles POST requests at `/api/querri-session` (Nuxt file-based routing)
-- Uses `createNuxtSessionHandler` from `@querri-inc/embed/server/nuxt` — a single one-liner export
+- Uses `createSessionHandler` from `@querri-inc/embed/server/nuxt` — a single one-liner export
 - Creates embed sessions via the Querri API and returns a `session_token`
 
 **Client page** (`pages/index.vue`):

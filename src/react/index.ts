@@ -13,4 +13,5 @@ export type {
   QuerriErrorCode,
   QuerriErrorEvent,
   QuerriNavigationEvent,
+  SendPromptOptions,
 } from '../core/querri-embed.js';

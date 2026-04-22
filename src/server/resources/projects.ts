@@ -4,7 +4,6 @@ import type {
   Project,
   ProjectCreateParams,
   ProjectUpdateParams,
-  ProjectDeleteResponse,
   ProjectRunResponse,
   ProjectRunStatus,
   ProjectCancelResponse,
@@ -21,7 +20,7 @@ export class ProjectsResource extends BaseResource {
     return this._get<Project>(`/projects/${projectId}`);
   }
 
-  list(params?: { limit?: number; after?: string }): Promise<CursorPage<Project>> {
+  list(params?: { limit?: number; after?: string; user_id?: string }): Promise<CursorPage<Project>> {
     return this._list<Project>('/projects', params);
   }
 
@@ -29,8 +28,8 @@ export class ProjectsResource extends BaseResource {
     return this._put<Project>(`/projects/${projectId}`, params);
   }
 
-  del(projectId: string): Promise<void> {
-    return this._delete(`/projects/${projectId}`);
+  del(projectId: string): Promise<ProjectDeleteResponse> {
+    return this._delete<ProjectDeleteResponse>(`/projects/${projectId}`);
   }
 
   run(projectId: string, userId: string): Promise<ProjectRunResponse> {

@@ -1,6 +1,6 @@
 import { Querri } from '../client.js';
 import { APIError } from '../errors.js';
-import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
+import type { QuerriConfig, GetSessionParams } from '../types.js';
 import { resolveConfig } from './_resolve-config.js';
 
 export interface SessionHandlerOptions {
@@ -26,13 +26,19 @@ export interface SessionHandlerOptions {
  * ```
  */
 export function createSessionHandler(options?: SessionHandlerOptions) {
-  const client = new Querri(resolveConfig(options));
+  let client: Querri | undefined;
 
   return async (event: { request: Request; locals?: unknown; url?: URL }): Promise<Response> => {
     try {
+      if (!client) client = new Querri(resolveConfig(options));
       const params = options?.resolveParams
         ? await options.resolveParams(event)
-        : ((await event.request.json()) as GetSessionParams);
+        : { user: 'embed_anonymous' } as GetSessionParams;
+
+      // Auto-extract origin from request if not explicitly set
+      if (!params.origin) {
+        params.origin = event.request.headers.get('origin') ?? undefined;
+      }
 
       const session = await client.getSession(params);
       return new Response(JSON.stringify(session), {

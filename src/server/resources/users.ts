@@ -5,6 +5,7 @@ import type {
   UserCreateParams,
   UserUpdateParams,
   UserDeleteResponse,
+  ExternalIdDeleteResponse,
 } from '../types.js';
 
 export class UsersResource extends BaseResource {
@@ -28,6 +29,12 @@ export class UsersResource extends BaseResource {
 
   del(userId: string): Promise<UserDeleteResponse> {
     return this._delete<UserDeleteResponse>(`/users/${userId}`);
+  }
+
+  removeExternalId(externalId: string): Promise<ExternalIdDeleteResponse> {
+    return this._delete<ExternalIdDeleteResponse>(
+      `/users/external/${externalId}`,
+    );
   }
 
   getOrCreate(

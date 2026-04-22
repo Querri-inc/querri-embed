@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { CursorPage } from './pagination/cursor-page.js';
 import type {
   GetSessionParams,
   GetSessionResult,
@@ -19,16 +20,16 @@ interface QuerriLike {
     ): Promise<{ id: string; external_id: string | null }>;
   };
   policies: {
-    list(params?: { name?: string }): Promise<Policy[]>;
+    list(params?: { name?: string }): Promise<CursorPage<Policy>>;
     create(params: {
       name: string;
       description?: string;
       source_ids?: string[];
       row_filters?: RowFilter[];
     }): Promise<Policy>;
-    assignUsers(
-      policyId: string,
-      params: { user_ids: string[] },
+    replaceUserPolicies(
+      userId: string,
+      params: { policy_ids: string[] },
     ): Promise<unknown>;
   };
   embed: {
@@ -93,9 +94,11 @@ export async function getSession(
       policyIds = [existing.id];
     }
 
-    for (const policyId of policyIds) {
-      await client.policies.assignUsers(policyId, { user_ids: [userId] });
-    }
+    // Atomically replace all policy assignments for this user.
+    // This removes any previously assigned policies (e.g., from a prior
+    // getSession() call with different filters) and assigns exactly the
+    // new set, preventing policy accumulation.
+    await client.policies.replaceUserPolicies(userId, { policy_ids: policyIds });
   }
 
   // --- Step 3: Create Embed Session ---
@@ -145,6 +148,6 @@ async function findPolicyByName(
   client: QuerriLike,
   name: string,
 ): Promise<Policy | null> {
-  const policies = await client.policies.list({ name });
-  return policies.find((p) => p.name === name) ?? null;
+  const page = await client.policies.list({ name });
+  return page.data.find((p) => p.name === name) ?? null;
 }

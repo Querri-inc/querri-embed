@@ -3,7 +3,7 @@
   "private": true,
   "scripts": { "dev": "next dev", "build": "next build" },
   "dependencies": {
-    "@querri-inc/embed": "file:../..",
+    "@querri-inc/embed": "latest",
     "next": "^14.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"

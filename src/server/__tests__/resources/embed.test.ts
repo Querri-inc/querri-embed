@@ -64,7 +64,7 @@ describe('EmbedResource', () => {
 
   it('listSessions sends GET /api/v1/embed/sessions', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse({ data: [], count: 0 }),
+      jsonResponse({ data: [], has_more: false, next_cursor: null }),
     );
 
     const client = makeClient();
@@ -76,17 +76,17 @@ describe('EmbedResource', () => {
     expect(opts.method).toBe('GET');
   });
 
-  it('revokeSession sends DELETE /api/v1/embed/sessions/{id}', async () => {
+  it('revokeSession sends DELETE /api/v1/embed/sessions/{token}', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ session_id: 'sess_1', revoked: true }),
     );
 
     const client = makeClient();
-    const result = await client.embed.revokeSession('sess_1');
+    const result = await client.embed.revokeSession('tok_abc');
 
     expect(result.revoked).toBe(true);
     const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toContain('/api/v1/embed/sessions/sess_1');
+    expect(url).toContain('/api/v1/embed/sessions/tok_abc');
     expect(opts.method).toBe('DELETE');
   });
 });

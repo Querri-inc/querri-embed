@@ -1,10 +1,10 @@
 import { BaseResource } from './base-resource.js';
+import { CursorPage } from '../pagination/cursor-page.js';
 import type {
   Dashboard,
   DashboardCreateParams,
   DashboardUpdateParams,
   DashboardUpdateResponse,
-  DashboardDeleteResponse,
   DashboardRefreshResponse,
   DashboardRefreshStatus,
 } from '../types.js';
@@ -18,8 +18,10 @@ export class DashboardsResource extends BaseResource {
     return this._get<Dashboard>(`/dashboards/${dashboardId}`);
   }
 
-  list(params?: { limit?: number; after?: string }): Promise<Dashboard[]> {
-    return this._get<Dashboard[]>('/dashboards', params);
+  list(
+    params?: { limit?: number; after?: string; user_id?: string },
+  ): Promise<CursorPage<Dashboard>> {
+    return this._list<Dashboard>('/dashboards', params);
   }
 
   update(
@@ -32,8 +34,8 @@ export class DashboardsResource extends BaseResource {
     );
   }
 
-  del(dashboardId: string): Promise<void> {
-    return this._delete(`/dashboards/${dashboardId}`);
+  del(dashboardId: string): Promise<DashboardDeleteResponse> {
+    return this._delete<DashboardDeleteResponse>(`/dashboards/${dashboardId}`);
   }
 
   refresh(dashboardId: string): Promise<DashboardRefreshResponse> {
