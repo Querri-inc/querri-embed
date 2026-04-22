@@ -6,6 +6,7 @@ import type {
   ChatCreateParams,
   ChatStreamParams,
   ChatCancelResponse,
+  ChatDeleteResponse,
 } from '../types.js';
 
 export class ChatsResource extends BaseResource {

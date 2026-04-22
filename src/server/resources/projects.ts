@@ -4,6 +4,7 @@ import type {
   Project,
   ProjectCreateParams,
   ProjectUpdateParams,
+  ProjectDeleteResponse,
   ProjectRunResponse,
   ProjectRunStatus,
   ProjectCancelResponse,
