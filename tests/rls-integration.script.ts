@@ -1,7 +1,9 @@
 /**
- * RLS Integration Tests for querri-embed JS SDK
+ * RLS Integration Script for querri-embed JS SDK
  *
- * Runs against a live Querri instance (defaults to http://localhost).
+ * Runs against a live Querri instance (defaults to http://localhost). This is
+ * a standalone script invoked with tsx, NOT a vitest test — the `.script.ts`
+ * extension keeps it out of the vitest `src/**` pickup glob.
  *
  * Required env vars:
  *   QUERRI_API_KEY       API key for the target Querri instance
@@ -13,7 +15,7 @@
  *
  * Execute with:
  *   QUERRI_API_KEY=... QUERRI_ORG_ID=... RLS_TEST_CSV_PATH=... \
- *     npx tsx tests/rls-integration.test.ts
+ *     npx tsx tests/rls-integration.script.ts
  */
 
 import { createHash } from 'node:crypto';
