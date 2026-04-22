@@ -19,3 +19,7 @@ examples/*/package-lock.json
 # Generated config files
 examples/nextjs-embed/next-env.d.ts
 examples/nextjs-embed/tsconfig.json
+
+# Desloppify local state
+.desloppify/
+scorecard.png
