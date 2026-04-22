@@ -3,7 +3,7 @@ import {
   APIError,
   APIConnectionError,
   APITimeoutError,
-  raiseForStatus,
+  throwForStatus,
 } from '../errors.js';
 import { isIdempotent, shouldRetry, calculateDelay, getRetryAfter, sleep } from './retry.js';
 
@@ -112,7 +112,7 @@ export class HttpClient {
             continue;
           }
 
-          raiseForStatus(response.status, body, response.headers);
+          throwForStatus(response.status, body, response.headers);
         }
 
         if (response.status === 204) {

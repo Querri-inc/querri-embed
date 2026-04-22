@@ -175,7 +175,7 @@ export class StreamCancelledError extends StreamError {
   }
 }
 
-export function raiseForStatus(
+export function throwForStatus(
   status: number,
   body: unknown,
   headers: Headers,
