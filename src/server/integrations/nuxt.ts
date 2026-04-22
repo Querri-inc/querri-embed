@@ -166,10 +166,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
 }
 
 /**
- * Alias for {@link createSessionHandler} — the original Nuxt-specific name.
- * Kept for backward compatibility.
- *
- * @see createSessionHandler
+ * @deprecated Use {@link createSessionHandler} instead. Kept for backward compatibility.
  */
 export const createNuxtSessionHandler = createSessionHandler;
 

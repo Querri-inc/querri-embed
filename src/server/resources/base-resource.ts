@@ -1,4 +1,4 @@
-import { HttpClient, type RequestOptions } from '../http/base-client.js';
+import { HttpClient } from '../http/base-client.js';
 import { CursorPage } from '../pagination/cursor-page.js';
 import type { CursorPageResponse } from '../types.js';
 

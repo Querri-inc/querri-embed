@@ -1,5 +1,3 @@
-import type { RateLimitError } from '../errors.js';
-
 const IDEMPOTENT_METHODS = new Set(['GET', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']);
 
 export function isIdempotent(method: string): boolean {

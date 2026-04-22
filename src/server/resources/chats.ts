@@ -5,7 +5,6 @@ import type {
   Chat,
   ChatCreateParams,
   ChatStreamParams,
-  ChatDeleteResponse,
   ChatCancelResponse,
 } from '../types.js';
 
