@@ -1,6 +1,6 @@
 import { Querri } from '../client.js';
 import { APIError } from '../errors.js';
-import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
+import type { QuerriConfig, GetSessionParams } from '../types.js';
 import { resolveConfig } from './_resolve-config.js';
 
 export interface SessionHandlerOptions {
@@ -79,10 +79,7 @@ export function createSessionHandler(
 }
 
 /**
- * Alias for {@link createSessionHandler} — the original framework-idiomatic
- * name for React Router. Kept for backward compatibility.
- *
- * @see createSessionHandler
+ * @deprecated Use {@link createSessionHandler} instead. Kept for backward compatibility.
  */
 export const createSessionAction = createSessionHandler;
 

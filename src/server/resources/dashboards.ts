@@ -5,7 +5,6 @@ import type {
   DashboardCreateParams,
   DashboardUpdateParams,
   DashboardUpdateResponse,
-  DashboardDeleteResponse,
   DashboardRefreshResponse,
   DashboardRefreshStatus,
 } from '../types.js';

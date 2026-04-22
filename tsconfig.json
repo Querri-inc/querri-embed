@@ -14,6 +14,8 @@
     "rootDir": "src",
     "allowJs": true,
     "checkJs": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "types": ["vitest/globals", "node"]
   },
   "include": ["src"],
