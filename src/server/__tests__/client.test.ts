@@ -1,5 +1,7 @@
 import { Querri } from '../client.js';
 import { ConfigError } from '../errors.js';
+import { UserQuerri } from '../user-client.js';
+import type { GetSessionResult } from '../types.js';
 import { UsersResource } from '../resources/users.js';
 import { EmbedResource } from '../resources/embed.js';
 import { PoliciesResource } from '../resources/policies.js';
@@ -74,5 +76,52 @@ describe('Querri client', () => {
     expect(client.sharing).toBeInstanceOf(SharingResource);
     expect(client.audit).toBeInstanceOf(AuditResource);
     expect(client.usage).toBeInstanceOf(UsageResource);
+  });
+});
+
+describe('Querri.asUser()', () => {
+  const session: GetSessionResult = {
+    session_token: 'session-abc-123',
+    expires_in: 3600,
+    user_id: 'u_test',
+    external_id: null,
+  };
+
+  function jsonResponse(body: unknown, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  it('returns a UserQuerri', () => {
+    const client = new Querri({ apiKey: 'qk_test' });
+    expect(client.asUser(session)).toBeInstanceOf(UserQuerri);
+  });
+
+  it('requests with X-Embed-Session header and omits Authorization: Bearer qk_*', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ projects: [], has_more: false, next_cursor: null }),
+    );
+    const client = new Querri({
+      apiKey: 'qk_secret_key',
+      fetch: mockFetch as unknown as typeof fetch,
+      maxRetries: 0,
+    });
+
+    await client.asUser(session).projects.list();
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const calledHeaders = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+
+    // Internal API path (not /api/v1)
+    expect(calledUrl).toContain('/api/projects');
+    expect(calledUrl).not.toContain('/api/v1/');
+
+    // Session header set; API-key auth fully absent
+    expect(calledHeaders['X-Embed-Session']).toBe('session-abc-123');
+    expect(calledHeaders['Authorization']).toBeUndefined();
+    expect(calledHeaders['X-Tenant-ID']).toBeUndefined();
   });
 });

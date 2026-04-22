@@ -1,7 +1,9 @@
 /**
- * RLS Integration Tests for querri-embed JS SDK
+ * RLS Integration Script for querri-embed JS SDK
  *
- * Runs against a live Querri instance (defaults to http://localhost).
+ * Runs against a live Querri instance (defaults to http://localhost). This is
+ * a standalone script invoked with tsx, NOT a vitest test — the `.script.ts`
+ * extension keeps it out of the vitest `src/**` pickup glob.
  *
  * Required env vars:
  *   QUERRI_API_KEY       API key for the target Querri instance
@@ -13,7 +15,7 @@
  *
  * Execute with:
  *   QUERRI_API_KEY=... QUERRI_ORG_ID=... RLS_TEST_CSV_PATH=... \
- *     npx tsx tests/rls-integration.test.ts
+ *     npx tsx tests/rls-integration.script.ts
  */
 
 import { createHash } from 'node:crypto';
@@ -177,7 +179,7 @@ async function setup(): Promise<void> {
   const rows = parseCsv(CSV_PATH);
   assert(rows.length === 20, `Expected 20 rows, got ${rows.length}`);
 
-  const ds = await client.data.createSource({
+  const ds = await client.data.create({
     name: `rls_js_test_${Date.now()}`,
     rows,
   });
@@ -600,7 +602,7 @@ async function sectionE(): Promise<void> {
   // Data access via embed sessions may use a different endpoint path.
   await runTest('Query data via userClient (verify RLS filtering)', async () => {
     try {
-      const result = await userClient!.data.sourceData(sourceId);
+      const result = await userClient!.data.getSourceData(sourceId);
       const allRegions = result.data.map((r: any) => r.region);
       const uniqueRegions = [...new Set(allRegions)];
       if (uniqueRegions.length === 1 && uniqueRegions[0] === 'US-East') {
@@ -722,7 +724,7 @@ async function sectionH(): Promise<void> {
     await ratePause();
     const uc = client.asUser(session);
     try {
-      const data = await uc.data.sourceData(sourceId);
+      const data = await uc.data.getSourceData(sourceId);
       return `Restricted query returned ${data.data.length} rows (expected 0 for nonexistent region)`;
     } catch (err: any) {
       return `Access denied/error as expected: ${err.status ?? err.message}`;
@@ -817,7 +819,7 @@ async function main(): Promise<void> {
   // Cleanup
   console.log('\n=== CLEANUP ===');
   try {
-    await client.data.deleteSource(sourceId);
+    await client.data.del(sourceId);
     console.log(`  Deleted data source ${sourceId}`);
   } catch (e: any) {
     console.log(`  Failed to delete data source: ${e.message}`);

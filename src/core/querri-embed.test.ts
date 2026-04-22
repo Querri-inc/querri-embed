@@ -486,9 +486,9 @@ describe('Container setup', () => {
 });
 
 describe('QuerriEmbed.version', () => {
-  it('exposes a version string', () => {
+  it('exposes a semver version string', () => {
     expect(typeof QuerriEmbed.version).toBe('string');
-    expect(QuerriEmbed.version).toBe('0.0.0-test');
+    expect(QuerriEmbed.version).toMatch(/^\d+\.\d+\.\d+(?:[-+].+)?$/);
   });
 });
 

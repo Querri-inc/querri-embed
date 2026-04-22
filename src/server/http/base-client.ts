@@ -3,11 +3,11 @@ import {
   APIError,
   APIConnectionError,
   APITimeoutError,
-  raiseForStatus,
+  throwForStatus,
 } from '../errors.js';
 import { isIdempotent, shouldRetry, calculateDelay, getRetryAfter, sleep } from './retry.js';
 
-const VERSION = '0.1.24';
+const VERSION = '0.2.0';
 
 export interface RequestOptions {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -112,7 +112,7 @@ export class HttpClient {
             continue;
           }
 
-          raiseForStatus(response.status, body, response.headers);
+          throwForStatus(response.status, body, response.headers);
         }
 
         if (response.status === 204) {
