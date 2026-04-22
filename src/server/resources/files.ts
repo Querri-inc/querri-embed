@@ -1,6 +1,6 @@
 import { BaseResource } from './base-resource.js';
 import { CursorPage } from '../pagination/cursor-page.js';
-import type { FileObject } from '../types.js';
+import type { FileObject, FilesDeleteResponse } from '../types.js';
 
 export class FilesResource extends BaseResource {
   upload(file: Blob | Uint8Array, name?: string): Promise<FileObject> {
@@ -27,7 +27,7 @@ export class FilesResource extends BaseResource {
     return this._list<FileObject>('/files', params);
   }
 
-  del(fileId: string): Promise<void> {
-    return this._delete(`/files/${fileId}`);
+  del(fileId: string): Promise<FilesDeleteResponse> {
+    return this._delete<FilesDeleteResponse>(`/files/${fileId}`);
   }
 }

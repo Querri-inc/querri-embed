@@ -9,6 +9,7 @@ import type {
   PolicyAssignResponse,
   PolicyRemoveUserResponse,
   PolicyReplaceResponse,
+  ResolveAccessParams,
   ResolvedAccess,
   SourceColumns,
 } from '../types.js';
@@ -77,11 +78,8 @@ export class PoliciesResource extends BaseResource {
     );
   }
 
-  resolve(userId: string, sourceId: string): Promise<ResolvedAccess> {
-    return this._post<ResolvedAccess>('/access/resolve', {
-      user_id: userId,
-      source_id: sourceId,
-    });
+  resolve(params: ResolveAccessParams): Promise<ResolvedAccess> {
+    return this._post<ResolvedAccess>('/access/resolve', params);
   }
 
   async columns(sourceId?: string): Promise<SourceColumns[]> {

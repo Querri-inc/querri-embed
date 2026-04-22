@@ -314,16 +314,16 @@ const sessions = await client.embed.listSessions({ limit: 50 });
 // { data: [...], has_more: false, next_cursor: null }
 ```
 
-#### `client.embed.revokeSession(sessionId)`
+#### `client.embed.revokeSession(sessionToken)`
 
-Revoke (invalidate) an embed session.
+Revoke (invalidate) an embed session. Pass the session's opaque token (`EmbedSession.session_token` / `EmbedSessionListItem.session_token`), not a database id.
 
 ```typescript
-revokeSession(sessionId: string): Promise<EmbedSessionRevokeResponse>
+revokeSession(sessionToken: string): Promise<EmbedSessionRevokeResponse>
 ```
 
 ```typescript
-const result = await client.embed.revokeSession('sess_abc');
+const result = await client.embed.revokeSession(session.session_token);
 // { session_id: 'sess_abc', revoked: true }
 ```
 
@@ -461,16 +461,16 @@ await client.policies.replaceUserPolicies('user_1', { policy_ids: ['pol_abc', 'p
 await client.policies.replaceUserPolicies('user_1', { policy_ids: [] });
 ```
 
-#### `client.policies.resolve(userId, sourceId)`
+#### `client.policies.resolve(params)`
 
 Resolve the effective access for a user on a specific data source, taking all assigned policies into account.
 
 ```typescript
-resolve(userId: string, sourceId: string): Promise<ResolvedAccess>
+resolve(params: { user_id: string; source_id: string }): Promise<ResolvedAccess>
 ```
 
 ```typescript
-const access = await client.policies.resolve('user_1', 'src_1');
+const access = await client.policies.resolve({ user_id: 'user_1', source_id: 'src_1' });
 // { user_id, source_id, resolved_filters, where_clause }
 ```
 
@@ -1145,8 +1145,9 @@ const page = await client.keys.list();
 Revoke and delete an API key. `revoke()` is an alias for `del()`.
 
 ```typescript
-del(keyId: string): Promise<Record<string, unknown>>
-revoke(keyId: string): Promise<Record<string, unknown>>
+del(keyId: string): Promise<KeysDeleteResponse>
+revoke(keyId: string): Promise<KeysDeleteResponse>
+// KeysDeleteResponse = { id: string; deleted: boolean }
 ```
 
 ```typescript
@@ -1159,16 +1160,17 @@ await client.keys.revoke('key_abc');
 
 Share projects and dashboards with users.
 
-#### `client.sharing.shareProject(projectId, userId, permission?)`
+#### `client.sharing.shareProject(projectId, params)`
 
 Share a project with a user. Default permission is `'view'`.
 
 ```typescript
-shareProject(projectId: string, userId: string, permission?: string): Promise<ShareEntry>
+shareProject(projectId: string, params: ShareParams): Promise<ShareEntry>
+// ShareParams = { user_id: string; permission?: 'view' | 'edit'; expires_at?: string }
 ```
 
 ```typescript
-await client.sharing.shareProject('proj_abc', 'user_1', 'edit');
+await client.sharing.shareProject('proj_abc', { user_id: 'user_1', permission: 'edit' });
 ```
 
 #### `client.sharing.revokeProjectShare(projectId, userId)`
@@ -1176,7 +1178,8 @@ await client.sharing.shareProject('proj_abc', 'user_1', 'edit');
 Revoke a user's access to a project.
 
 ```typescript
-revokeProjectShare(projectId: string, userId: string): Promise<Record<string, unknown>>
+revokeProjectShare(projectId: string, userId: string): Promise<ShareRevokeResponse>
+// ShareRevokeResponse = { deleted: boolean }
 ```
 
 ```typescript
@@ -1195,16 +1198,17 @@ listProjectShares(projectId: string): Promise<ShareEntry[]>
 const shares = await client.sharing.listProjectShares('proj_abc');
 ```
 
-#### `client.sharing.shareDashboard(dashboardId, userId, permission?)`
+#### `client.sharing.shareDashboard(dashboardId, params)`
 
 Share a dashboard with a user. Default permission is `'view'`.
 
 ```typescript
-shareDashboard(dashboardId: string, userId: string, permission?: string): Promise<ShareEntry>
+shareDashboard(dashboardId: string, params: ShareParams): Promise<ShareEntry>
+// ShareParams = { user_id: string; permission?: 'view' | 'edit'; expires_at?: string }
 ```
 
 ```typescript
-await client.sharing.shareDashboard('dash_abc', 'user_1');
+await client.sharing.shareDashboard('dash_abc', { user_id: 'user_1' });
 ```
 
 #### `client.sharing.revokeDashboardShare(dashboardId, userId)`
@@ -1212,7 +1216,8 @@ await client.sharing.shareDashboard('dash_abc', 'user_1');
 Revoke a user's access to a dashboard.
 
 ```typescript
-revokeDashboardShare(dashboardId: string, userId: string): Promise<Record<string, unknown>>
+revokeDashboardShare(dashboardId: string, userId: string): Promise<ShareRevokeResponse>
+// ShareRevokeResponse = { deleted: boolean }
 ```
 
 ```typescript

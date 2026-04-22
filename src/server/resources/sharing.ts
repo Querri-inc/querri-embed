@@ -1,23 +1,28 @@
 import { BaseResource } from './base-resource.js';
-import type { ShareEntry, SourceShareParams, OrgShareSourceParams } from '../types.js';
+import type {
+  ShareEntry,
+  ShareParams,
+  ShareRevokeResponse,
+  OrgShareSourceParams,
+} from '../types.js';
 
 export class SharingResource extends BaseResource {
   shareProject(
     projectId: string,
-    userId: string,
-    permission?: string,
+    params: ShareParams,
   ): Promise<ShareEntry> {
     return this._post<ShareEntry>(`/projects/${projectId}/shares`, {
-      user_id: userId,
-      permission: permission ?? 'view',
+      user_id: params.user_id,
+      permission: params.permission ?? 'view',
+      expires_at: params.expires_at,
     });
   }
 
   revokeProjectShare(
     projectId: string,
     userId: string,
-  ): Promise<Record<string, unknown>> {
-    return this._delete<Record<string, unknown>>(
+  ): Promise<ShareRevokeResponse> {
+    return this._delete<ShareRevokeResponse>(
       `/projects/${projectId}/shares/${userId}`,
     );
   }
@@ -28,20 +33,20 @@ export class SharingResource extends BaseResource {
 
   shareDashboard(
     dashboardId: string,
-    userId: string,
-    permission?: string,
+    params: ShareParams,
   ): Promise<ShareEntry> {
     return this._post<ShareEntry>(`/dashboards/${dashboardId}/shares`, {
-      user_id: userId,
-      permission: permission ?? 'view',
+      user_id: params.user_id,
+      permission: params.permission ?? 'view',
+      expires_at: params.expires_at,
     });
   }
 
   revokeDashboardShare(
     dashboardId: string,
     userId: string,
-  ): Promise<Record<string, unknown>> {
-    return this._delete<Record<string, unknown>>(
+  ): Promise<ShareRevokeResponse> {
+    return this._delete<ShareRevokeResponse>(
       `/dashboards/${dashboardId}/shares/${userId}`,
     );
   }
@@ -52,11 +57,12 @@ export class SharingResource extends BaseResource {
 
   shareSource(
     sourceId: string,
-    params: SourceShareParams,
+    params: ShareParams,
   ): Promise<ShareEntry> {
     return this._post<ShareEntry>(`/sources/${sourceId}/shares`, {
       user_id: params.user_id,
       permission: params.permission ?? 'view',
+      expires_at: params.expires_at,
     });
   }
 

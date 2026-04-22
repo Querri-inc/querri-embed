@@ -637,8 +637,8 @@ async function sectionF(): Promise<void> {
   await ratePause();
 
   // Test 27 -- Resolve effective filters
-  await runTest('policies.resolve(userId, sourceId) -- check effective filters', async () => {
-    const resolved = await client.policies.resolve(user1.id, sourceId);
+  await runTest('policies.resolve({ user_id, source_id }) -- check effective filters', async () => {
+    const resolved = await client.policies.resolve({ user_id: user1.id, source_id: sourceId });
     assert(resolved.user_id === user1.id, `user_id mismatch: ${resolved.user_id}`);
     assert(resolved.source_id === sourceId, `source_id mismatch: ${resolved.source_id}`);
     return `Resolved filters: ${JSON.stringify(resolved.resolved_filters)}, where=${resolved.where_clause}`;
@@ -646,7 +646,7 @@ async function sectionF(): Promise<void> {
 
   // Test 28 -- Verify WHERE clause
   await runTest('Verify WHERE clause is correct', async () => {
-    const resolved = await client.policies.resolve(user1.id, sourceId);
+    const resolved = await client.policies.resolve({ user_id: user1.id, source_id: sourceId });
     assert(!!resolved.where_clause, 'where_clause is empty');
     const wc = resolved.where_clause.toLowerCase();
     const hasRegionFilter = wc.includes('region') || wc.includes('us-east') || wc.includes('us_east');

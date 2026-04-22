@@ -30,9 +30,16 @@ export class EmbedResource extends BaseResource {
     });
   }
 
-  revokeSession(sessionId: string): Promise<EmbedSessionRevokeResponse> {
+  /**
+   * Revoke a single embed session.
+   *
+   * Takes the session's opaque token (`EmbedSession.session_token` /
+   * `EmbedSessionListItem.session_token`), not a database id — the backend
+   * looks the session up by token.
+   */
+  revokeSession(sessionToken: string): Promise<EmbedSessionRevokeResponse> {
     return this._delete<EmbedSessionRevokeResponse>(
-      `/embed/sessions/${sessionId}`,
+      `/embed/sessions/${sessionToken}`,
     );
   }
 
