@@ -22,6 +22,15 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
 ### Fixed
 
+- **`startView` scoped to initial init** (`src/core/querri-embed.js`):
+  `_buildConfig()` previously defaulted `startView` to `/home` and included
+  it on every `{type: 'init'}` postMessage, including re-inits triggered by
+  `session-expired` / `auth-required` refetches in `fetchSessionToken` and
+  popup-login modes. Once a token TTL expired the iframe was yanked back to
+  `/home` regardless of where the user had navigated. Fixed by tracking
+  `_hasAuthenticated` (persists across `session-expired`, unlike
+  `self.ready` which resets) and gating `startView` on it — the initial
+  init still carries `startView`, every subsequent re-init omits it.
 - **SSE decoder** (`src/server/streaming/sse-decoder.ts`): events whose
   lines spanned chunk boundaries — or whose terminating blank line arrived
   in a later chunk — were being silently dropped because `currentEvent`
