@@ -199,6 +199,11 @@ function QuerriInstance(container, options) {
   this._fetchInFlight = false;
   this._fetchCycleCount = 0;
   this._destroyed = false;
+  // Flips true the first time the iframe confirms authentication. Gates
+  // startView in _buildConfig so that re-init messages triggered by
+  // session-expired / auth-required do not yank the user back to startView
+  // after they've navigated within the embed.
+  this._hasAuthenticated = false;
 
   this.iframe = null;
   this.ready = false;
@@ -512,11 +517,18 @@ QuerriInstance.prototype._sendToIframe = function (msg) {
 
 QuerriInstance.prototype._buildConfig = function () {
   var opts = this._options;
-  return {
-    startView: opts.startView || '/home',
+  var config = {
     chrome: opts.chrome || {},
     theme: opts.theme || {},
   };
+  // Include startView only until the iframe has authenticated once. After
+  // that, re-init messages (session-expired / auth-required re-fetch) must
+  // not carry startView, otherwise every session refresh would redirect the
+  // user back to startView regardless of where they navigated to.
+  if (!this._hasAuthenticated) {
+    config.startView = opts.startView || '/home';
+  }
+  return config;
 };
 
 // ─── postMessage Listener ─────────────────────────────────
@@ -547,6 +559,7 @@ QuerriInstance.prototype._setupMessageListener = function () {
         // Session validated, content is rendering — emit only once
         if (!self.ready) {
           self.ready = true;
+          self._hasAuthenticated = true;
           self._fetchCycleCount = 0;
           if (self._loader) {
             self._loader.remove();
