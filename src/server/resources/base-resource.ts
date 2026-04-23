@@ -1,4 +1,4 @@
-import { HttpClient, type RequestOptions } from '../http/base-client.js';
+import { HttpClient } from '../http/base-client.js';
 import { CursorPage } from '../pagination/cursor-page.js';
 import type { CursorPageResponse } from '../types.js';
 
@@ -70,7 +70,7 @@ export abstract class BaseResource {
  * This function detects the latter and maps it into the standard shape so
  * `CursorPage` can consume it uniformly.
  */
-function normalizePage<T>(raw: CursorPageResponse<T> | Record<string, unknown>): CursorPageResponse<T> {
+export function normalizePage<T>(raw: CursorPageResponse<T> | Record<string, unknown>): CursorPageResponse<T> {
   if (Array.isArray(raw.data)) {
     return raw as unknown as CursorPageResponse<T>;
   }

@@ -24,7 +24,7 @@ describe('UsersResource', () => {
     );
 
     const client = makeClient();
-    const page = await client.users.list();
+    await client.users.list();
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, opts] = mockFetch.mock.calls[0];

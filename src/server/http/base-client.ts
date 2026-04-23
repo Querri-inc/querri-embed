@@ -3,11 +3,11 @@ import {
   APIError,
   APIConnectionError,
   APITimeoutError,
-  raiseForStatus,
+  throwForStatus,
 } from '../errors.js';
 import { isIdempotent, shouldRetry, calculateDelay, getRetryAfter, sleep } from './retry.js';
 
-const VERSION = '0.1.24';
+const VERSION = '0.2.0';
 
 export interface RequestOptions {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -26,6 +26,8 @@ export class HttpClient {
   private readonly orgId: string | undefined;
   private readonly sessionToken: string | undefined;
   private readonly baseUrl: string;
+  private readonly origin: string;
+  private readonly basePathname: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
   private readonly fetchFn: typeof globalThis.fetch;
@@ -34,18 +36,20 @@ export class HttpClient {
     const host = (config.host ?? 'https://app.querri.com').replace(/\/+$/, '');
 
     if ('sessionToken' in config) {
-      // Session mode — internal API at /api
       this.sessionToken = config.sessionToken;
       this.apiKey = undefined;
       this.orgId = undefined;
       this.baseUrl = `${host}/api`;
     } else {
-      // API key mode — public API at /api/v1
       this.sessionToken = undefined;
       this.apiKey = config.apiKey;
       this.orgId = config.orgId;
       this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
     }
+
+    const parsed = new URL(this.baseUrl);
+    this.origin = parsed.origin;
+    this.basePathname = parsed.pathname.replace(/\/+$/, '');
 
     this.timeout = config.timeout ?? 30_000;
     this.maxRetries = config.maxRetries ?? 3;
@@ -96,6 +100,7 @@ export class HttpClient {
         }
 
         if (!response.ok) {
+          // Error responses may have no body or a non-JSON body; fall back to null.
           const body = await response.json().catch(() => null);
 
           if (shouldRetry(response.status, idempotent) && attempt < maxRetries) {
@@ -107,7 +112,7 @@ export class HttpClient {
             continue;
           }
 
-          raiseForStatus(response.status, body, response.headers);
+          throwForStatus(response.status, body, response.headers);
         }
 
         if (response.status === 204) {
@@ -147,9 +152,8 @@ export class HttpClient {
     path: string,
     query?: Record<string, string | number | boolean | undefined>,
   ): string {
-    const url = new URL(path, this.baseUrl + '/');
-    // Fix: ensure the path is appended to the base URL correctly
-    url.pathname = new URL(this.baseUrl).pathname + path;
+    const url = new URL(this.origin);
+    url.pathname = this.basePathname + (path.startsWith('/') ? path : '/' + path);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         if (value !== undefined) {

@@ -117,6 +117,68 @@ function createLoader(container) {
   return loader;
 }
 
+// ─── Auth classification ─────────────────────────────────
+
+var INVALID_AUTH_SHAPE_MSG =
+  'auth must be "login", { shareKey, org }, { sessionEndpoint }, or { fetchSessionToken }';
+
+function classifyAuth(auth) {
+  if (auth === 'login') return { mode: 'login' };
+  if (!auth || typeof auth !== 'object') {
+    return { mode: 'invalid', message: INVALID_AUTH_SHAPE_MSG };
+  }
+
+  if ('shareKey' in auth) {
+    if (typeof auth.shareKey !== 'string' || !auth.shareKey) {
+      return { mode: 'invalid', message: 'auth.shareKey must be a non-empty string' };
+    }
+    if (!auth.org || typeof auth.org !== 'string') {
+      return {
+        mode: 'invalid',
+        message:
+          'auth.org is required when using shareKey authentication. ' +
+          'Pass { shareKey: "...", org: "your-org-id" }.',
+      };
+    }
+    return { mode: 'shareKey', shareKey: auth.shareKey, org: auth.org };
+  }
+
+  if ('fetchSessionToken' in auth) {
+    if (typeof auth.fetchSessionToken !== 'function') {
+      return {
+        mode: 'invalid',
+        message:
+          'auth.fetchSessionToken must be a function that returns a Promise<string>. ' +
+          'Got ' + typeof auth.fetchSessionToken + '.',
+      };
+    }
+    return { mode: 'fetchToken', fetchToken: auth.fetchSessionToken };
+  }
+
+  if ('sessionEndpoint' in auth) {
+    if (typeof auth.sessionEndpoint !== 'string' || !auth.sessionEndpoint) {
+      return { mode: 'invalid', message: 'auth.sessionEndpoint must be a non-empty string' };
+    }
+    var endpoint = auth.sessionEndpoint;
+    return {
+      mode: 'fetchToken',
+      fetchToken: function () {
+        return fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }).then(function (res) {
+          if (!res.ok) throw new Error('Session endpoint returned ' + res.status);
+          return res.json();
+        }).then(function (data) {
+          return data.session_token;
+        });
+      },
+    };
+  }
+
+  return { mode: 'invalid', message: INVALID_AUTH_SHAPE_MSG };
+}
+
 // ─── Instance ─────────────────────────────────────────────
 
 function QuerriInstance(container, options) {
@@ -137,6 +199,11 @@ function QuerriInstance(container, options) {
   this._fetchInFlight = false;
   this._fetchCycleCount = 0;
   this._destroyed = false;
+  // Flips true the first time the iframe confirms authentication. Gates
+  // startView in _buildConfig so that re-init messages triggered by
+  // session-expired / auth-required do not yank the user back to startView
+  // after they've navigated within the embed.
+  this._hasAuthenticated = false;
 
   this.iframe = null;
   this.ready = false;
@@ -145,6 +212,8 @@ function QuerriInstance(container, options) {
 }
 
 QuerriInstance.prototype._init = function () {
+  var self = this;
+
   // Ensure container has relative positioning for overlay
   var pos = getComputedStyle(this._container).position;
   if (pos === 'static' || pos === '') {
@@ -152,7 +221,6 @@ QuerriInstance.prototype._init = function () {
   }
 
   // Warn if container has no visible dimensions (deferred to after CSS layout)
-  var self = this;
   requestAnimationFrame(function () {
     if (self._destroyed) return;
     var rect = self._container.getBoundingClientRect();
@@ -167,101 +235,61 @@ QuerriInstance.prototype._init = function () {
   // Show loading spinner
   this._loader = createLoader(this._container);
 
-  // Detect auth mode and begin
-  var auth = this._options.auth;
-
-  // Validate auth config shapes — emit errors asynchronously instead of
-  // throwing so React components don't crash and callers can attach handlers.
-  if (auth && typeof auth === 'object') {
-    var validationError = null;
-    if ('fetchSessionToken' in auth && typeof auth.fetchSessionToken !== 'function') {
-      validationError =
-        'auth.fetchSessionToken must be a function that returns a Promise<string>. ' +
-        'Got ' + typeof auth.fetchSessionToken + '.';
-    } else if ('sessionEndpoint' in auth && (typeof auth.sessionEndpoint !== 'string' || !auth.sessionEndpoint)) {
-      validationError = 'auth.sessionEndpoint must be a non-empty string';
-    } else if ('shareKey' in auth) {
-      if (typeof auth.shareKey !== 'string' || !auth.shareKey) {
-        validationError = 'auth.shareKey must be a non-empty string';
-      } else if (!auth.org || typeof auth.org !== 'string') {
-        validationError =
-          'auth.org is required when using shareKey authentication. ' +
-          'Pass { shareKey: "...", org: "your-org-id" }.';
-      }
-    }
-    if (validationError) {
+  // Validation + mode selection in one pass; invalid shapes defer an error
+  // so callers can attach handlers after create() returns.
+  var classified = classifyAuth(this._options.auth);
+  switch (classified.mode) {
+    case 'shareKey':
+      this._initShareKey(classified);
+      break;
+    case 'fetchToken':
+      this._initFetchToken(classified.fetchToken);
+      break;
+    case 'login':
+      this._initPopupLogin();
+      break;
+    case 'invalid':
       if (this._loader) { this._loader.remove(); this._loader = null; }
-      var self2 = this;
-      var msg = validationError;
-      setTimeout(function () {
-        if (!self2._destroyed) {
-          self2._emitError('invalid_auth', msg);
-        }
-      }, 0);
-      return;
-    }
-  }
-
-  if (auth && typeof auth === 'object' && auth.shareKey) {
-    // Mode 1: Share key — build iframe URL with share params
-    this._initShareKey(auth);
-  } else if (auth && typeof auth === 'object' && typeof auth.fetchSessionToken === 'function') {
-    // Mode 2: fetchSessionToken callback
-    this._initFetchToken(auth);
-  } else if (auth && typeof auth === 'object' && typeof auth.sessionEndpoint === 'string') {
-    // Mode 2b: sessionEndpoint shorthand — wraps fetchSessionToken internally
-    var endpoint = auth.sessionEndpoint;
-    this._initFetchToken({
-      fetchSessionToken: function () {
-        return fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        }).then(function (res) {
-          if (!res.ok) throw new Error('Session endpoint returned ' + res.status);
-          return res.json();
-        }).then(function (data) {
-          return data.session_token;
-        });
-      },
-    });
-  } else if (auth === 'login') {
-    // Mode 3: Popup login
-    this._initPopupLogin();
-  } else {
-    // Remove loader since we won't proceed
-    if (this._loader) {
-      this._loader.remove();
-      this._loader = null;
-    }
-    // Defer error so callers can attach handlers after create() returns
-    var self = this;
-    setTimeout(function () {
-      if (!self._destroyed) {
-        self._emitError('invalid_auth', 'auth must be "login", { shareKey, org }, { sessionEndpoint }, or { fetchSessionToken }');
-      }
-    }, 0);
+      this._deferError('invalid_auth', classified.message);
+      break;
   }
 };
 
 // ─── Mode 1: Share Key ────────────────────────────────────
 
-QuerriInstance.prototype._initShareKey = function (auth) {
-  var url = this._serverUrl + '/embed?share=' + encodeURIComponent(auth.shareKey) +
-    '&org=' + encodeURIComponent(auth.org);
+QuerriInstance.prototype._initShareKey = function (classified) {
+  var url = this._serverUrl + '/embed?share=' + encodeURIComponent(classified.shareKey) +
+    '&org=' + encodeURIComponent(classified.org);
   url += '&startView=' + encodeURIComponent(this._options.startView || '/home');
   this._createIframe(url);
   this._setupMessageListener();
+
+  var self = this;
+  this._authStrategy = {
+    onReady: function () {
+      self._sendToIframe({ type: 'init', config: self._buildConfig() });
+    },
+    onAuthRequired: function () {
+      self._emitError('auth_required', 'Authentication required but no login mode configured');
+    },
+    onSessionExpired: function () { /* share-key has no re-auth path */ },
+  };
 };
 
 // ─── Mode 2: fetchSessionToken ────────────────────────────
 
-QuerriInstance.prototype._initFetchToken = function (auth) {
+QuerriInstance.prototype._initFetchToken = function (fetchTokenFn) {
   this._createIframe(this._serverUrl + '/embed');
   this._setupMessageListener();
 
-  // Fetch token and send to iframe when ready
-  this._fetchTokenFn = auth.fetchSessionToken;
-  this._pendingTokenFetch = true;
+  this._fetchTokenFn = fetchTokenFn;
+
+  var self = this;
+  this._authStrategy = {
+    onReady: function () { self._handleFetchToken(); },
+    onAuthRequired: function () { self._handleFetchToken(); },
+    onSessionExpired: function () { self._handleFetchToken(); },
+  };
 };
 
 QuerriInstance.prototype._handleFetchToken = function () {
@@ -332,12 +360,33 @@ QuerriInstance.prototype._initPopupLogin = function () {
   this._setupMessageListener();
 
   if (cached) {
-    // Try cached token — iframe will tell us if it's valid
+    // Try cached token — iframe will tell us if it's valid.
+    // If invalid, we'll receive 'auth-required' and show the overlay then.
     this._pendingCachedToken = cached;
-  } else {
-    // No cached token — will show overlay when iframe reports auth-required
-    this._needsLogin = true;
   }
+
+  var self = this;
+  this._authStrategy = {
+    onReady: function () {
+      if (self._pendingCachedToken) {
+        self._sendToIframe({
+          type: 'init',
+          sessionToken: self._pendingCachedToken,
+          config: self._buildConfig(),
+        });
+        self._pendingCachedToken = null;
+      } else {
+        self._sendToIframe({ type: 'init', config: self._buildConfig() });
+      }
+    },
+    onAuthRequired: function () {
+      clearCachedToken(self._serverUrl);
+      self._showLoginOverlay();
+    },
+    onSessionExpired: function () {
+      self._showLoginOverlay();
+    },
+  };
 };
 
 QuerriInstance.prototype._showLoginOverlay = function () {
@@ -468,11 +517,18 @@ QuerriInstance.prototype._sendToIframe = function (msg) {
 
 QuerriInstance.prototype._buildConfig = function () {
   var opts = this._options;
-  return {
-    startView: opts.startView || '/home',
+  var config = {
     chrome: opts.chrome || {},
     theme: opts.theme || {},
   };
+  // Include startView only until the iframe has authenticated once. After
+  // that, re-init messages (session-expired / auth-required re-fetch) must
+  // not carry startView, otherwise every session refresh would redirect the
+  // user back to startView regardless of where they navigated to.
+  if (!this._hasAuthenticated) {
+    config.startView = opts.startView || '/home';
+  }
+  return config;
 };
 
 // ─── postMessage Listener ─────────────────────────────────
@@ -496,38 +552,14 @@ QuerriInstance.prototype._setupMessageListener = function () {
         // (e.g. embed layout + root layout both sending 'ready' before auth completes)
         if (self._iframeReady) break;
         self._iframeReady = true;
-        // iframe loaded — send initial config
-        if (self._pendingCachedToken) {
-          // Mode 3: Try cached token
-          self._sendToIframe({
-            type: 'init',
-            sessionToken: self._pendingCachedToken,
-            config: self._buildConfig(),
-          });
-          self._pendingCachedToken = null;
-        } else if (self._pendingTokenFetch) {
-          // Mode 2: Fetch token via callback
-          self._pendingTokenFetch = false;
-          self._handleFetchToken();
-        } else if (!self._needsLogin) {
-          // Mode 1 (share key): Just send config
-          self._sendToIframe({
-            type: 'init',
-            config: self._buildConfig(),
-          });
-        } else {
-          // Mode 3: No cached token — send init without token, expect auth-required back
-          self._sendToIframe({
-            type: 'init',
-            config: self._buildConfig(),
-          });
-        }
+        if (self._authStrategy) self._authStrategy.onReady();
         break;
 
       case 'authenticated':
         // Session validated, content is rendering — emit only once
         if (!self.ready) {
           self.ready = true;
+          self._hasAuthenticated = true;
           self._fetchCycleCount = 0;
           if (self._loader) {
             self._loader.remove();
@@ -539,27 +571,13 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'auth-required':
-        // No valid session — need login or re-fetch
-        if (self._options.auth === 'login') {
-          clearCachedToken(self._serverUrl);
-          self._showLoginOverlay();
-        } else if (self._fetchTokenFn) {
-          // Re-fetch token (works for both fetchSessionToken and sessionEndpoint modes)
-          self._handleFetchToken();
-        } else {
-          self._emitError('auth_required', 'Authentication required but no login mode configured');
-        }
+        if (self._authStrategy) self._authStrategy.onAuthRequired();
         break;
 
       case 'session-expired':
-        // Session expired — re-auth
         self.ready = false;
         clearCachedToken(self._serverUrl);
-        if (self._options.auth === 'login') {
-          self._showLoginOverlay();
-        } else if (self._fetchTokenFn) {
-          self._handleFetchToken();
-        }
+        if (self._authStrategy) self._authStrategy.onSessionExpired();
         self._emit('session-expired', {});
         break;
 
@@ -606,6 +624,13 @@ QuerriInstance.prototype._emit = function (event, data) {
 
 QuerriInstance.prototype._emitError = function (code, message) {
   this._emit('error', { code: code, message: message });
+};
+
+QuerriInstance.prototype._deferError = function (code, message) {
+  var self = this;
+  setTimeout(function () {
+    if (!self._destroyed) self._emitError(code, message);
+  }, 0);
 };
 
 // ─── Public Methods ───────────────────────────────────────
@@ -704,7 +729,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '0.0.0-test',
+  version: '0.2.0',
 };
 
 export default QuerriEmbed;

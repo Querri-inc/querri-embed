@@ -20,8 +20,8 @@
  */
 
 export class QuerriError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'QuerriError';
   }
 }
@@ -34,12 +34,9 @@ export class ConfigError extends QuerriError {
 }
 
 export class APIConnectionError extends QuerriError {
-  readonly cause: Error | undefined;
-
   constructor(message: string, cause?: Error) {
-    super(message);
+    super(message, cause ? { cause } : undefined);
     this.name = 'APIConnectionError';
-    this.cause = cause;
   }
 }
 
@@ -178,7 +175,7 @@ export class StreamCancelledError extends StreamError {
   }
 }
 
-export function raiseForStatus(
+export function throwForStatus(
   status: number,
   body: unknown,
   headers: Headers,

@@ -27,12 +27,8 @@ const targets = [
     pattern: /const VERSION = '\d+\.\d+\.\d+[^']*'/,
     replacement: `const VERSION = '${version}'`,
   },
-  // Test files
-  {
-    file: 'src/core/querri-embed.test.ts',
-    pattern: /expect\(QuerriEmbed\.version\)\.toBe\('\d+\.\d+\.\d+'\)/,
-    replacement: `expect(QuerriEmbed.version).toBe('${version}')`,
-  },
+  // Test files (mock instances in wrapper tests use their own placeholder
+  // version — not the SDK's — so they're not listed here)
   {
     file: 'src/react/QuerriEmbed.test.tsx',
     pattern: /version: '\d+\.\d+\.\d+'/,

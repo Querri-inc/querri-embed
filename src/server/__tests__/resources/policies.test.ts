@@ -145,7 +145,7 @@ describe('PoliciesResource', () => {
     );
     const client = makeClient();
 
-    const result = await client.policies.resolve('u1', 's1');
+    const result = await client.policies.resolve({ user_id: 'u1', source_id: 's1' });
 
     expect(result.where_clause).toBe('1=1');
     const [url, opts] = mockFetch.mock.calls[0];

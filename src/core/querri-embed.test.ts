@@ -486,9 +486,9 @@ describe('Container setup', () => {
 });
 
 describe('QuerriEmbed.version', () => {
-  it('exposes a version string', () => {
+  it('exposes a semver version string', () => {
     expect(typeof QuerriEmbed.version).toBe('string');
-    expect(QuerriEmbed.version).toBe('0.0.0-test');
+    expect(QuerriEmbed.version).toMatch(/^\d+\.\d+\.\d+(?:[-+].+)?$/);
   });
 });
 
@@ -830,6 +830,70 @@ describe('Token fetch deduplication', () => {
     sendMessage('session-expired');
     await vi.advanceTimersByTimeAsync(0);
     expect(fetchToken).toHaveBeenCalledTimes(2);
+    instance.destroy();
+  });
+
+  it('only sends startView in the first init; subsequent re-inits omit it', async () => {
+    // Regression: previously _buildConfig always defaulted startView to
+    // '/home', which meant that every session-expired / auth-required
+    // re-fetch yanked the user back to /home regardless of where they had
+    // navigated inside the embed.
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    // Initial handshake: iframe ready -> SDK fetches token -> sends init
+    // with startView so the iframe knows where to navigate.
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const firstInit = sendSpy.mock.calls[0][0] as { type: string; config: Record<string, unknown> };
+    expect(firstInit.type).toBe('init');
+    expect(firstInit.config).toHaveProperty('startView', '/home');
+
+    // Iframe confirms auth -> user is now navigating within the embed.
+    sendMessage('authenticated');
+
+    // Session expires later -> SDK refreshes token and re-sends init. This
+    // second init must NOT carry startView; otherwise the iframe would
+    // redirect the user back to startView every time the token refreshes.
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sendSpy).toHaveBeenCalledTimes(2);
+    const secondInit = sendSpy.mock.calls[1][0] as { type: string; config: Record<string, unknown> };
+    expect(secondInit.type).toBe('init');
+    expect(secondInit.config).not.toHaveProperty('startView');
+
+    instance.destroy();
+  });
+
+  it('honors an explicit startView on the first init and then omits it on refresh', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+      startView: '/builder/dashboard/abc',
+    });
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    const firstInit = sendSpy.mock.calls[0][0] as { config: Record<string, unknown> };
+    expect(firstInit.config).toHaveProperty('startView', '/builder/dashboard/abc');
+
+    sendMessage('authenticated');
+    sendMessage('session-expired');
+    await vi.advanceTimersByTimeAsync(0);
+    const secondInit = sendSpy.mock.calls[1][0] as { config: Record<string, unknown> };
+    expect(secondInit.config).not.toHaveProperty('startView');
+
     instance.destroy();
   });
 });

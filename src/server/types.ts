@@ -12,7 +12,7 @@ export interface QuerriConfig {
   host?: string;
   /** Request timeout in milliseconds. @default 30000 */
   timeout?: number;
-  /** Max automatic retries on 429/5xx errors. @default 2 */
+  /** Max automatic retries on 429/5xx errors. @default 3 */
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
@@ -26,7 +26,7 @@ export interface SessionConfig {
   host?: string;
   /** Request timeout in milliseconds. @default 30000 */
   timeout?: number;
-  /** Max automatic retries on 429/5xx errors. @default 2 */
+  /** Max automatic retries on 429/5xx errors. @default 3 */
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
@@ -120,6 +120,21 @@ export interface EmbedSessionList {
 export interface EmbedSessionRevokeResponse {
   session_id: string;
   revoked: boolean;
+}
+
+export interface FilesDeleteResponse {
+  id: string;
+  deleted: boolean;
+}
+
+export interface SourcesDeleteResponse {
+  id: string;
+  deleted: boolean;
+}
+
+export interface KeysDeleteResponse {
+  id: string;
+  deleted: boolean;
 }
 
 export interface CreateSessionParams {
@@ -520,14 +535,33 @@ export interface ShareEntry {
   expires_at: string | null;
 }
 
-export interface SourceShareParams {
+/** Allowed values for a share's permission level. */
+export type SharePermission = 'view' | 'edit';
+
+/** Shared parameters for shareProject / shareDashboard / shareSource. */
+export interface ShareParams {
   user_id: string;
-  permission?: 'view' | 'edit';
+  permission?: SharePermission;
+  expires_at?: string;
 }
+
+/** @deprecated Use {@link ShareParams} — kept for backward compatibility. */
+export type SourceShareParams = ShareParams;
 
 export interface OrgShareSourceParams {
   enabled: boolean;
-  permission?: 'view' | 'edit';
+  permission?: SharePermission;
+}
+
+/** Response returned after revoking a share (revokeProjectShare / revokeDashboardShare). */
+export interface ShareRevokeResponse {
+  deleted: boolean;
+}
+
+/** Parameters for {@link PoliciesResource.resolve}. */
+export interface ResolveAccessParams {
+  user_id: string;
+  source_id: string;
 }
 
 // ---------------------------------------------------------------------------
