@@ -1816,7 +1816,7 @@ If you omit `resolveParams`, the handler reads the request body as `GetSessionPa
   <QuerriEmbed
     serverUrl="https://app.querri.com"
     {auth}
-    startView="/builder/dashboard/your-dashboard-uuid"
+    startView="/dashboard/your-dashboard-uuid"
     on:ready={() => console.log('Loaded')}
     on:error={(e) => console.error(e.detail)}
   />
@@ -1889,7 +1889,7 @@ export default function DashboardPage() {
       <QuerriEmbed
         serverUrl="https://app.querri.com"
         auth={auth}
-        startView="/builder/dashboard/your-dashboard-uuid"
+        startView="/dashboard/your-dashboard-uuid"
         onReady={() => console.log('Loaded')}
         onError={(err) => console.error(err)}
       />
@@ -1963,7 +1963,7 @@ export default function DashboardPage() {
       <QuerriEmbed
         serverUrl="https://app.querri.com"
         auth={auth}
-        startView="/builder/dashboard/your-dashboard-uuid"
+        startView="/dashboard/your-dashboard-uuid"
         onReady={() => console.log('Loaded')}
         onError={(err) => console.error(err)}
       />
@@ -2046,7 +2046,7 @@ export default defineEventHandler(async (event) => {
     <QuerriEmbed
       server-url="https://app.querri.com"
       :auth="auth"
-      start-view="/builder/dashboard/your-dashboard-uuid"
+      start-view="/dashboard/your-dashboard-uuid"
       @ready="onReady"
       @error="onError"
     />
@@ -2140,7 +2140,7 @@ import { QuerriEmbedComponent, type QuerriAuth } from '@querri-inc/embed/angular
       <querri-embed
         [serverUrl]="'https://app.querri.com'"
         [auth]="auth"
-        [startView]="'/builder/dashboard/your-dashboard-uuid'"
+        [startView]="'/dashboard/your-dashboard-uuid'"
         (ready)="onReady()"
         (error)="onError($event)"
       />

@@ -77,7 +77,7 @@ import { QuerriEmbed } from '@querri-inc/embed/react';
   style={{ width: '100%', height: '600px' }}
   serverUrl="https://app.querri.com"
   auth={auth}
-  startView="/builder/dashboard/uuid"
+  startView="/dashboard/uuid"
 />
 ```
 
@@ -86,7 +86,7 @@ import { QuerriEmbed } from '@querri-inc/embed/react';
 ```vue
 <template>
   <div style="width: 100%; height: 600px">
-    <QuerriEmbed server-url="https://app.querri.com" :auth="auth" start-view="/builder/dashboard/uuid" />
+    <QuerriEmbed server-url="https://app.querri.com" :auth="auth" start-view="/dashboard/uuid" />
   </div>
 </template>
 <script setup>
@@ -103,7 +103,7 @@ const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
   const auth = { shareKey: 'your-share-key', org: 'your-org-id' };
 </script>
 <div style="width: 100%; height: 600px">
-  <QuerriEmbed serverUrl="https://app.querri.com" {auth} startView="/builder/dashboard/uuid" />
+  <QuerriEmbed serverUrl="https://app.querri.com" {auth} startView="/dashboard/uuid" />
 </div>
 ```
 
@@ -117,7 +117,7 @@ import { QuerriEmbedComponent } from '@querri-inc/embed/angular';
   standalone: true,
   imports: [QuerriEmbedComponent],
   template: `<div style="width: 100%; height: 600px">
-    <querri-embed [serverUrl]="'https://app.querri.com'" [auth]="auth" [startView]="'/builder/dashboard/uuid'" />
+    <querri-embed [serverUrl]="'https://app.querri.com'" [auth]="auth" [startView]="'/dashboard/uuid'" />
   </div>`,
 })
 export class DashboardComponent {
@@ -133,7 +133,7 @@ import { QuerriEmbed } from '@querri-inc/embed';
 QuerriEmbed.create('#container', {
   serverUrl: 'https://app.querri.com',
   auth: { shareKey: 'your-share-key', org: 'your-org-id' },
-  startView: '/builder/dashboard/uuid',
+  startView: '/dashboard/uuid',
 });
 ```
 
@@ -200,11 +200,29 @@ auth: 'login'
 |--------|------|----------|-------------|
 | `serverUrl` | `string` | Yes | Querri server URL. Use `'https://app.querri.com'` for web-app embeds or `'https://app.querri.com/builder'` for dashboard embeds. |
 | `auth` | `QuerriAuth` | Yes | Authentication mode (see above) |
-| `startView` | `string` | No | Initial view path (e.g. `'/builder/dashboard/uuid'`). Defaults to `'/home'` |
+| `startView` | `string` | No | Initial view path (e.g. `'/dashboard/uuid'`). Defaults to `'/home'` |
 | `chrome` | `object` | No | UI chrome visibility |
-| `chrome.sidebar` | `{ show?: boolean }` | No | Sidebar visibility (default: hidden) |
-| `chrome.header` | `{ show?: boolean }` | No | Header visibility (default: shown) |
-| `theme` | `object` | No | Theme overrides |
+| `chrome.sidebar.show` | `boolean` | No | Sidebar visibility (default: `false` / hidden) |
+| `chrome.header.show` | `boolean` | No | Header bar visibility (default: `true`) |
+| `chrome.header.viewModeToggle` | `boolean` | No | Show chat / data-flow view-mode toggle on project pages (default: `true`) |
+| `chrome.header.share` | `boolean` | No | Show the Share button (default: `true`) |
+| `chrome.header.print` | `boolean` | No | Show the Print button (default: `true`) |
+| `chrome.header.automate` | `boolean` | No | Show the Automate button on project pages (default: `true`) |
+| `chrome.header.settings` | `boolean` | No | Show the Settings button (default: `true`) |
+| `chrome.header.menu` | `boolean` | No | Show the kebab "more options" menu (default: `true`) |
+| `chrome.chat.fullWidth` | `boolean` | No | Render chat in full-width layout (default: `false`) |
+| `chrome.chat.simpleMode` | `boolean` | No | Simplified chat UI with fewer surfaces (default: `false`) |
+| `chrome.chat.connectData` | `boolean` | No | Show the "Connect data" affordance (default: `false`) |
+| `chrome.chat.extendedThinking` | `boolean` | No | Enable extended-thinking responses (default: `false`) |
+| `chrome.chat.skills` | `boolean` | No | Show the skills picker (default: `false`) |
+| `chrome.chat.fasterAnalysis` | `boolean` | No | Show the "Faster analysis mode" (zap) toggle (default: `false`). Renamed from `experimentalV2` — the legacy key is still accepted as an alias. |
+| `chrome.chat.reasoning.merged` | `boolean` | No | Merge reasoning into the same message bubble (default: `true`) |
+| `chrome.chat.reasoning.startExpanded` | `boolean` | No | Start with the reasoning panel expanded (default: `false`) |
+| `chrome.chat.display.*` | `boolean` | No | Per-surface chat-display toggles (`tables`, `charts`, `reports`, `suggestions`, `clarifications`, `choices`, `plans`, `reasoning`, `displayMessages`, `actionCards`, `copy`, `share`, `print`, `rerun`). All default `true`. |
+| `chrome.chat.welcome.title` | `string` | No | Custom welcome heading (empty hides it) |
+| `chrome.chat.welcome.subtitle` | `string` | No | Custom welcome subheading |
+| `chrome.chat.welcome.promptButtons` | `Array<{id?,label,prompt}>` | No | Quick-prompt buttons under the welcome heading |
+| `theme` | `QuerriThemeConfig` | No | `{ scheme?: 'light' \| 'dark' \| null, colors?: Record<\`--token\`, string> }`. `colors` keys must start with `--` and are applied to `document.documentElement.style`. See the staging app's `layout.css` for the canonical `--ui-*` token list. |
 | `timeout` | `number` | No | Max time (ms) to wait for iframe to respond (default: `15000`) |
 
 ## Events

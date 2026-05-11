@@ -5,6 +5,61 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
+## [Unreleased]
+
+### Added
+
+- **`QuerriHeaderConfig` exposes per-control header toggles**
+  (`src/core/querri-embed.d.ts`): `viewModeToggle`, `share`, `print`,
+  `automate`, `settings`, `menu`. These keys were already honored at
+  runtime via the SDK's `chrome` passthrough, but the TypeScript type
+  only declared `show`. Integrators can now hide individual project /
+  dashboard header buttons via the typed API. Backwards-compatible —
+  all keys default to `true`.
+- **`QuerriChatConfig`** (`src/core/querri-embed.d.ts`) types the
+  `chrome.chat` surface that the staging frontend has read all along:
+  `fullWidth`, `connectData`, `extendedThinking`, `simpleMode`,
+  `skills`, `fasterAnalysis`, plus nested `display`, `reasoning`, and
+  `welcome` (with `promptButtons`). All keys are passthrough — runtime
+  behavior is unchanged. Integrators can now drive chat surfaces from
+  TypeScript directly.
+- **`QuerriThemeConfig`** replaces the loose `theme: Record<string, unknown>`
+  with `{ scheme?: 'light' \| 'dark' \| null; colors?: Record<string, string> }`.
+  Keys in `colors` must begin with `--` and are applied to
+  `document.documentElement.style`. The canonical `--ui-*` token list
+  lives in the staging app's `layout.css`.
+
+### Changed
+
+- **`chat.experimentalV2` renamed to `chat.fasterAnalysis`** to match
+  the existing "Faster analysis mode" tooltip. The old key is still
+  accepted by both the SDK and the staging frontend as a legacy alias
+  and will be removed in the next major release.
+  - SDK side: `_buildConfig` aliases `fasterAnalysis` → `experimentalV2`
+    on the wire so a renamed SDK keeps working against older staging
+    builds (`src/core/querri-embed.js`).
+  - Staging side: `routes/embed/(sdk)/+layout.svelte` accepts incoming
+    `experimentalV2` and copies it to `fasterAnalysis` before merging,
+    so older SDKs keep working against the renamed frontend.
+  - The chat-API wire payload to the backend chat service still uses
+    `experimentalV2` until the backend rename lands separately.
+- **`QuerriEmbedOptions.theme` is now typed as `QuerriThemeConfig`**
+  rather than `Record<string, unknown>`. Source-compatible if you were
+  passing an object literal with `--`-prefixed keys; flagged if you
+  were passing nested non-string values.
+
+### Docs
+
+- README, `docs/api-guide.md`, `docs/server-sdk.md`, and JSDoc on the
+  React / Vue / Angular `startView` props now reference `/dashboard/{uuid}`
+  and `/chat/{uuid}` instead of the deprecated `/builder/dashboard/{uuid}`
+  path. The staging app silently rewrites `/builder/` paths but logs a
+  transient `[Builder Error] Not found` to the console; the new docs
+  recommend the canonical paths directly.
+- README + `docs/api-guide.md` now document the full `chrome.chat`
+  surface, the `theme.scheme` / `theme.colors` shape, and a custom
+  welcome-screen example.
+
 ## [0.2.0] — 2026-04-22
 
 ### Breaking Changes

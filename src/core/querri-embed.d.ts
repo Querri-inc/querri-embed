@@ -43,12 +43,133 @@ export type QuerriAuth = 'login' | QuerriShareKeyAuth | QuerriTokenAuth | Querri
 
 // ─── Config Types ─────────────────────────────────────────
 
+/** Controls which sidebar UI is visible inside the embed. */
+export interface QuerriSidebarConfig {
+  /** Sidebar visibility. @default false */
+  show?: boolean;
+}
+
+/** Controls which header / page-toolbar UI is visible inside the embed. */
+export interface QuerriHeaderConfig {
+  /** Header bar visibility. @default true */
+  show?: boolean;
+  /** Show the chat / data-flow view-mode toggle on project pages. @default true */
+  viewModeToggle?: boolean;
+  /** Show the Share button on project / dashboard pages. @default true */
+  share?: boolean;
+  /** Show the Print button on project / dashboard pages. @default true */
+  print?: boolean;
+  /** Show the Automate button on project pages. @default true */
+  automate?: boolean;
+  /** Show the Settings button. @default true */
+  settings?: boolean;
+  /** Show the kebab "more options" menu on project / dashboard pages. @default true */
+  menu?: boolean;
+}
+
+/** Controls which chat display surfaces render inside project / chat views. */
+export interface QuerriChatDisplayConfig {
+  /** Show table widgets. @default true */
+  tables?: boolean;
+  /** Show chart widgets. @default true */
+  charts?: boolean;
+  /** Show report widgets. @default true */
+  reports?: boolean;
+  /** Show suggestion chips. @default true */
+  suggestions?: boolean;
+  /** Show clarification prompts. @default true */
+  clarifications?: boolean;
+  /** Show choice / option pickers. @default true */
+  choices?: boolean;
+  /** Show plan cards. @default true */
+  plans?: boolean;
+  /** Show reasoning panels. @default true */
+  reasoning?: boolean;
+  /** Show standard chat messages. @default true */
+  displayMessages?: boolean;
+  /** Show action cards. @default true */
+  actionCards?: boolean;
+  /** Show the copy-to-clipboard action on assistant messages. @default true */
+  copy?: boolean;
+  /** Show the share action on assistant messages. @default true */
+  share?: boolean;
+  /** Show the print action on assistant messages. @default true */
+  print?: boolean;
+  /** Show the rerun action on assistant messages. @default true */
+  rerun?: boolean;
+}
+
+/** Controls how the reasoning / "thinking" panel renders. */
+export interface QuerriChatReasoningConfig {
+  /** Merge reasoning into the same message bubble. @default true */
+  merged?: boolean;
+  /** Start with the reasoning panel expanded. @default false */
+  startExpanded?: boolean;
+}
+
+/** A custom welcome-screen prompt button (shown above the input on empty chats). */
+export interface QuerriWelcomePromptButton {
+  /** Optional stable identifier; used for list keying. */
+  id?: string;
+  /** Visible button label. */
+  label: string;
+  /** Prompt text submitted when the button is clicked. */
+  prompt: string;
+}
+
+/** Controls the empty-chat welcome screen content. */
+export interface QuerriChatWelcomeConfig {
+  /** Welcome heading text. Blank string hides the heading. @default '' */
+  title?: string;
+  /** Welcome subheading text. Blank string hides the subheading. @default '' */
+  subtitle?: string;
+  /** Quick-prompt buttons rendered below the welcome heading. @default [] */
+  promptButtons?: QuerriWelcomePromptButton[];
+}
+
+/** Controls chat / project-page behavior and surfaces. */
+export interface QuerriChatConfig {
+  /** Render chat in full-width layout. @default false */
+  fullWidth?: boolean;
+  /** Enable the "Connect data" affordance. @default false */
+  connectData?: boolean;
+  /** Enable extended-thinking responses. @default false */
+  extendedThinking?: boolean;
+  /** Simplified chat UI (fewer surfaces). @default false */
+  simpleMode?: boolean;
+  /** Enable the skills picker. @default false */
+  skills?: boolean;
+  /** Faster analysis mode (the "zap" affordance in the chat toolbar). @default false */
+  fasterAnalysis?: boolean;
+  /**
+   * @deprecated Use `fasterAnalysis` instead. Kept for backwards
+   * compatibility; will be removed in a future major release. If both
+   * are set, `fasterAnalysis` takes precedence.
+   */
+  experimentalV2?: boolean;
+  display?: QuerriChatDisplayConfig;
+  reasoning?: QuerriChatReasoningConfig;
+  welcome?: QuerriChatWelcomeConfig;
+}
+
 /** Controls which chrome UI elements are visible inside the embed. */
 export interface QuerriChromeConfig {
-  /** Sidebar visibility. @default `{ show: false }` */
-  sidebar?: { show?: boolean };
-  /** Header visibility. @default `{ show: true }` */
-  header?: { show?: boolean };
+  sidebar?: QuerriSidebarConfig;
+  header?: QuerriHeaderConfig;
+  chat?: QuerriChatConfig;
+}
+
+/** Theme overrides applied to the embedded application. */
+export interface QuerriThemeConfig {
+  /** Color scheme override. `null` follows the host OS. @default null */
+  scheme?: 'light' | 'dark' | null;
+  /**
+   * CSS custom property overrides. Keys must begin with `--` and map
+   * to valid CSS values (typically colors). Applied to
+   * `document.documentElement.style`. See the README for the canonical
+   * `--ui-*` token list.
+   */
+  colors?: Record<string, string>;
 }
 
 /** Options passed to `QuerriEmbed.create()`. */
@@ -57,12 +178,12 @@ export interface QuerriEmbedOptions {
   serverUrl: string;
   /** Authentication mode — `'login'`, share key object, session endpoint, or token callback. */
   auth: QuerriAuth;
-  /** Initial view path (e.g. `'/builder/dashboard/uuid'`). @default '/home' */
+  /** Initial view path (e.g. `'/dashboard/uuid'`, `'/chat/uuid'`). @default '/home' */
   startView?: string;
   /** Chrome UI visibility overrides. */
   chrome?: QuerriChromeConfig;
   /** Theme overrides passed to the embedded application. */
-  theme?: Record<string, unknown>;
+  theme?: QuerriThemeConfig;
   /**
    * Maximum time in milliseconds to wait for the iframe to respond.
    * If the iframe does not send a 'ready' message within this time,

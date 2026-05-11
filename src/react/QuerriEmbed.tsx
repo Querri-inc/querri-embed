@@ -17,7 +17,7 @@ export interface QuerriEmbedProps {
   serverUrl: string;
   /** Authentication mode */
   auth: QuerriEmbedOptions['auth'];
-  /** Initial view path (e.g. '/builder/dashboard/uuid') */
+  /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid') */
   startView?: string;
   /** Chrome visibility config */
   chrome?: QuerriEmbedOptions['chrome'];

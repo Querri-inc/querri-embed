@@ -430,10 +430,84 @@ iframe.contentWindow.postMessage({
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `startView` | string | `'/home'` | Initial view path (e.g., `'/builder/dashboard/{uuid}'`) |
+| `startView` | string | `'/home'` | Initial view path (e.g., `'/dashboard/{uuid}'`, `'/chat/{uuid}'`) |
 | `chrome.sidebar.show` | boolean | `false` | Show the sidebar navigation |
 | `chrome.header.show` | boolean | `true` | Show the top header bar |
-| `theme` | object | `{}` | Custom theme overrides |
+| `chrome.header.viewModeToggle` | boolean | `true` | Show chat / data-flow view-mode toggle on project pages |
+| `chrome.header.share` | boolean | `true` | Show the Share button |
+| `chrome.header.print` | boolean | `true` | Show the Print button |
+| `chrome.header.automate` | boolean | `true` | Show the Automate button on project pages |
+| `chrome.header.settings` | boolean | `true` | Show the Settings button |
+| `chrome.header.menu` | boolean | `true` | Show the kebab "more options" menu |
+| `chrome.chat.fullWidth` | boolean | `false` | Render chat in full-width layout |
+| `chrome.chat.simpleMode` | boolean | `false` | Simplified chat UI with fewer surfaces |
+| `chrome.chat.connectData` | boolean | `false` | Show the "Connect data" affordance |
+| `chrome.chat.extendedThinking` | boolean | `false` | Enable extended-thinking responses |
+| `chrome.chat.skills` | boolean | `false` | Show the skills picker |
+| `chrome.chat.fasterAnalysis` | boolean | `false` | Show the "Faster analysis mode" (zap) toggle. Renamed from `experimentalV2`; legacy key still accepted as an alias for backwards compat. |
+| `chrome.chat.reasoning.merged` | boolean | `true` | Merge reasoning into the same message bubble |
+| `chrome.chat.reasoning.startExpanded` | boolean | `false` | Start with the reasoning panel expanded |
+| `chrome.chat.display.*` | boolean | `true` | Per-surface chat-display toggles: `tables`, `charts`, `reports`, `suggestions`, `clarifications`, `choices`, `plans`, `reasoning`, `displayMessages`, `actionCards`, `copy`, `share`, `print`, `rerun` |
+| `chrome.chat.welcome.title` | string | `''` | Custom welcome heading (empty hides it) |
+| `chrome.chat.welcome.subtitle` | string | `''` | Custom welcome subheading |
+| `chrome.chat.welcome.promptButtons` | array | `[]` | Quick-prompt buttons (`{ id?, label, prompt }`) |
+| `theme.scheme` | `'light' \| 'dark' \| null` | `null` | Force light or dark scheme; `null` follows the host OS |
+| `theme.colors` | object | `{}` | CSS custom property overrides — keys begin with `--`, applied to `:root` |
+
+**Minimal-chrome example** — hide every per-page header control plus the
+in-chat affordances:
+
+```javascript
+chrome: {
+  sidebar: { show: false },
+  header: {
+    show: true,
+    viewModeToggle: false,
+    share: false,
+    print: false,
+    automate: false,
+    settings: false,
+    menu: false,
+  },
+  chat: {
+    fullWidth: false,
+    simpleMode: true,
+    fasterAnalysis: false,
+    extendedThinking: false,
+    skills: false,
+  },
+}
+```
+
+**Custom welcome screen** — replace the default empty-chat welcome with
+your own copy and quick-prompt buttons:
+
+```javascript
+chrome: {
+  chat: {
+    welcome: {
+      title: 'How can I help with sales today?',
+      subtitle: 'Ask anything about your accounts.',
+      promptButtons: [
+        { id: 'top-deals', label: 'Top deals this quarter', prompt: 'Show me the top 10 deals by amount this quarter.' },
+        { id: 'pipeline',  label: 'Pipeline summary',       prompt: 'Summarize my open pipeline.' },
+      ],
+    },
+  },
+}
+```
+
+**Theme override** — change the brand color across the embed:
+
+```javascript
+theme: {
+  scheme: 'light',
+  colors: {
+    '--ui-brand-primary': '#d41111',
+    '--ui-brand-primary-hover': '#a30d0d',
+  },
+}
+```
 
 ### 5d. Full JavaScript Example
 

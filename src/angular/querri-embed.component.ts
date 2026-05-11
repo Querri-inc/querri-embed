@@ -31,7 +31,7 @@ export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) serverUrl!: string;
   /** Authentication mode */
   @Input({ required: true }) auth!: QuerriAuth;
-  /** Initial view path (e.g. '/builder/dashboard/uuid') */
+  /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid') */
   @Input() startView?: string;
   /** Chrome visibility config */
   @Input() chrome?: QuerriChromeConfig;

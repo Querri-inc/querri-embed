@@ -25,7 +25,7 @@ export const QuerriEmbed = defineComponent({
       type: [String, Object] as PropType<QuerriAuth>,
       required: true,
     },
-    /** Initial view path (e.g. '/builder/dashboard/uuid') */
+    /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid') */
     startView: { type: String, default: undefined },
     /** Chrome visibility config */
     chrome: {

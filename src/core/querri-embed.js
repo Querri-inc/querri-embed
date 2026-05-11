@@ -518,7 +518,7 @@ QuerriInstance.prototype._sendToIframe = function (msg) {
 QuerriInstance.prototype._buildConfig = function () {
   var opts = this._options;
   var config = {
-    chrome: opts.chrome || {},
+    chrome: opts.chrome ? _normalizeChrome(opts.chrome) : {},
     theme: opts.theme || {},
   };
   // Include startView only until the iframe has authenticated once. After
@@ -530,6 +530,28 @@ QuerriInstance.prototype._buildConfig = function () {
   }
   return config;
 };
+
+// Translate the new `chat.fasterAnalysis` key into the legacy
+// `experimentalV2` key on the wire, so a renamed-SDK still works
+// against an un-renamed frontend. After both ends ship, this can be
+// removed in the next major release. If both keys are set, the new
+// `fasterAnalysis` value wins.
+function _normalizeChrome(chrome) {
+  if (!chrome || !chrome.chat) return chrome;
+  var chat = chrome.chat;
+  if (chat.fasterAnalysis === undefined) return chrome;
+  var nextChat = {};
+  for (var k in chat) {
+    if (Object.prototype.hasOwnProperty.call(chat, k)) nextChat[k] = chat[k];
+  }
+  nextChat.experimentalV2 = chat.fasterAnalysis;
+  var nextChrome = {};
+  for (var c in chrome) {
+    if (Object.prototype.hasOwnProperty.call(chrome, c)) nextChrome[c] = chrome[c];
+  }
+  nextChrome.chat = nextChat;
+  return nextChrome;
+}
 
 // ─── postMessage Listener ─────────────────────────────────
 

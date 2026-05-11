@@ -896,6 +896,57 @@ describe('Token fetch deduplication', () => {
 
     instance.destroy();
   });
+
+  it('aliases chat.fasterAnalysis to chat.experimentalV2 on the wire', async () => {
+    // Backwards-compat shim: the SDK exposes `fasterAnalysis` as the new
+    // canonical name, but staging frontends may still read
+    // `experimentalV2`. The shim translates one to the other so a renamed
+    // SDK keeps working against either side.
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+      chrome: { chat: { fasterAnalysis: true } },
+    });
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    const firstInit = sendSpy.mock.calls[0][0] as {
+      config: { chrome: { chat: { fasterAnalysis: boolean; experimentalV2: boolean } } };
+    };
+    expect(firstInit.config.chrome.chat.fasterAnalysis).toBe(true);
+    expect(firstInit.config.chrome.chat.experimentalV2).toBe(true);
+
+    instance.destroy();
+  });
+
+  it('does not add experimentalV2 alias when fasterAnalysis is unset', async () => {
+    // Sanity check: the shim is gated on fasterAnalysis being defined,
+    // so a caller using the legacy key alone must still see only the
+    // legacy key on the wire (no accidental injection of fasterAnalysis).
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+      chrome: { chat: { experimentalV2: true } },
+    });
+
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+    const firstInit = sendSpy.mock.calls[0][0] as {
+      config: { chrome: { chat: Record<string, unknown> } };
+    };
+    expect(firstInit.config.chrome.chat.experimentalV2).toBe(true);
+    expect(firstInit.config.chrome.chat).not.toHaveProperty('fasterAnalysis');
+
+    instance.destroy();
+  });
 });
 
 describe('Token fetch cycle circuit breaker', () => {
