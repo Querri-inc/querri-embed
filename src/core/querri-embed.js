@@ -751,7 +751,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '0.2.0',
+  version: '0.2.1',
 };
 
 export default QuerriEmbed;

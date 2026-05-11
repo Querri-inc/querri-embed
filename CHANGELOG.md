@@ -7,6 +7,8 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-11
+
 ### Added
 
 - **`QuerriHeaderConfig` exposes per-control header toggles**
