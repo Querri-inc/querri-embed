@@ -36,10 +36,13 @@ export class HttpClient {
     const host = (config.host ?? 'https://app.querri.com').replace(/\/+$/, '');
 
     if ('sessionToken' in config) {
+      // Embed sessions are first-class auth on the public /api/v1 API
+      // (X-Embed-Session is checked before API keys there), with a scope set
+      // that excludes session minting and dashboard writes.
       this.sessionToken = config.sessionToken;
       this.apiKey = undefined;
       this.orgId = undefined;
-      this.baseUrl = `${host}/api`;
+      this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
     } else {
       this.sessionToken = undefined;
       this.apiKey = config.apiKey;

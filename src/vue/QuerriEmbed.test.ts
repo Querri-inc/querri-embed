@@ -9,6 +9,7 @@ vi.mock('../core/querri-embed.js', () => ({
       const inst = {
         on: vi.fn().mockReturnThis(),
         off: vi.fn().mockReturnThis(),
+        updateConfig: vi.fn().mockReturnThis(),
         destroy: vi.fn(),
         iframe: document.createElement('iframe'),
         ready: false,
@@ -132,6 +133,95 @@ describe('Vue QuerriEmbed', () => {
 
     const [, options] = (SDK.create as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(options.timeout).toBe(5000);
+    wrapper.unmount();
+  });
+
+  it('registers handlers for the new events (config, resize, chat, recovered)', () => {
+    const wrapper = mount(QuerriEmbed, {
+      props: { serverUrl: SERVER_URL, auth: AUTH },
+    });
+
+    const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+    const onCalls = instance.on.mock.calls.map((c: unknown[]) => c[0]);
+    expect(onCalls).toContain('config');
+    expect(onCalls).toContain('resize');
+    expect(onCalls).toContain('chat');
+    expect(onCalls).toContain('recovered');
+    wrapper.unmount();
+  });
+
+  it('chrome change calls updateConfig (debounced) and does NOT destroy the iframe', async () => {
+    vi.useFakeTimers();
+    try {
+      const wrapper = mount(QuerriEmbed, {
+        props: { serverUrl: SERVER_URL, auth: AUTH, chrome: { rail: { show: false } } },
+      });
+      const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+      await wrapper.setProps({ chrome: { rail: { show: true } } });
+
+      // Not yet — debounced
+      expect(instance.updateConfig).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+
+      expect(instance.updateConfig).toHaveBeenCalledTimes(1);
+      expect(instance.updateConfig).toHaveBeenCalledWith({
+        chrome: { rail: { show: true } },
+        theme: {},
+        privacy: {},
+        locale: '',
+      });
+      expect(instance.destroy).not.toHaveBeenCalled();
+      expect(SDK.create).toHaveBeenCalledTimes(1);
+      wrapper.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('same-content chrome object does not call updateConfig', async () => {
+    vi.useFakeTimers();
+    try {
+      const wrapper = mount(QuerriEmbed, {
+        props: { serverUrl: SERVER_URL, auth: AUTH, chrome: { rail: { show: true } } },
+      });
+      const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+      // New object reference, identical content — the deep watcher fires but
+      // the content-compare must swallow it.
+      await wrapper.setProps({ chrome: { rail: { show: true } } });
+      vi.advanceTimersByTime(200);
+
+      expect(instance.updateConfig).not.toHaveBeenCalled();
+      expect(SDK.create).toHaveBeenCalledTimes(1);
+      wrapper.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('startView change destroys and recreates the iframe (no updateConfig)', async () => {
+    const wrapper = mount(QuerriEmbed, {
+      props: { serverUrl: SERVER_URL, auth: AUTH, startView: '/dashboard/a' },
+    });
+    const firstInstance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+    await wrapper.setProps({ startView: '/dashboard/b' });
+
+    expect(firstInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(SDK.create).toHaveBeenCalledTimes(2);
+    expect(firstInstance.updateConfig).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('timeout change does not recreate the iframe', async () => {
+    const wrapper = mount(QuerriEmbed, {
+      props: { serverUrl: SERVER_URL, auth: AUTH, timeout: 5000 },
+    });
+
+    await wrapper.setProps({ timeout: 9000, readyTimeout: 12000 });
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 });

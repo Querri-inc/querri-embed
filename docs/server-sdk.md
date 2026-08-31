@@ -1031,7 +1031,7 @@ const page = await client.sources.listConnectors();
 
 #### `client.sources.create(params)`
 
-Create a new data source connection.
+Create a new data source from inline JSON rows (same server contract as `client.data.create()`). Connector-backed sources are configured in the Querri app, not through this API.
 
 ```typescript
 create(params: SourceCreateParams): Promise<Source>
@@ -1039,9 +1039,11 @@ create(params: SourceCreateParams): Promise<Source>
 
 ```typescript
 const source = await client.sources.create({
-  name: 'Production DB',
-  connector_id: 'postgres',
-  config: { host: 'db.example.com', port: 5432, database: 'analytics' },
+  name: 'Sales Data',
+  rows: [
+    { region: 'US', revenue: 1000 },
+    { region: 'EU', revenue: 800 },
+  ],
 });
 ```
 
@@ -1059,14 +1061,15 @@ const page = await client.sources.list();
 
 #### `client.sources.update(sourceId, params)`
 
-Update a source's name or configuration.
+Update a source's name, description, configuration, or access-control mode.
 
 ```typescript
-update(sourceId: string, params: SourceUpdateParams): Promise<Source>
+update(sourceId: string, params: SourceUpdateParams): Promise<SourceUpdateResponse>
 ```
 
 ```typescript
-await client.sources.update('src_1', { name: 'Production DB (v2)' });
+await client.sources.update('src_1', { name: 'Sales Data (v2)', description: 'Cleaned monthly extract' });
+// { id: 'src_1', name: 'Sales Data (v2)', access_controlled: false, updated: true }
 ```
 
 #### `client.sources.del(sourceId)`
@@ -1250,14 +1253,15 @@ await client.sharing.shareSource('src_1', { user_id: 'user_1', permission: 'edit
 
 #### `client.sharing.orgShareSource(sourceId, params)`
 
-Enable or disable org-wide sharing for a data source.
+Enable or disable org-wide sharing for a data source. The `permission` level (`'view'` or `'edit'`) is honoured when enabling.
 
 ```typescript
-orgShareSource(sourceId: string, params: OrgShareSourceParams): Promise<Record<string, unknown>>
+orgShareSource(sourceId: string, params: OrgShareSourceParams): Promise<OrgShareSourceResponse>
 ```
 
 ```typescript
 await client.sharing.orgShareSource('src_1', { enabled: true, permission: 'view' });
+// { source_id: 'src_1', org_shared: true }
 ```
 
 ---
@@ -1466,7 +1470,7 @@ On subsequent calls with the same sources and filters, the SDK finds the existin
 > ```
 > Use `asUser()` when you need a full user-scoped client for multiple operations.
 
-After creating a session with `getSession()`, you can create a **user-scoped client** that calls the internal API using the user's embed session token. The internal API applies Fine-Grained Authorization (FGA) filtering automatically, so resource lists only return items the user has access to.
+After creating a session with `getSession()`, you can create a **user-scoped client** that calls the public API (`/api/v1`) using the user's embed session token. Embed sessions are first-class auth on `/api/v1` and carry per-user Fine-Grained Authorization (FGA) filtering, so resource lists only return items the user has access to.
 
 ### Basic Usage
 
@@ -1494,7 +1498,7 @@ const projects = await userClient.projects.list();
 | | `client` (Querri) | `userClient` (UserQuerri) |
 |---|---|---|
 | **Auth** | API key (`Authorization: Bearer qk_…`) | Session token (`X-Embed-Session: es_…`) |
-| **Base URL** | `/api/v1` (public API) | `/api` (internal API) |
+| **Base URL** | `/api/v1` (public API) | `/api/v1` (public API) |
 | **Scope** | Org-wide (all resources) | User-scoped (FGA-filtered) |
 | **Resources** | All 13 resources | 5 resources: projects, dashboards, sources, data, chats |
 
@@ -1512,11 +1516,13 @@ The `UserQuerri` client exposes the same resource classes as the main client, bu
 
 ```typescript
 userClient.projects     // ProjectsResource — list, retrieve, etc.
-userClient.dashboards   // DashboardsResource — list, retrieve, etc.
+userClient.dashboards   // UserDashboardsResource — READ-ONLY: list, retrieve, refreshStatus
 userClient.sources      // SourcesResource — list, retrieve, etc.
 userClient.data         // DataResource — query, list, retrieve, etc.
 userClient.chats        // ChatsResource — create, stream, etc.
 ```
+
+**Dashboards are read-only under embed sessions.** The server excludes the `admin:dashboards:write` scope from embed-session credentials, so dashboard `create`, `update`, `del`, and `refresh` are refused; the user client's `dashboards` accessor exposes only the read methods. Embed sessions also cannot mint further sessions (`embed:session:create` is excluded), so `UserQuerri` has no `embed` accessor — manage sessions with the parent API-key client.
 
 ### Granting Access
 

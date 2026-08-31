@@ -401,6 +401,7 @@ export interface QueryResult {
 
 export interface QueryParams {
   sql: string;
+  /** Source to query. Sent as a path parameter (`POST /sources/{source_id}/query`), not in the body. */
   source_id: string;
   page?: number;
   page_size?: number;
@@ -457,22 +458,31 @@ export interface FileObject {
 export interface Source {
   id: string;
   name: string;
-  connector_id?: string;
-  config?: Record<string, unknown>;
+  columns?: string[];
+  row_count?: number | null;
   status?: string;
-  created_at?: string;
-  updated_at?: string;
+  updated_at?: string | null;
 }
 
+/** Parameters for `sources.create()` — creates a source from inline JSON rows (same contract as `data.create()`). */
 export interface SourceCreateParams {
   name: string;
-  connector_id: string;
-  config?: Record<string, unknown>;
+  rows: Record<string, unknown>[];
 }
 
 export interface SourceUpdateParams {
   name?: string;
+  description?: string;
   config?: Record<string, unknown>;
+  /** When `true`, users without a matching access policy see zero rows (fail-closed). */
+  access_controlled?: boolean;
+}
+
+export interface SourceUpdateResponse {
+  id: string;
+  name: string;
+  access_controlled: boolean;
+  updated: boolean;
 }
 
 export interface Connector {
@@ -551,6 +561,12 @@ export type SourceShareParams = ShareParams;
 export interface OrgShareSourceParams {
   enabled: boolean;
   permission?: SharePermission;
+}
+
+/** Response from `sharing.orgShareSource()`. */
+export interface OrgShareSourceResponse {
+  source_id: string;
+  org_shared: boolean;
 }
 
 /** Response returned after revoking a share (revokeProjectShare / revokeDashboardShare). */

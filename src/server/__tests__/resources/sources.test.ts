@@ -12,15 +12,16 @@ describe('SourcesResource', () => {
     expect(method).toBe('GET');
   });
 
-  it('create() sends POST /sources', async () => {
+  it('create() sends POST /sources with {name, rows}', async () => {
     const mockFetch = makeMockFetch();
     mockFetch.mockResolvedValueOnce(jsonResponse({ id: 's1' }));
 
-    await makeClient(mockFetch).sources.create({ name: 'X' } as never);
+    await makeClient(mockFetch).sources.create({ name: 'X', rows: [{ a: 1 }] });
 
-    const { url, method } = firstCall(mockFetch);
+    const { url, method, body } = firstCall(mockFetch);
     expect(url).toContain('/api/v1/sources');
     expect(method).toBe('POST');
+    expect(JSON.parse(body as string)).toEqual({ name: 'X', rows: [{ a: 1 }] });
   });
 
   it('list() sends GET /sources', async () => {
@@ -38,7 +39,7 @@ describe('SourcesResource', () => {
     const mockFetch = makeMockFetch();
     mockFetch.mockResolvedValueOnce(jsonResponse({ id: 's1' }));
 
-    await makeClient(mockFetch).sources.update('s1', { name: 'Y' } as never);
+    await makeClient(mockFetch).sources.update('s1', { name: 'Y', description: 'd' });
 
     const { url, method } = firstCall(mockFetch);
     expect(url).toContain('/api/v1/sources/s1');

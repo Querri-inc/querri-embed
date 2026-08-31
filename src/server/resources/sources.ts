@@ -4,6 +4,7 @@ import type {
   Source,
   SourceCreateParams,
   SourceUpdateParams,
+  SourceUpdateResponse,
   SourcesDeleteResponse,
   Connector,
 } from '../types.js';
@@ -25,8 +26,11 @@ export class SourcesResource extends BaseResource {
     return this._list<Source>('/sources', params);
   }
 
-  update(sourceId: string, params: SourceUpdateParams): Promise<Source> {
-    return this._patch<Source>(`/sources/${sourceId}`, params);
+  update(
+    sourceId: string,
+    params: SourceUpdateParams,
+  ): Promise<SourceUpdateResponse> {
+    return this._patch<SourceUpdateResponse>(`/sources/${sourceId}`, params);
   }
 
   del(sourceId: string): Promise<SourcesDeleteResponse> {

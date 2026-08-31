@@ -10,9 +10,13 @@ import {
 import { QuerriEmbed as SDK } from '../core/querri-embed.js';
 import type {
   QuerriAuth,
-  QuerriChromeConfig,
+  QuerriEmbedOptions,
   QuerriInstance,
+  QuerriPrivacyConfig,
 } from '../core/querri-embed.js';
+
+/** How long config-prop changes are coalesced before calling `updateConfig`. */
+const CONFIG_DEBOUNCE_MS = 150;
 
 export const QuerriEmbed = defineComponent({
   name: 'QuerriEmbed',
@@ -25,27 +29,60 @@ export const QuerriEmbed = defineComponent({
       type: [String, Object] as PropType<QuerriAuth>,
       required: true,
     },
-    /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid') */
+    /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid'). Changing it recreates the iframe. */
     startView: { type: String, default: undefined },
-    /** Chrome visibility config */
+    /** Chrome visibility config. Changes apply live via updateConfig (debounced). */
     chrome: {
-      type: Object as PropType<QuerriChromeConfig>,
+      type: Object as PropType<QuerriEmbedOptions['chrome']>,
       default: undefined,
     },
-    /** Theme overrides */
+    /** Theme overrides. Changes apply live via updateConfig (debounced). */
     theme: {
-      type: Object as PropType<Record<string, unknown>>,
+      type: Object as PropType<QuerriEmbedOptions['theme']>,
       default: undefined,
     },
-    /** Maximum time (ms) to wait for iframe to respond. Default: 15000 */
+    /** Privacy controls. Changes apply live via updateConfig (debounced). */
+    privacy: {
+      type: Object as PropType<QuerriPrivacyConfig>,
+      default: undefined,
+    },
+    /** BCP-47 locale tag. Changes apply live via updateConfig (debounced). */
+    locale: { type: String, default: undefined },
+    /** Match iframe height to embedded content. Creation-time only. */
+    autoHeight: { type: Boolean, default: undefined },
+    /** Max time (ms) to wait for the iframe's ready. Creation-time only. Default: 30000 */
+    readyTimeout: { type: Number, default: undefined },
+    /** @deprecated Alias of readyTimeout. Creation-time only. */
     timeout: { type: Number, default: undefined },
   },
 
-  emits: ['ready', 'error', 'session-expired', 'navigation'],
+  emits: [
+    'ready',
+    'error',
+    'session-expired',
+    'navigation',
+    'config',
+    'resize',
+    'chat',
+    'recovered',
+  ],
 
   setup(props, { emit, expose }) {
     const containerEl = ref<HTMLElement | null>(null);
     let instance: QuerriInstance | null = null;
+    // Serialized config last handed to the instance — the content-compare
+    // that keeps the deep watcher from posting per keystroke.
+    let appliedConfig = '';
+    let configTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function serializeConfig() {
+      return JSON.stringify({
+        chrome: props.chrome,
+        theme: props.theme,
+        privacy: props.privacy,
+        locale: props.locale,
+      });
+    }
 
     function createInstance() {
       destroyInstance();
@@ -57,17 +94,30 @@ export const QuerriEmbed = defineComponent({
         startView: props.startView,
         chrome: props.chrome,
         theme: props.theme,
+        privacy: props.privacy,
+        locale: props.locale,
+        autoHeight: props.autoHeight,
+        readyTimeout: props.readyTimeout,
         timeout: props.timeout,
       });
+      appliedConfig = serializeConfig();
 
       instance
         .on('ready', (d) => emit('ready', d))
         .on('error', (d) => emit('error', d))
         .on('session-expired', (d) => emit('session-expired', d))
-        .on('navigation', (d) => emit('navigation', d));
+        .on('navigation', (d) => emit('navigation', d))
+        .on('config', (d) => emit('config', d))
+        .on('resize', (d) => emit('resize', d))
+        .on('chat', (d) => emit('chat', d))
+        .on('recovered', (d) => emit('recovered', d));
     }
 
     function destroyInstance() {
+      if (configTimer !== null) {
+        clearTimeout(configTimer);
+        configTimer = null;
+      }
       if (instance) {
         instance.destroy();
         instance = null;
@@ -77,11 +127,40 @@ export const QuerriEmbed = defineComponent({
     onMounted(() => createInstance());
     onUnmounted(() => destroyInstance());
 
-    // Recreate on prop changes that require a new iframe session
+    // Remount ONLY on serverUrl / auth / startView (content-compared —
+    // inline object literals for auth must not recreate the iframe).
+    // startView is baked into the iframe URL; updateConfig does not navigate.
+    // timeout/readyTimeout are creation-only and deliberately unwatched.
     watch(
-      () => [props.serverUrl, props.auth, props.startView, props.chrome, props.theme, props.timeout],
+      () => JSON.stringify([props.serverUrl, props.auth, props.startView]),
       () => createInstance(),
-      { deep: true }
+    );
+
+    // chrome/theme/privacy/locale apply live via updateConfig: content-compare
+    // (the deep watcher fires on any mutation) then debounce so bursts
+    // coalesce into one postMessage.
+    watch(
+      () => [props.chrome, props.theme, props.privacy, props.locale],
+      () => {
+        if (!instance) return;
+        const serialized = serializeConfig();
+        if (serialized === appliedConfig) return;
+        if (configTimer !== null) clearTimeout(configTimer);
+        configTimer = setTimeout(() => {
+          configTimer = null;
+          if (!instance) return;
+          appliedConfig = serializeConfig();
+          // Whole-object semantics: a prop back to undefined is sent as its
+          // empty form so the runtime actually resets it.
+          instance.updateConfig({
+            chrome: props.chrome ?? {},
+            theme: props.theme ?? {},
+            privacy: props.privacy ?? {},
+            locale: props.locale ?? '',
+          });
+        }, CONFIG_DEBOUNCE_MS);
+      },
+      { deep: true },
     );
 
     expose({

@@ -1,6 +1,7 @@
 // Client
 export { Querri } from './client.js';
 export { UserQuerri } from './user-client.js';
+export type { UserDashboardsResource } from './user-client.js';
 
 // Errors
 export {
@@ -81,6 +82,7 @@ export type {
   Source,
   SourceCreateParams,
   SourceUpdateParams,
+  SourceUpdateResponse,
   Connector,
   ConnectorField,
   ApiKey,
@@ -89,6 +91,7 @@ export type {
   ShareEntry,
   SourceShareParams,
   OrgShareSourceParams,
+  OrgShareSourceResponse,
   AuditEvent,
   AuditListParams,
   UsageReport,

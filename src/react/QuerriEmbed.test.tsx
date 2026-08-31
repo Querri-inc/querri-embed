@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, act } from '@testing-library/react';
 import { createRef } from 'react';
 import { QuerriEmbed, type QuerriEmbedRef } from './index.js';
 
@@ -7,6 +7,7 @@ import { QuerriEmbed, type QuerriEmbedRef } from './index.js';
 const mockInstance = {
   on: vi.fn().mockReturnThis(),
   off: vi.fn().mockReturnThis(),
+  updateConfig: vi.fn().mockReturnThis(),
   destroy: vi.fn(),
   iframe: document.createElement('iframe'),
   ready: false,
@@ -32,6 +33,7 @@ describe('React QuerriEmbed', () => {
       const inst = {
         on: vi.fn().mockReturnThis(),
         off: vi.fn().mockReturnThis(),
+        updateConfig: vi.fn().mockReturnThis(),
         destroy: vi.fn(),
         iframe: document.createElement('iframe'),
         ready: false,
@@ -222,6 +224,85 @@ describe('React QuerriEmbed', () => {
         chrome={{ sidebar: { show: false } }}
         theme={{ color: 'blue' }}
       />
+    );
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers handlers for the new events (config, resize, chat, recovered)', () => {
+    render(
+      <QuerriEmbed
+        serverUrl={SERVER_URL}
+        auth={AUTH}
+        onConfig={vi.fn()}
+        onResize={vi.fn()}
+        onChat={vi.fn()}
+        onRecovered={vi.fn()}
+      />
+    );
+
+    const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+    const onCalls = instance.on.mock.calls.map((c: unknown[]) => c[0]);
+    expect(onCalls).toContain('config');
+    expect(onCalls).toContain('resize');
+    expect(onCalls).toContain('chat');
+    expect(onCalls).toContain('recovered');
+  });
+
+  it('chrome change calls updateConfig (debounced) and does NOT destroy the iframe', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} chrome={{ rail: { show: false } }} />
+      );
+      const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+      rerender(
+        <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} chrome={{ rail: { show: true } }} />
+      );
+
+      // Not yet — debounced
+      expect(instance.updateConfig).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(instance.updateConfig).toHaveBeenCalledTimes(1);
+      expect(instance.updateConfig).toHaveBeenCalledWith({
+        chrome: { rail: { show: true } },
+        theme: {},
+        privacy: {},
+        locale: '',
+      });
+      expect(instance.destroy).not.toHaveBeenCalled();
+      expect(SDK.create).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('startView change destroys and recreates the iframe (no updateConfig)', () => {
+    const { rerender } = render(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} startView="/dashboard/a" />
+    );
+    const firstInstance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+    rerender(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} startView="/dashboard/b" />
+    );
+
+    expect(firstInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(SDK.create).toHaveBeenCalledTimes(2);
+    expect(firstInstance.updateConfig).not.toHaveBeenCalled();
+  });
+
+  it('timeout/readyTimeout changes do not recreate the iframe', () => {
+    const { rerender } = render(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} timeout={5000} />
+    );
+
+    rerender(
+      <QuerriEmbed serverUrl={SERVER_URL} auth={AUTH} timeout={9000} readyTimeout={12000} />
     );
 
     expect(SDK.create).toHaveBeenCalledTimes(1);

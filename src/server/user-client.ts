@@ -8,9 +8,26 @@ import { DataResource } from './resources/data.js';
 import { ChatsResource } from './resources/chats.js';
 
 /**
- * A user-scoped client that calls the internal API (`/api/`) using an embed
- * session token. The internal API applies FGA filtering automatically, so
+ * The dashboards surface available to a user-scoped client.
+ *
+ * Dashboards are READ-ONLY under embed sessions: the server excludes the
+ * `admin:dashboards:write` scope from embed-session credentials, so
+ * `create`, `update`, `del`, and `refresh` are refused with a permission
+ * error. Only the read methods are exposed here.
+ */
+export type UserDashboardsResource = Pick<
+  DashboardsResource,
+  'retrieve' | 'list' | 'refreshStatus'
+>;
+
+/**
+ * A user-scoped client that calls the public API (`/api/v1`) using an embed
+ * session token. Embed sessions carry per-user scopes and FGA filtering, so
  * resource lists only return items the user has access to.
+ *
+ * Embed sessions cannot mint further sessions (the server excludes
+ * `embed:session:create`), so there is no `embed` accessor here — use the
+ * parent API-key client for session management.
  *
  * Create via `client.asUser(session)`.
  */
@@ -37,7 +54,8 @@ export class UserQuerri {
     return (this._projects ??= new ProjectsResource(this._httpClient));
   }
 
-  get dashboards(): DashboardsResource {
+  /** Dashboards, read-only — embed sessions cannot write dashboards. */
+  get dashboards(): UserDashboardsResource {
     return (this._dashboards ??= new DashboardsResource(this._httpClient));
   }
 
