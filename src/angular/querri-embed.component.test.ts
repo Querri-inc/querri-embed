@@ -8,6 +8,7 @@ vi.mock('../core/querri-embed.js', () => ({
     create: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),
       off: vi.fn().mockReturnThis(),
+      updateConfig: vi.fn().mockReturnThis(),
       destroy: vi.fn(),
       iframe: document.createElement('iframe'),
       ready: false,
@@ -39,6 +40,7 @@ describe('Angular QuerriEmbedComponent', () => {
     (SDK.create as ReturnType<typeof vi.fn>).mockImplementation(() => ({
       on: vi.fn().mockReturnThis(),
       off: vi.fn().mockReturnThis(),
+      updateConfig: vi.fn().mockReturnThis(),
       destroy: vi.fn(),
       iframe: document.createElement('iframe'),
       ready: false,
@@ -131,6 +133,103 @@ describe('Angular QuerriEmbedComponent', () => {
     expect(errorCall).toBeDefined();
     errorCall![1]({ code: 'timeout', message: 'timed out' });
     expect(errorSpy).toHaveBeenCalledWith({ code: 'timeout', message: 'timed out' });
+
+    component.ngOnDestroy();
+  });
+
+  it('chrome change calls updateConfig (debounced) and does NOT destroy the iframe', () => {
+    vi.useFakeTimers();
+    try {
+      const component = createComponent();
+      component.chrome = { rail: { show: false } };
+      component.ngOnInit();
+
+      const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+      const previous = component.chrome;
+      component.chrome = { rail: { show: true } };
+      component.ngOnChanges({
+        chrome: new SimpleChange(previous, component.chrome, false),
+      });
+
+      // Not yet — debounced
+      expect(instance.updateConfig).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+
+      expect(instance.updateConfig).toHaveBeenCalledTimes(1);
+      expect(instance.updateConfig).toHaveBeenCalledWith({
+        chrome: { rail: { show: true } },
+        theme: {},
+        privacy: {},
+        locale: '',
+      });
+      expect(instance.destroy).not.toHaveBeenCalled();
+      expect(SDK.create).toHaveBeenCalledTimes(1);
+
+      component.ngOnDestroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('startView change destroys and recreates the iframe (no updateConfig)', () => {
+    const component = createComponent();
+    component.startView = '/dashboard/a';
+    component.ngOnInit();
+
+    const firstInstance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+
+    component.startView = '/dashboard/b';
+    component.ngOnChanges({
+      startView: new SimpleChange('/dashboard/a', '/dashboard/b', false),
+    });
+
+    expect(firstInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(SDK.create).toHaveBeenCalledTimes(2);
+    expect(firstInstance.updateConfig).not.toHaveBeenCalled();
+
+    component.ngOnDestroy();
+  });
+
+  it('same-content auth object does not recreate the iframe', () => {
+    const component = createComponent();
+    component.ngOnInit();
+
+    component.auth = { shareKey: 'sk-123', org: 'org-456' };
+    component.ngOnChanges({
+      auth: new SimpleChange(AUTH, component.auth, false),
+    });
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+
+    component.ngOnDestroy();
+  });
+
+  it('timeout change does not recreate the iframe', () => {
+    const component = createComponent();
+    component.timeout = 5000;
+    component.ngOnInit();
+
+    component.timeout = 9000;
+    component.ngOnChanges({
+      timeout: new SimpleChange(5000, 9000, false),
+    });
+
+    expect(SDK.create).toHaveBeenCalledTimes(1);
+
+    component.ngOnDestroy();
+  });
+
+  it('registers handlers for the new events (config, resize, chat, recovered)', () => {
+    const component = createComponent();
+    component.ngOnInit();
+
+    const instance = (SDK.create as ReturnType<typeof vi.fn>).mock.results[0].value;
+    const onCalls = instance.on.mock.calls.map((c: unknown[]) => c[0]);
+    expect(onCalls).toContain('config');
+    expect(onCalls).toContain('resize');
+    expect(onCalls).toContain('chat');
+    expect(onCalls).toContain('recovered');
 
     component.ngOnDestroy();
   });

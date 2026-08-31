@@ -7,7 +7,7 @@
  */
 
 import { compile } from 'svelte/compiler';
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const SVELTE_SRC = 'src/svelte/QuerriEmbed.svelte';
 const OUT_DIR = 'dist/svelte';
@@ -15,7 +15,9 @@ const OUT_DIR = 'dist/svelte';
 mkdirSync(OUT_DIR, { recursive: true });
 
 // 1. Copy raw .svelte source for svelte-aware bundlers
-copyFileSync(SVELTE_SRC, `${OUT_DIR}/QuerriEmbed.svelte`);
+// No raw .svelte copy in dist/: the `svelte` export condition ships the src
+// copy, and `import`/`default` use the compiled index.js below — a dist copy
+// was dead weight whose JSDoc type refs dangled.
 
 // 2. Compile to JS fallback
 const source = readFileSync(SVELTE_SRC, 'utf-8');
@@ -29,10 +31,16 @@ const result = compile(source, {
 // dist/core/ has index.mjs (tsup output). Also add a named export so
 // consumers can use either `import QuerriEmbed` or `import { QuerriEmbed }`.
 let compiledCode = result.js.code;
-compiledCode = compiledCode.replace(
-  `from '../core/querri-embed.js'`,
-  `from '../core/index.mjs'`,
-);
+const CORE_IMPORT = `from '../core/querri-embed.js'`;
+if (!compiledCode.includes(CORE_IMPORT)) {
+  // A silent no-op here ships a dist/svelte/index.js importing a path that
+  // does not exist in dist/ — fail the build instead.
+  throw new Error(
+    `build-svelte: expected ${CORE_IMPORT} in the compiled component — ` +
+      'the import in QuerriEmbed.svelte was reformatted; update this rewrite.',
+  );
+}
+compiledCode = compiledCode.replace(CORE_IMPORT, `from '../core/index.mjs'`);
 compiledCode += '\nexport { QuerriEmbed };\n';
 
 writeFileSync(`${OUT_DIR}/index.js`, compiledCode);
@@ -45,6 +53,8 @@ import type {
   QuerriAuth,
   QuerriChromeConfig,
   QuerriInstance,
+  QuerriPrivacyConfig,
+  QuerriThemeConfig,
 } from '../core/index.js';
 
 export interface QuerriEmbedProps {
@@ -52,7 +62,16 @@ export interface QuerriEmbedProps {
   auth: QuerriAuth;
   startView?: string;
   chrome?: QuerriChromeConfig;
-  theme?: Record<string, unknown>;
+  theme?: QuerriThemeConfig;
+  privacy?: QuerriPrivacyConfig;
+  /** BCP-47 locale tag for the embedded UI (e.g. 'en', 'de-DE'). */
+  locale?: string;
+  /** Size the host element to the embed's content via the resize event. */
+  autoHeight?: boolean;
+  /** Ready budget in ms; 0 disables. Creation-only — changes never remount. */
+  readyTimeout?: number;
+  /** @deprecated Alias of readyTimeout — removed in the next major. */
+  timeout?: number;
   [key: string]: unknown;
 }
 

@@ -4,6 +4,7 @@ import type {
   ShareParams,
   ShareRevokeResponse,
   OrgShareSourceParams,
+  OrgShareSourceResponse,
 } from '../types.js';
 
 export class SharingResource extends BaseResource {
@@ -69,8 +70,8 @@ export class SharingResource extends BaseResource {
   orgShareSource(
     sourceId: string,
     params: OrgShareSourceParams,
-  ): Promise<Record<string, unknown>> {
-    return this._post<Record<string, unknown>>(
+  ): Promise<OrgShareSourceResponse> {
+    return this._post<OrgShareSourceResponse>(
       `/sources/${sourceId}/org-share`,
       params,
     );

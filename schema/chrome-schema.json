@@ -1,0 +1,1792 @@
+{
+	"version": 2,
+	"chrome": {
+		"rail": {
+			"show": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1
+			},
+			"logo": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"orgSwitcher": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"workspaceSwitcher": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"scopeLine": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"account": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"signOut": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.account"
+			},
+			"collapsible": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"lockState": {
+				"type": "enum",
+				"default": "expanded",
+				"area": "shell",
+				"phase": 1,
+				"options": ["expanded", "collapsed"],
+				"dependsOn": "!rail.collapsible"
+			},
+			"recents": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1,
+				"dependsOn": "rail.show"
+			},
+			"branding": {
+				"iconUrl": {
+					"type": "url",
+					"default": "",
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show",
+					"maxLength": 512
+				},
+				"logoUrl": {
+					"type": "url",
+					"default": "",
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show",
+					"maxLength": 512
+				},
+				"backgroundColor": {
+					"type": "color",
+					"default": "",
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"backgroundTransparent": {
+					"type": "bool",
+					"default": false,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				}
+			},
+			"items": {
+				"newChat": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"history": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"connect": {
+					"type": "bool",
+					"default": false,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"search": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"library": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"projects": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"dashboards": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"inbox": {
+					"type": "bool",
+					"default": false,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"uploads": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"admin": {
+					"type": "bool",
+					"default": false,
+					"area": "shell",
+					"phase": 1,
+					"locked": true
+				}
+			}
+		},
+		"header": {
+			"show": {
+				"type": "bool",
+				"default": true,
+				"area": "header",
+				"phase": 1
+			},
+			"title": {
+				"type": "bool",
+				"default": true,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"dataflow": {
+				"type": "bool",
+				"default": true,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"share": {
+				"type": "bool",
+				"default": false,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"print": {
+				"type": "bool",
+				"default": false,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"addProject": {
+				"type": "bool",
+				"default": true,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"newChat": {
+				"type": "bool",
+				"default": true,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"expand": {
+				"type": "bool",
+				"default": false,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"viewModeToggle": {
+				"type": "bool",
+				"default": false,
+				"area": "legacy",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"automate": {
+				"type": "bool",
+				"default": false,
+				"area": "legacy",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"settings": {
+				"type": "bool",
+				"default": false,
+				"area": "legacy",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
+			"menu": {
+				"type": "bool",
+				"default": false,
+				"area": "legacy",
+				"phase": 1,
+				"dependsOn": "header.show"
+			}
+		},
+		"chat": {
+			"dock": {
+				"show": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1
+				}
+			},
+			"composer": {
+				"scopeBar": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				},
+				"scopeSwitch": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1,
+					"dependsOn": "chat.composer.scopeBar"
+				},
+				"placeholder": {
+					"type": "string",
+					"default": "",
+					"area": "composer",
+					"phase": 1,
+					"maxLength": 200
+				},
+				"dictation": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				},
+				"voice": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				},
+				"thinkLonger": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				},
+				"uiDriving": {
+					"type": "bool",
+					"default": false,
+					"area": "composer",
+					"phase": 1
+				},
+				"uiDrivingDefault": {
+					"type": "bool",
+					"default": false,
+					"area": "composer",
+					"phase": 1,
+					"dependsOn": "chat.composer.uiDriving"
+				},
+				"promptQueue": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				}
+			},
+			"history": {
+				"type": "bool",
+				"default": false,
+				"area": "composer",
+				"phase": 1
+			},
+			"dataflow": {
+				"show": {
+					"type": "bool",
+					"default": true,
+					"area": "composer",
+					"phase": 1
+				},
+				"defaultOpen": {
+					"type": "bool",
+					"default": false,
+					"area": "composer",
+					"phase": 1,
+					"dependsOn": "chat.dataflow.show"
+				}
+			},
+			"focusMode": {
+				"type": "bool",
+				"default": false,
+				"area": "composer",
+				"phase": 1,
+				"dependsOn": "chat.dock.show"
+			},
+			"fullWidth": {
+				"type": "bool",
+				"default": false,
+				"area": "composer",
+				"phase": 1
+			},
+			"approvals": {
+				"type": "bool",
+				"default": true,
+				"area": "composer",
+				"phase": 1
+			},
+			"defaultWorkspaceId": {
+				"type": "string",
+				"default": "",
+				"area": "composer",
+				"phase": 5,
+				"maxLength": 128
+			},
+			"defaultProjectUuid": {
+				"type": "string",
+				"default": "",
+				"area": "composer",
+				"phase": 5,
+				"maxLength": 64
+			},
+			"tableAgentMode": {
+				"type": "enum",
+				"default": "",
+				"area": "composer",
+				"phase": 5,
+				"options": ["", "fast", "thorough"]
+			},
+			"initialPrompt": {
+				"type": "string",
+				"default": "",
+				"area": "composer",
+				"phase": 1,
+				"maxLength": 2000
+			},
+			"autoStart": {
+				"type": "bool",
+				"default": false,
+				"area": "composer",
+				"phase": 1,
+				"dependsOn": "chat.initialPrompt"
+			},
+			"dockSizes": {
+				"ask": {
+					"type": "number",
+					"default": 0,
+					"area": "composer",
+					"phase": 1,
+					"max": 100,
+					"min": 0,
+					"dependsOn": "chat.dock.show"
+				},
+				"main": {
+					"type": "number",
+					"default": 0,
+					"area": "composer",
+					"phase": 1,
+					"max": 100,
+					"min": 0,
+					"dependsOn": "chat.dock.show"
+				}
+			},
+			"display": {
+				"tables": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"charts": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"reports": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"metrics": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"suggestions": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "interactions"
+				},
+				"clarifications": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "interactions"
+				},
+				"choices": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "interactions"
+				},
+				"plans": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "interactions"
+				},
+				"reasoning": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "reasoning"
+				},
+				"displayMessages": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "messages"
+				},
+				"actionCards": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "messages"
+				},
+				"toolActivity": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "messages"
+				},
+				"copy": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"share": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"print": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"rerun": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"feedback": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"regenerate": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"edit": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"tts": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"citations": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "actions"
+				},
+				"followups": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"emptyStateSuggestions": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"downloads": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"hiddenTools": {
+					"type": "stringList",
+					"default": [],
+					"area": "display",
+					"phase": 1,
+					"group": "outputs",
+					"maxItems": 64,
+					"itemMaxLength": 64,
+					"itemPattern": "^[a-z0-9_]{1,64}$"
+				},
+				"simpleMode": {
+					"type": "bool",
+					"default": false,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				},
+				"stepResultsMode": {
+					"type": "enum",
+					"default": "full",
+					"area": "display",
+					"phase": 1,
+					"options": ["full", "minified", "hidden"],
+					"group": "outputs"
+				},
+				"responseAboveResults": {
+					"type": "bool",
+					"default": false,
+					"area": "display",
+					"phase": 1,
+					"group": "outputs"
+				}
+			},
+			"reasoning": {
+				"merged": {
+					"type": "bool",
+					"default": true,
+					"area": "display",
+					"phase": 1,
+					"group": "reasoning"
+				},
+				"startExpanded": {
+					"type": "bool",
+					"default": false,
+					"area": "display",
+					"phase": 1,
+					"group": "reasoning"
+				}
+			},
+			"welcome": {
+				"title": {
+					"type": "string",
+					"default": "",
+					"area": "welcome",
+					"phase": 1,
+					"maxLength": 200
+				},
+				"subtitle": {
+					"type": "string",
+					"default": "",
+					"area": "welcome",
+					"phase": 1,
+					"maxLength": 200
+				},
+				"placeholders": {
+					"type": "stringList",
+					"default": [],
+					"area": "welcome",
+					"phase": 1,
+					"maxItems": 12,
+					"itemMaxLength": 200
+				},
+				"promptButtons": {
+					"type": "promptButtons",
+					"default": [],
+					"area": "welcome",
+					"phase": 1,
+					"maxItems": 12
+				},
+				"libraryInfo": {
+					"type": "bool",
+					"default": true,
+					"area": "welcome",
+					"phase": 1
+				},
+				"greeting": {
+					"type": "bool",
+					"default": true,
+					"area": "welcome",
+					"phase": 1
+				},
+				"scopePill": {
+					"type": "bool",
+					"default": true,
+					"area": "welcome",
+					"phase": 1,
+					"dependsOn": "chat.welcome.libraryInfo"
+				},
+				"suggestions": {
+					"type": "bool",
+					"default": true,
+					"area": "welcome",
+					"phase": 1
+				}
+			}
+		},
+		"global": {
+			"commandPalette": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1
+			},
+			"toasts": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1
+			},
+			"toastPosition": {
+				"type": "enum",
+				"default": "bottom-right",
+				"area": "shell",
+				"phase": 1,
+				"options": [
+					"top-left",
+					"top-center",
+					"top-right",
+					"bottom-left",
+					"bottom-center",
+					"bottom-right"
+				],
+				"dependsOn": "global.toasts"
+			},
+			"uploads": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1
+			},
+			"contextMenu": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1
+			},
+			"connectorProgress": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1
+			},
+			"mobileDrawer": {
+				"type": "bool",
+				"default": true,
+				"area": "shell",
+				"phase": 1
+			},
+			"keyboardShortcuts": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 4
+			},
+			"historyMode": {
+				"type": "enum",
+				"default": "replace-only",
+				"area": "shell",
+				"phase": 4,
+				"options": ["replace-only", "push"]
+			},
+			"openInQuerri": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 4
+			},
+			"pwaPrompt": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1,
+				"locked": true
+			},
+			"debugPanel": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1,
+				"locked": true
+			},
+			"inviteLanding": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1,
+				"locked": true
+			},
+			"onboarding": {
+				"type": "bool",
+				"default": false,
+				"area": "shell",
+				"phase": 1,
+				"locked": true
+			}
+		},
+		"library": {
+			"sidebar": {
+				"show": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"sections": {
+					"quickAccess": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"knowledge": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"folders": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"collections": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"connectors": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"tags": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"taxonomies": {
+						"type": "bool",
+						"default": true,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					},
+					"members": {
+						"type": "bool",
+						"default": false,
+						"area": "library",
+						"phase": 2,
+						"dependsOn": "library.sidebar.show"
+					}
+				}
+			},
+			"tabs": {
+				"collections": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"files": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"views": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"questions": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"kpis": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"facts": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				}
+			},
+			"canvas": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2
+			},
+			"search": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2
+			},
+			"searchModes": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2,
+				"dependsOn": "library.search"
+			},
+			"filterBar": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2
+			},
+			"upload": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2
+			},
+			"create": {
+				"folder": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"tag": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"collection": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				}
+			},
+			"share": {
+				"type": "bool",
+				"default": false,
+				"area": "library",
+				"phase": 2
+			},
+			"connectors": {
+				"browse": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"add": {
+					"type": "bool",
+					"default": false,
+					"area": "library",
+					"phase": 2,
+					"dependsOn": "library.connectors.browse"
+				}
+			},
+			"assetActions": {
+				"open": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"openInNewTab": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"openExternal": {
+					"type": "bool",
+					"default": false,
+					"area": "library",
+					"phase": 2
+				},
+				"download": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"resync": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"rename": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"replace": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"createProject": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"cut": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"favorite": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"move": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"collection": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"tag": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"reprocess": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"trash": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"restore": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"purge": {
+					"type": "bool",
+					"default": true,
+					"area": "library",
+					"phase": 2
+				},
+				"share": {
+					"type": "bool",
+					"default": false,
+					"area": "library",
+					"phase": 2
+				}
+			},
+			"bulkActions": {
+				"type": "bool",
+				"default": true,
+				"area": "library",
+				"phase": 2
+			}
+		},
+		"projects": {
+			"list": {
+				"create": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				},
+				"import": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				},
+				"edit": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				},
+				"delete": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				},
+				"bulkSelect": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				},
+				"leave": {
+					"type": "bool",
+					"default": false,
+					"area": "projects",
+					"phase": 3
+				}
+			}
+		},
+		"dashboard": {
+			"header": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"share": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"automate": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"editMode": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"undoRedo": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3,
+				"dependsOn": "dashboard.editMode"
+			},
+			"viewportToggle": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"menubar": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3,
+				"dependsOn": "dashboard.header"
+			},
+			"palette": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3,
+				"dependsOn": "dashboard.editMode"
+			},
+			"properties": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3,
+				"dependsOn": "dashboard.editMode"
+			},
+			"aiChat": {
+				"type": "bool",
+				"default": false,
+				"area": "dashboard",
+				"phase": 3
+			},
+			"embedLinks": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 3,
+				"dependsOn": "dashboard.share"
+			},
+			"export": {
+				"type": "bool",
+				"default": true,
+				"area": "dashboard",
+				"phase": 5
+			},
+			"widget": {
+				"download": {
+					"type": "bool",
+					"default": false,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"expand": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"viewProject": {
+					"type": "bool",
+					"default": false,
+					"area": "dashboard",
+					"phase": 3
+				}
+			},
+			"list": {
+				"create": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"edit": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"delete": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"leave": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				},
+				"bulk": {
+					"type": "bool",
+					"default": true,
+					"area": "dashboard",
+					"phase": 3
+				}
+			}
+		},
+		"xls": {
+			"editing": {
+				"type": "bool",
+				"default": false,
+				"area": "xls",
+				"phase": 3
+			},
+			"ribbon": {
+				"type": "bool",
+				"default": false,
+				"area": "xls",
+				"phase": 3,
+				"dependsOn": "xls.editing"
+			},
+			"formulaBar": {
+				"type": "bool",
+				"default": true,
+				"area": "xls",
+				"phase": 3
+			},
+			"sheetBar": {
+				"type": "bool",
+				"default": true,
+				"area": "xls",
+				"phase": 3
+			}
+		},
+		"print": {
+			"autoTrigger": {
+				"type": "bool",
+				"default": false,
+				"area": "print",
+				"phase": 3
+			}
+		},
+		"settings": {
+			"show": {
+				"type": "bool",
+				"default": false,
+				"area": "settings",
+				"phase": 4,
+				"ceiling": true
+			},
+			"sections": {
+				"type": "stringList",
+				"default": [],
+				"area": "settings",
+				"phase": 4,
+				"ceiling": true,
+				"dependsOn": "settings.show",
+				"maxItems": 32,
+				"itemMaxLength": 64,
+				"itemPattern": "^[a-z0-9/-]{1,64}$"
+			}
+		}
+	},
+	"theme": {
+		"name": {
+			"type": "enum",
+			"default": "",
+			"area": "theme",
+			"phase": 4,
+			"options": ["", "querri", "querri-dark", "night"]
+		},
+		"colors": {
+			"type": "colorMap",
+			"default": {},
+			"area": "theme",
+			"phase": 1
+		},
+		"radius": {
+			"type": "string",
+			"default": "",
+			"area": "theme",
+			"phase": 4,
+			"maxLength": 16
+		},
+		"fontFamily": {
+			"type": "string",
+			"default": "",
+			"area": "theme",
+			"phase": 4,
+			"maxLength": 120
+		},
+		"allowUserOverride": {
+			"type": "bool",
+			"default": false,
+			"area": "theme",
+			"phase": 5
+		}
+	},
+	"privacy": {
+		"sessionReplay": {
+			"type": "bool",
+			"default": false,
+			"area": "privacy",
+			"phase": 1
+		},
+		"identify": {
+			"type": "bool",
+			"default": false,
+			"area": "privacy",
+			"phase": 1
+		},
+		"errorReporting": {
+			"type": "bool",
+			"default": true,
+			"area": "privacy",
+			"phase": 1
+		}
+	},
+	"locale": {
+		"type": "string",
+		"default": "",
+		"area": "theme",
+		"phase": 4,
+		"maxLength": 16
+	},
+	"colorGroups": [
+		{
+			"key": "brand",
+			"title": "Brand Colors",
+			"variables": [
+				{
+					"name": "--ui-brand-primary",
+					"label": "Primary"
+				},
+				{
+					"name": "--ui-brand-primary-hover",
+					"label": "Hover"
+				},
+				{
+					"name": "--ui-brand-primary-active",
+					"label": "Active"
+				},
+				{
+					"name": "--ui-brand-primary-bg",
+					"label": "Background"
+				},
+				{
+					"name": "--ui-brand-primary-bg-hover",
+					"label": "Background Hover"
+				}
+			]
+		},
+		{
+			"key": "backgrounds",
+			"title": "Backgrounds",
+			"variables": [
+				{
+					"name": "--ui-bg-primary",
+					"label": "Primary"
+				},
+				{
+					"name": "--ui-bg-secondary",
+					"label": "Secondary"
+				},
+				{
+					"name": "--ui-bg-tertiary",
+					"label": "Tertiary"
+				},
+				{
+					"name": "--ui-bg-elevated",
+					"label": "Elevated"
+				},
+				{
+					"name": "--ui-bg-hover",
+					"label": "Hover"
+				},
+				{
+					"name": "--ui-bg-active",
+					"label": "Active"
+				},
+				{
+					"name": "--ui-bg-disabled",
+					"label": "Disabled"
+				}
+			]
+		},
+		{
+			"key": "text",
+			"title": "Text",
+			"variables": [
+				{
+					"name": "--ui-text-primary",
+					"label": "Primary"
+				},
+				{
+					"name": "--ui-text-secondary",
+					"label": "Secondary"
+				},
+				{
+					"name": "--ui-text-tertiary",
+					"label": "Tertiary"
+				},
+				{
+					"name": "--ui-text-muted",
+					"label": "Muted"
+				},
+				{
+					"name": "--ui-text-inverse",
+					"label": "Inverse"
+				},
+				{
+					"name": "--ui-text-link",
+					"label": "Link"
+				},
+				{
+					"name": "--ui-text-link-hover",
+					"label": "Link Hover"
+				},
+				{
+					"name": "--ui-text-disabled",
+					"label": "Disabled"
+				}
+			]
+		},
+		{
+			"key": "borders",
+			"title": "Borders",
+			"variables": [
+				{
+					"name": "--ui-border-default",
+					"label": "Default"
+				},
+				{
+					"name": "--ui-border-subtle",
+					"label": "Subtle"
+				},
+				{
+					"name": "--ui-border-strong",
+					"label": "Strong"
+				},
+				{
+					"name": "--ui-border-focus",
+					"label": "Focus"
+				},
+				{
+					"name": "--ui-border-disabled",
+					"label": "Disabled"
+				}
+			]
+		},
+		{
+			"key": "success",
+			"title": "Status - Success",
+			"variables": [
+				{
+					"name": "--ui-success",
+					"label": "Success"
+				},
+				{
+					"name": "--ui-success-bg",
+					"label": "Background"
+				},
+				{
+					"name": "--ui-success-subtle",
+					"label": "Subtle"
+				},
+				{
+					"name": "--ui-success-hover",
+					"label": "Hover"
+				}
+			]
+		},
+		{
+			"key": "danger",
+			"title": "Status - Danger",
+			"variables": [
+				{
+					"name": "--ui-danger",
+					"label": "Danger"
+				},
+				{
+					"name": "--ui-danger-bg",
+					"label": "Background"
+				},
+				{
+					"name": "--ui-danger-subtle",
+					"label": "Subtle"
+				},
+				{
+					"name": "--ui-danger-hover",
+					"label": "Hover"
+				}
+			]
+		},
+		{
+			"key": "warning",
+			"title": "Status - Warning",
+			"variables": [
+				{
+					"name": "--ui-warning",
+					"label": "Warning"
+				},
+				{
+					"name": "--ui-warning-bg",
+					"label": "Background"
+				},
+				{
+					"name": "--ui-warning-hover",
+					"label": "Hover"
+				}
+			]
+		},
+		{
+			"key": "info",
+			"title": "Status - Info",
+			"variables": [
+				{
+					"name": "--ui-info",
+					"label": "Info"
+				},
+				{
+					"name": "--ui-info-bg",
+					"label": "Background"
+				},
+				{
+					"name": "--ui-info-subtle",
+					"label": "Subtle"
+				},
+				{
+					"name": "--ui-info-hover",
+					"label": "Hover"
+				}
+			]
+		},
+		{
+			"key": "misc",
+			"title": "Miscellaneous",
+			"variables": [
+				{
+					"name": "--ui-ring-color",
+					"label": "Focus Ring"
+				},
+				{
+					"name": "--ui-overlay-bg",
+					"label": "Overlay"
+				},
+				{
+					"name": "--ui-shadow-color",
+					"label": "Shadow"
+				}
+			]
+		}
+	],
+	"aliases": [
+		{
+			"from": "sidebar.show",
+			"to": "rail.show"
+		},
+		{
+			"from": "sideBar.enable",
+			"to": "rail.show",
+			"note": "the /embedui preview envelope spelled the key camel-B with `enable`"
+		},
+		{
+			"from": "sidebar.lockState",
+			"to": "rail.lockState"
+		},
+		{
+			"from": "sidebar.items.logo",
+			"to": "rail.logo"
+		},
+		{
+			"from": "sidebar.items.home",
+			"to": "rail.items.newChat",
+			"note": "the pre-cutover Home item is the v2 rail's New chat"
+		},
+		{
+			"from": "sidebar.items.library",
+			"to": "rail.items.library"
+		},
+		{
+			"from": "sidebar.items.projects",
+			"to": "rail.items.projects"
+		},
+		{
+			"from": "sidebar.items.dashboards",
+			"to": "rail.items.dashboards"
+		},
+		{
+			"from": "sidebar.items.account",
+			"to": "rail.account"
+		},
+		{
+			"from": "sidebar.items.expand",
+			"to": "rail.collapsible"
+		},
+		{
+			"from": "sidebar.items.settings",
+			"to": "settings.show"
+		},
+		{
+			"from": "sidebar.items.skills",
+			"to": null,
+			"note": "no v2 surface: the skills loader is legacy-chat only"
+		},
+		{
+			"from": "sidebar.items.subscribe",
+			"to": null,
+			"note": "no v2 surface"
+		},
+		{
+			"from": "sidebar.items.support",
+			"to": null,
+			"note": "no v2 surface"
+		},
+		{
+			"from": "chat.connectData",
+			"to": "rail.items.connect",
+			"note": "connecting data moved from the composer to the rail"
+		},
+		{
+			"from": "chat.skills",
+			"to": null,
+			"note": "no consumer anywhere, in v2 or before"
+		},
+		{
+			"from": "chat.simpleMode",
+			"to": "chat.display.simpleMode"
+		},
+		{
+			"from": "chat.extendedThinking",
+			"to": "chat.composer.thinkLonger"
+		},
+		{
+			"from": "chat.experimentalV2",
+			"to": "chat.composer.thinkLonger"
+		},
+		{
+			"from": "chat.fasterAnalysis",
+			"to": "chat.composer.thinkLonger",
+			"note": "listed last so it wins over experimentalV2, matching the runtime's old remap"
+		}
+	],
+	"inherits": [
+		{
+			"from": "header.show",
+			"to": "dashboard.header"
+		},
+		{
+			"from": "header.share",
+			"to": "dashboard.share"
+		},
+		{
+			"from": "header.automate",
+			"to": "dashboard.automate"
+		},
+		{
+			"from": "header.settings",
+			"to": "dashboard.properties"
+		},
+		{
+			"from": "header.menu",
+			"to": "dashboard.menubar"
+		},
+		{
+			"from": "header.viewModeToggle",
+			"to": "header.dataflow"
+		}
+	],
+	"couplings": [
+		{
+			"when": "chat.dock.show",
+			"is": false,
+			"set": "rail.items.newChat",
+			"to": false
+		},
+		{
+			"when": "chat.dock.show",
+			"is": false,
+			"set": "chat.history",
+			"to": false
+		},
+		{
+			"when": "chat.dock.show",
+			"is": false,
+			"set": "chat.autoStart",
+			"to": false
+		},
+		{
+			"when": "library.upload",
+			"is": false,
+			"set": "global.uploads",
+			"to": false
+		},
+		{
+			"when": "global.uploads",
+			"is": false,
+			"set": "rail.items.uploads",
+			"to": false
+		},
+		{
+			"when": "global.commandPalette",
+			"is": false,
+			"set": "rail.items.search",
+			"to": false
+		},
+		{
+			"when": "chat.history",
+			"is": false,
+			"set": "rail.items.history",
+			"to": false
+		},
+		{
+			"when": "chat.composer.uiDriving",
+			"is": false,
+			"set": "chat.composer.uiDrivingDefault",
+			"to": false
+		},
+		{
+			"when": "chat.dataflow.show",
+			"is": false,
+			"set": "chat.dataflow.defaultOpen",
+			"to": false
+		}
+	],
+	"limits": {
+		"maxBytes": 65536,
+		"stringMaxLength": 2000,
+		"colorValueMaxLength": 256,
+		"routesMaxItems": 32
+	}
+}

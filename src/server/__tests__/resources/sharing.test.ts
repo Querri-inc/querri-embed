@@ -87,11 +87,12 @@ describe('SharingResource', () => {
 
   it('orgShareSource() sends POST /sources/{id}/org-share', async () => {
     const mockFetch = makeMockFetch();
-    mockFetch.mockResolvedValueOnce(jsonResponse({ shared: true }));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ source_id: 's1', org_shared: true }));
 
     await makeClient(mockFetch).sharing.orgShareSource('s1', {
+      enabled: true,
       permission: 'view',
-    } as never);
+    });
 
     const { url, method } = firstCall(mockFetch);
     expect(url).toContain('/api/v1/sources/s1/org-share');

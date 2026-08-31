@@ -10,20 +10,35 @@ import type {
   QuerriInstance,
   QuerriErrorEvent,
   QuerriNavigationEvent,
+  QuerriConfigAppliedEvent,
+  QuerriResizeEvent,
+  QuerriChatEvent,
+  QuerriRecoveredEvent,
 } from '../core/querri-embed.js';
+
+/** How long config-prop changes are coalesced before calling `updateConfig`. */
+const CONFIG_DEBOUNCE_MS = 150;
 
 export interface QuerriEmbedProps {
   /** Querri server URL (e.g. 'https://app.querri.com') */
   serverUrl: string;
   /** Authentication mode */
   auth: QuerriEmbedOptions['auth'];
-  /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid') */
+  /** Initial view path (e.g. '/dashboard/uuid', '/chat/uuid'). Changing it recreates the iframe. */
   startView?: string;
-  /** Chrome visibility config */
+  /** Chrome visibility config. Changes apply live via `updateConfig` (debounced). */
   chrome?: QuerriEmbedOptions['chrome'];
-  /** Theme overrides */
+  /** Theme overrides. Changes apply live via `updateConfig` (debounced). */
   theme?: QuerriEmbedOptions['theme'];
-  /** Maximum time (ms) to wait for iframe to respond. @default 15000 */
+  /** Privacy controls. Changes apply live via `updateConfig` (debounced). */
+  privacy?: QuerriEmbedOptions['privacy'];
+  /** BCP-47 locale tag. Changes apply live via `updateConfig` (debounced). */
+  locale?: string;
+  /** Match iframe height to embedded content. Creation-time only. */
+  autoHeight?: boolean;
+  /** Max time (ms) to wait for the iframe's ready before a recoverable timeout error. Creation-time only. @default 30000 */
+  readyTimeout?: number;
+  /** @deprecated Alias of `readyTimeout`. Creation-time only. */
   timeout?: number;
   /** Container className */
   className?: string;
@@ -37,6 +52,14 @@ export interface QuerriEmbedProps {
   onSessionExpired?: () => void;
   /** Fired on navigation inside the embed */
   onNavigation?: (data: QuerriNavigationEvent) => void;
+  /** Fired when the runtime reports what config it applied (and what it changed) */
+  onConfig?: (data: QuerriConfigAppliedEvent) => void;
+  /** Fired when the embedded content reports a new height */
+  onResize?: (data: QuerriResizeEvent) => void;
+  /** Fired on chat lifecycle events (sent / finished / error) */
+  onChat?: (data: QuerriChatEvent) => void;
+  /** Fired when a recoverable error (e.g. ready timeout) is retracted */
+  onRecovered?: (data: QuerriRecoveredEvent) => void;
 }
 
 export interface QuerriEmbedRef {
@@ -73,6 +96,10 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
       startView,
       chrome,
       theme,
+      privacy,
+      locale,
+      autoHeight,
+      readyTimeout,
       timeout,
       className,
       style,
@@ -80,20 +107,39 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
       onError,
       onSessionExpired,
       onNavigation,
+      onConfig,
+      onResize,
+      onChat,
+      onRecovered,
     },
     ref
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const instanceRef = useRef<QuerriInstance | null>(null);
 
-    // Stabilize object props so inline literals don't cause iframe recreation
+    // Only auth needs stabilizing for the remount effect; the config props
+    // never remount — they flow through updateConfig below.
     const stableAuth = useStableValue(auth);
-    const stableChrome = useStableValue(chrome);
-    const stableTheme = useStableValue(theme);
+
+    // Latest creation-time values, read inside the create effect without
+    // being effect dependencies: changing any of these must NOT recreate
+    // the iframe (config props update live; timeout props are creation-only).
+    const createOptsRef = useRef({ chrome, theme, privacy, locale, autoHeight, readyTimeout, timeout });
+    createOptsRef.current = { chrome, theme, privacy, locale, autoHeight, readyTimeout, timeout };
+
+    // Serialized config last handed to the instance (at create or via
+    // updateConfig) — the content-compare that stops no-op updates.
+    const appliedConfigRef = useRef<string>('');
 
     // Stable callback refs — prevents iframe recreation when handlers change
-    const handlersRef = useRef({ onReady, onError, onSessionExpired, onNavigation });
-    handlersRef.current = { onReady, onError, onSessionExpired, onNavigation };
+    const handlersRef = useRef({
+      onReady, onError, onSessionExpired, onNavigation,
+      onConfig, onResize, onChat, onRecovered,
+    });
+    handlersRef.current = {
+      onReady, onError, onSessionExpired, onNavigation,
+      onConfig, onResize, onChat, onRecovered,
+    };
 
     useImperativeHandle(ref, () => ({
       get instance() {
@@ -107,20 +153,32 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
     useEffect(() => {
       if (!containerRef.current) return;
 
+      const opts = createOptsRef.current;
       const instance = SDK.create(containerRef.current, {
         serverUrl,
         auth: stableAuth,
         startView,
-        chrome: stableChrome,
-        theme: stableTheme,
-        timeout,
+        chrome: opts.chrome,
+        theme: opts.theme,
+        privacy: opts.privacy,
+        locale: opts.locale,
+        autoHeight: opts.autoHeight,
+        readyTimeout: opts.readyTimeout,
+        timeout: opts.timeout,
+      });
+      appliedConfigRef.current = JSON.stringify({
+        chrome: opts.chrome, theme: opts.theme, privacy: opts.privacy, locale: opts.locale,
       });
 
       instance
         .on('ready', () => handlersRef.current.onReady?.())
         .on('error', (data) => handlersRef.current.onError?.(data))
         .on('session-expired', () => handlersRef.current.onSessionExpired?.())
-        .on('navigation', (data) => handlersRef.current.onNavigation?.(data));
+        .on('navigation', (data) => handlersRef.current.onNavigation?.(data))
+        .on('config', (data) => handlersRef.current.onConfig?.(data))
+        .on('resize', (data) => handlersRef.current.onResize?.(data))
+        .on('chat', (data) => handlersRef.current.onChat?.(data))
+        .on('recovered', (data) => handlersRef.current.onRecovered?.(data));
 
       instanceRef.current = instance;
 
@@ -128,11 +186,35 @@ export const QuerriEmbed = forwardRef<QuerriEmbedRef, QuerriEmbedProps>(
         instance.destroy();
         instanceRef.current = null;
       };
-      // Changing auth or serverUrl destroys and recreates the iframe.
-      // Changing event handlers does NOT (via handlersRef pattern).
-      // Object props (auth, chrome, theme) are stabilized via useStableValue
-      // so inline literals don't cause unnecessary recreation.
-    }, [serverUrl, stableAuth, startView, stableChrome, stableTheme, timeout]);
+      // Remount ONLY on serverUrl / auth (content-compared) / startView —
+      // startView is baked into the iframe URL; updateConfig does not navigate.
+      // chrome/theme/privacy/locale apply live below; timeout props are
+      // creation-only and deliberately absent from this list.
+    }, [serverUrl, stableAuth, startView]);
+
+    // Live config updates: content-compare, then debounce so bursts (e.g. a
+    // color picker driving theme) coalesce into one postMessage.
+    const configSerialized = JSON.stringify({ chrome, theme, privacy, locale });
+    useEffect(() => {
+      if (!instanceRef.current) return;
+      if (configSerialized === appliedConfigRef.current) return;
+
+      const timer = setTimeout(() => {
+        appliedConfigRef.current = configSerialized;
+        // Whole-object semantics: the runtime replaces the customer config
+        // layer, so a prop that went back to undefined must be sent as its
+        // empty form to actually reset.
+        instanceRef.current?.updateConfig({
+          chrome: chrome ?? {},
+          theme: theme ?? {},
+          privacy: privacy ?? {},
+          locale: locale ?? '',
+        });
+      }, CONFIG_DEBOUNCE_MS);
+
+      return () => clearTimeout(timer);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [configSerialized]);
 
     return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', ...style }} />;
   }

@@ -19,11 +19,16 @@ export default defineConfig([
     format: ['iife'],
     globalName: 'QuerriEmbedModule',
     outDir: 'dist',
-    minify: true,
+    // Unminified on purpose: this exact file is committed into the product at
+    // web-app/static/sdk/querri-embed.js, where its diffs are reviewed and its
+    // tests grep the source for `.prototype.<method> =`.
+    minify: false,
     sourcemap: true,
     footer: {
-      // Unwrap the module to expose QuerriEmbed directly on window
-      js: 'if(typeof window!=="undefined"&&window.QuerriEmbedModule){window.QuerriEmbed=window.QuerriEmbedModule.QuerriEmbed;try{delete window.QuerriEmbedModule}catch(e){window.QuerriEmbedModule=undefined;}}',
+      // Unwrap via the LOCAL binding, not window.QuerriEmbedModule: the product
+      // evaluates this file with new Function('window', src), where the
+      // top-level var is function-scoped and never lands on window.
+      js: 'if(typeof QuerriEmbedModule!=="undefined"&&typeof window!=="undefined"){window.QuerriEmbed=QuerriEmbedModule.QuerriEmbed||QuerriEmbedModule.default||QuerriEmbedModule;try{delete window.QuerriEmbedModule}catch(e){}}',
     },
   },
   // React wrapper

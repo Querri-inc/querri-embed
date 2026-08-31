@@ -115,9 +115,8 @@ describe('Querri.asUser()', () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     const calledHeaders = mockFetch.mock.calls[0][1].headers as Record<string, string>;
 
-    // Internal API path (not /api/v1)
-    expect(calledUrl).toContain('/api/projects');
-    expect(calledUrl).not.toContain('/api/v1/');
+    // Public v1 API path — embed sessions are first-class auth on /api/v1
+    expect(calledUrl).toContain('/api/v1/projects');
 
     // Session header set; API-key auth fully absent
     expect(calledHeaders['X-Embed-Session']).toBe('session-abc-123');

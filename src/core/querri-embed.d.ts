@@ -1,3 +1,25 @@
+// ─── Generated Config Types ───────────────────────────────
+//
+// QuerriChromeConfig / QuerriThemeConfig / QuerriPrivacyConfig and the
+// config-applied event types are GENERATED from schema/chrome-schema.json
+// (the published server truth). Regenerate with `npm run generate:types`.
+
+import type {
+  QuerriChromeConfig,
+  QuerriThemeConfig,
+  QuerriPrivacyConfig,
+  QuerriConfigChanges,
+  QuerriConfigAppliedEvent,
+} from './chrome-types.js';
+
+export type {
+  QuerriChromeConfig,
+  QuerriThemeConfig,
+  QuerriPrivacyConfig,
+  QuerriConfigChanges,
+  QuerriConfigAppliedEvent,
+};
+
 // ─── Auth Types ───────────────────────────────────────────
 
 /**
@@ -41,33 +63,50 @@ export interface QuerriSessionEndpointAuth {
 /** Authentication mode for the embed. */
 export type QuerriAuth = 'login' | QuerriShareKeyAuth | QuerriTokenAuth | QuerriSessionEndpointAuth;
 
-// ─── Config Types ─────────────────────────────────────────
+// ─── Legacy (v1) Config Types ─────────────────────────────
+//
+// The v1 chrome vocabulary. The runtime auto-upgrades these keys to their v2
+// replacements on init (and reports each upgrade in the `config` event's
+// `changes.upgraded` list), so existing code keeps working — but new code
+// should use the v2 {@link QuerriChromeConfig} vocabulary directly.
 
-/** Controls which sidebar UI is visible inside the embed. */
+/**
+ * @deprecated v1 key. Use the v2 `rail` branch of {@link QuerriChromeConfig}
+ * instead — `sidebar.show` upgrades to `rail.show`.
+ */
 export interface QuerriSidebarConfig {
-  /** Sidebar visibility. @default false */
+  /** Sidebar visibility. @default false @see QuerriChromeConfig `rail.show` */
   show?: boolean;
 }
 
-/** Controls which header / page-toolbar UI is visible inside the embed. */
+/**
+ * @deprecated v1 key. Use the v2 `header` branch of {@link QuerriChromeConfig}.
+ *
+ * NOTE: in v2 the header action defaults changed — `viewModeToggle`, `share`,
+ * `print`, `automate`, `settings`, and `menu` all default to **false** (the v1
+ * docs claimed true). Set them explicitly if you relied on them showing.
+ */
 export interface QuerriHeaderConfig {
-  /** Header bar visibility. @default true */
+  /** Header bar visibility. @default true @see QuerriChromeConfig `header.show` */
   show?: boolean;
-  /** Show the chat / data-flow view-mode toggle on project pages. @default true */
+  /** Show the chat / data-flow view-mode toggle. @default false @see QuerriChromeConfig `header.dataflow` (via `header.viewModeToggle` inherit) */
   viewModeToggle?: boolean;
-  /** Show the Share button on project / dashboard pages. @default true */
+  /** Show the Share button. @default false @see QuerriChromeConfig `header.share` */
   share?: boolean;
-  /** Show the Print button on project / dashboard pages. @default true */
+  /** Show the Print button. @default false @see QuerriChromeConfig `header.print` */
   print?: boolean;
-  /** Show the Automate button on project pages. @default true */
+  /** Show the Automate button. @default false @see QuerriChromeConfig `header.automate` */
   automate?: boolean;
-  /** Show the Settings button. @default true */
+  /** Show the Settings button. @default false @see QuerriChromeConfig `header.settings` */
   settings?: boolean;
-  /** Show the kebab "more options" menu on project / dashboard pages. @default true */
+  /** Show the kebab "more options" menu. @default false @see QuerriChromeConfig `header.menu` */
   menu?: boolean;
 }
 
-/** Controls which chat display surfaces render inside project / chat views. */
+/**
+ * @deprecated v1 shape. Use the v2 `chat.display` branch of
+ * {@link QuerriChromeConfig}, which carries these keys and more.
+ */
 export interface QuerriChatDisplayConfig {
   /** Show table widgets. @default true */
   tables?: boolean;
@@ -99,7 +138,10 @@ export interface QuerriChatDisplayConfig {
   rerun?: boolean;
 }
 
-/** Controls how the reasoning / "thinking" panel renders. */
+/**
+ * @deprecated v1 shape. Use the v2 `chat.reasoning` branch of
+ * {@link QuerriChromeConfig} (same keys).
+ */
 export interface QuerriChatReasoningConfig {
   /** Merge reasoning into the same message bubble. @default true */
   merged?: boolean;
@@ -117,7 +159,10 @@ export interface QuerriWelcomePromptButton {
   prompt: string;
 }
 
-/** Controls the empty-chat welcome screen content. */
+/**
+ * @deprecated v1 shape. Use the v2 `chat.welcome` branch of
+ * {@link QuerriChromeConfig} (same keys, plus placeholders/greeting/etc.).
+ */
 export interface QuerriChatWelcomeConfig {
   /** Welcome heading text. Blank string hides the heading. @default '' */
   title?: string;
@@ -127,24 +172,27 @@ export interface QuerriChatWelcomeConfig {
   promptButtons?: QuerriWelcomePromptButton[];
 }
 
-/** Controls chat / project-page behavior and surfaces. */
+/**
+ * @deprecated v1 shape. Use the v2 `chat` branch of {@link QuerriChromeConfig}.
+ * Upgrades: `connectData` → `rail.items.connect`, `extendedThinking` /
+ * `fasterAnalysis` / `experimentalV2` → `chat.composer.thinkLonger`,
+ * `simpleMode` → `chat.display.simpleMode`.
+ */
 export interface QuerriChatConfig {
-  /** Render chat in full-width layout. @default false */
+  /** Render chat in full-width layout. @default false @see QuerriChromeConfig `chat.fullWidth` */
   fullWidth?: boolean;
-  /** Enable the "Connect data" affordance. @default false */
+  /** Enable the "Connect data" affordance. @default false @see QuerriChromeConfig `rail.items.connect` */
   connectData?: boolean;
-  /** Enable extended-thinking responses. @default false */
+  /** Enable extended-thinking responses. @default false @see QuerriChromeConfig `chat.composer.thinkLonger` */
   extendedThinking?: boolean;
-  /** Simplified chat UI (fewer surfaces). @default false */
+  /** Simplified chat UI (fewer surfaces). @default false @see QuerriChromeConfig `chat.display.simpleMode` */
   simpleMode?: boolean;
-  /** Enable the skills picker. @default false */
-  skills?: boolean;
-  /** Faster analysis mode (the "zap" affordance in the chat toolbar). @default false */
+  /** Faster analysis mode (the "zap" affordance in the chat toolbar). @default false @see QuerriChromeConfig `chat.composer.thinkLonger` */
   fasterAnalysis?: boolean;
   /**
-   * @deprecated Use `fasterAnalysis` instead. Kept for backwards
-   * compatibility; will be removed in a future major release. If both
-   * are set, `fasterAnalysis` takes precedence.
+   * @deprecated Use `fasterAnalysis` instead. If both are set,
+   * `fasterAnalysis` takes precedence.
+   * @see QuerriChromeConfig `chat.composer.thinkLonger`
    */
   experimentalV2?: boolean;
   display?: QuerriChatDisplayConfig;
@@ -152,25 +200,17 @@ export interface QuerriChatConfig {
   welcome?: QuerriChatWelcomeConfig;
 }
 
-/** Controls which chrome UI elements are visible inside the embed. */
-export interface QuerriChromeConfig {
+/**
+ * @deprecated The v1 chrome shape. The runtime auto-upgrades it; new code
+ * should pass a v2 {@link QuerriChromeConfig}.
+ */
+export interface QuerriLegacyChromeConfig {
   sidebar?: QuerriSidebarConfig;
   header?: QuerriHeaderConfig;
   chat?: QuerriChatConfig;
 }
 
-/** Theme overrides applied to the embedded application. */
-export interface QuerriThemeConfig {
-  /** Color scheme override. `null` follows the host OS. @default null */
-  scheme?: 'light' | 'dark' | null;
-  /**
-   * CSS custom property overrides. Keys must begin with `--` and map
-   * to valid CSS values (typically colors). Applied to
-   * `document.documentElement.style`. See the README for the canonical
-   * `--ui-*` token list.
-   */
-  colors?: Record<string, string>;
-}
+// ─── Options ──────────────────────────────────────────────
 
 /** Options passed to `QuerriEmbed.create()`. */
 export interface QuerriEmbedOptions {
@@ -178,34 +218,83 @@ export interface QuerriEmbedOptions {
   serverUrl: string;
   /** Authentication mode — `'login'`, share key object, session endpoint, or token callback. */
   auth: QuerriAuth;
-  /** Initial view path (e.g. `'/dashboard/uuid'`, `'/chat/uuid'`). @default '/home' */
+  /**
+   * Initial view path (e.g. `'/dashboard/uuid'`, `'/chat/uuid'`). Unset means
+   * the runtime's own default (the home launcher). Baked into the iframe URL
+   * at creation — `updateConfig` does not navigate.
+   */
   startView?: string;
-  /** Chrome UI visibility overrides. */
-  chrome?: QuerriChromeConfig;
+  /** Chrome UI visibility overrides (v2 vocabulary; the deprecated v1 shape is auto-upgraded). */
+  chrome?: QuerriChromeConfig | QuerriLegacyChromeConfig;
   /** Theme overrides passed to the embedded application. */
   theme?: QuerriThemeConfig;
+  /** Privacy controls for analytics/telemetry inside the embed. */
+  privacy?: QuerriPrivacyConfig;
+  /** BCP-47 locale tag for the embedded UI (e.g. `'en'`, `'de-DE'`). */
+  locale?: string;
   /**
-   * Maximum time in milliseconds to wait for the iframe to respond.
-   * If the iframe does not send a 'ready' message within this time,
-   * an error event with code `'timeout'` is emitted.
-   * @default 15000
+   * When `true`, the SDK sets the iframe's height to the embedded content's
+   * reported height on every `resize` event. Creation-time only.
+   * @default false
+   */
+  autoHeight?: boolean;
+  /**
+   * Maximum time in milliseconds to wait for the iframe's `ready` before
+   * emitting a **recoverable** `'timeout'` error (retracted via the
+   * `'recovered'` event if `ready` arrives late). `0` disables the warning.
+   * Creation-time only.
+   * @default 30000
+   */
+  readyTimeout?: number;
+  /**
+   * @deprecated Alias of {@link QuerriEmbedOptions.readyTimeout} — will be
+   * removed in the next major. `readyTimeout` wins when both are set.
    */
   timeout?: number;
+  /**
+   * Internal: set by Querri's own configurator so its same-origin preview does
+   * not record analytics or count as usage. Not for customer pages.
+   */
+  preview?: boolean;
+}
+
+/** Config accepted by {@link QuerriInstance.updateConfig}. */
+export interface QuerriUpdateConfig {
+  chrome?: QuerriChromeConfig | QuerriLegacyChromeConfig;
+  theme?: QuerriThemeConfig;
+  privacy?: QuerriPrivacyConfig;
+  locale?: string;
+  /** Internal — see {@link QuerriEmbedOptions.preview}. */
+  preview?: boolean;
 }
 
 // ─── Event Types ──────────────────────────────────────────
 
 /** Event names emitted by a `QuerriInstance`. */
-export type QuerriEventType = 'ready' | 'error' | 'session-expired' | 'navigation';
+export type QuerriEventType =
+  | 'ready'
+  | 'error'
+  | 'session-expired'
+  | 'navigation'
+  | 'config'
+  | 'resize'
+  | 'chat'
+  | 'recovered';
 
 /** Error codes emitted by the SDK. */
 export type QuerriErrorCode =
   | 'invalid_auth'
+  | 'invalid_share_key'
+  | 'invalid_start_view'
   | 'token_fetch_failed'
   | 'token_fetch_exhausted'
   | 'popup_blocked'
   | 'auth_failed'
   | 'auth_required'
+  | 'auth_timeout'
+  | 'init_timeout'
+  | 'navigation_failed'
+  | 'validation_failed'
   | 'timeout'
   | 'send_prompt_failed';
 
@@ -213,6 +302,12 @@ export type QuerriErrorCode =
 export interface QuerriErrorEvent {
   code: QuerriErrorCode;
   message: string;
+  /**
+   * `true` when the condition may clear on its own (e.g. a `'timeout'` where
+   * the iframe is still loading). A recoverable error is RETRACTED via the
+   * `'recovered'` event if the embed subsequently becomes ready.
+   */
+  recoverable?: boolean;
 }
 
 /** Payload for the `'navigation'` event. */
@@ -222,12 +317,40 @@ export interface QuerriNavigationEvent {
   [key: string]: unknown;
 }
 
+/** Payload for the `'resize'` event (content height reported by the embed). */
+export interface QuerriResizeEvent {
+  type?: 'resize';
+  /** Content height in CSS pixels. */
+  height: number;
+  [key: string]: unknown;
+}
+
+/** Payload for the `'chat'` event (chat lifecycle: sent / finished / error). */
+export interface QuerriChatEvent {
+  type?: 'chat';
+  phase?: string;
+  [key: string]: unknown;
+}
+
+/** Payload for the `'recovered'` event — retracts an earlier recoverable error. */
+export interface QuerriRecoveredEvent {
+  /** The error code being retracted (e.g. `'timeout'`). */
+  code: QuerriErrorCode;
+  /** Milliseconds after creation at which the embed recovered. */
+  afterMs?: number;
+  [key: string]: unknown;
+}
+
 /** Typed callback for each event type. */
 export type QuerriEventCallback<T extends QuerriEventType> =
   T extends 'ready' ? (data: Record<string, never>) => void :
   T extends 'error' ? (data: QuerriErrorEvent) => void :
   T extends 'session-expired' ? (data: Record<string, never>) => void :
   T extends 'navigation' ? (data: QuerriNavigationEvent) => void :
+  T extends 'config' ? (data: QuerriConfigAppliedEvent) => void :
+  T extends 'resize' ? (data: QuerriResizeEvent) => void :
+  T extends 'chat' ? (data: QuerriChatEvent) => void :
+  T extends 'recovered' ? (data: QuerriRecoveredEvent) => void :
   never;
 
 /** Options for {@link QuerriInstance.sendPrompt}. */
@@ -239,6 +362,13 @@ export interface SendPromptOptions {
    * @default false
    */
   autoSubmit?: boolean;
+}
+
+/** Result resolved by {@link QuerriInstance.sendPrompt}. */
+export interface SendPromptResult {
+  /** `false` when the embed is not ready or the current view has no prompt input. */
+  ok: boolean;
+  message: string;
 }
 
 // ─── Instance ─────────────────────────────────────────────
@@ -253,19 +383,27 @@ export interface QuerriInstance {
    * Subscribe to an event. Returns `this` for chaining.
    * @example instance.on('ready', () => {}).on('error', (e) => console.error(e));
    */
-  on<T extends QuerriEventType>(event: T, callback: QuerriEventCallback<T>): QuerriInstance;
+  on<T extends QuerriEventType>(event: T, callback: QuerriEventCallback<T>): this;
   /**
    * Unsubscribe a previously registered callback.
    * @returns `this` for chaining.
    */
-  off<T extends QuerriEventType>(event: T, callback: QuerriEventCallback<T>): QuerriInstance;
+  off<T extends QuerriEventType>(event: T, callback: QuerriEventCallback<T>): this;
   /**
-   * Set text in the embedded prompt input, optionally auto-submitting it.
-   * Requires {@link ready} to be `true`. Emits an `'error'` event with code
-   * `'send_prompt_failed'` if the embed is not ready or the current view
-   * has no prompt input.
+   * Replace the chrome/theme/privacy/locale this embed is using.
+   *
+   * Send the WHOLE object, not a patch: the runtime replaces the customer
+   * config layer, so a key you leave out returns to its default. Safe before
+   * `ready` — the config is folded into the init that follows. Does not
+   * navigate; `startView` is creation-time only.
    */
-  sendPrompt(text: string, options?: SendPromptOptions): void;
+  updateConfig(config: QuerriUpdateConfig): this;
+  /**
+   * Put text in the embed's composer, and optionally send it.
+   * Resolves with `{ ok, message }` — `ok: false` when the embed is not ready
+   * or the current view has no prompt input (a real answer, not silence).
+   */
+  sendPrompt(text: string, options?: SendPromptOptions): Promise<SendPromptResult>;
   /** Remove the iframe, clear timers, and detach all event listeners. */
   destroy(): void;
 }
