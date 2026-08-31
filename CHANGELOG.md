@@ -18,7 +18,9 @@ sixteen weeks apart, both claiming 0.2.1). See `docs/MIGRATION.md`.
 - `updateConfig(config)` — live config changes with **replace** semantics.
 - Events: `config` (what the runtime applied/dropped/coupled), `resize`
   (+`autoHeight` option), `chat`, `recovered`.
-- `sendPrompt` resolves `Promise<{ ok, message }>` via `send-prompt-result`.
+- `sendPrompt` resolves `Promise<{ ok, message }>` via `send-prompt-result`,
+  correlated by a `promptId` echo (concurrent calls resolve correctly, and a
+  pending call settles `ok: false` when the instance is destroyed).
 - Options: `privacy`, `locale`, `autoHeight`, `readyTimeout`; init carries
   `schemaVersion: 2`.
 - Typings generated from the runtime's chrome schema (~180 v2 keys, enums as
@@ -56,6 +58,12 @@ sixteen weeks apart, both claiming 0.2.1). See `docs/MIGRATION.md`.
   work (measured 24.8s on Fast 3G).
 - The IIFE global unwrap now works under function-scoped evaluation (the
   product's asset tests), not only as a top-level `<script>`.
+- The published `svelte` export resolves: the tarball now ships the core
+  module the `.svelte` source imports (0.x published a dangling import chain,
+  so SvelteKit consumers failed at build).
+- A config change landing between `init` and `authenticated` is posted
+  instead of silently swallowed (the send gate is frame-liveness, not auth).
+- The Angular wrapper no-ops under Angular Universal instead of throwing.
 
 
 ## [0.2.1] — 2026-05-11

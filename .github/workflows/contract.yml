@@ -1,0 +1,36 @@
+name: Contract check
+
+# Weekly drift check: the vendored chrome schema (which the generated typings
+# are built from) must still match what the product publishes at
+# /sdk/chrome-schema.json, and the generated typings must match the vendored
+# schema. An untethered vendored copy is how theme.scheme once outlived its
+# deletion by a month.
+
+on:
+  schedule:
+    - cron: '23 6 * * 1'  # Mondays 06:23 UTC
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Vendored schema matches the published schema
+        run: npm run check:schema
+        env:
+          QUERRI_SCHEMA_URL: ${{ vars.QUERRI_SCHEMA_URL }}
+
+      - name: Generated typings match the vendored schema
+        run: |
+          npm run generate:types
+          git diff --exit-code src/core/chrome-types.d.ts || {
+            echo "::error::src/core/chrome-types.d.ts is stale — run npm run generate:types and commit"
+            exit 1
+          }
