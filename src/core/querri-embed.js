@@ -288,7 +288,12 @@ QuerriInstance.prototype._initShareKey = function (classified) {
       self._sendToIframe({ type: 'init', config: self._buildConfig() });
     },
     onAuthRequired: function () {
-      self._emitError('auth_required', 'Authentication required but no login mode configured');
+      self._emitError(
+        'auth_required',
+        'The embed could not authenticate. In share-key mode check that both ' +
+          '`shareKey` and `org` are set; otherwise configure `auth: "login"` ' +
+          'or `auth.fetchSessionToken`.'
+      );
     },
     onSessionExpired: function () { /* share-key has no re-auth path */ },
   };
