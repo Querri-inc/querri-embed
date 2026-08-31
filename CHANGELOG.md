@@ -7,6 +7,57 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-08-31
+
+The first major: this package becomes the **single source** of the browser SDK —
+the file your Querri deployment serves at `/sdk/querri-embed.js` is now the
+unminified build of this core, so the two can never fork again (they had:
+sixteen weeks apart, both claiming 0.2.1). See `docs/MIGRATION.md`.
+
+### Added
+- `updateConfig(config)` — live config changes with **replace** semantics.
+- Events: `config` (what the runtime applied/dropped/coupled), `resize`
+  (+`autoHeight` option), `chat`, `recovered`.
+- `sendPrompt` resolves `Promise<{ ok, message }>` via `send-prompt-result`.
+- Options: `privacy`, `locale`, `autoHeight`, `readyTimeout`; init carries
+  `schemaVersion: 2`.
+- Typings generated from the runtime's chrome schema (~180 v2 keys, enums as
+  unions), with a regen-check test and a scheduled drift check against
+  `{product}/sdk/chrome-schema.json` (`npm run check:schema`).
+- Origin pinning: the iframe URL carries `parentOrigin=`; inbound messages are
+  source-checked; the popup close-poll is COOP-safe.
+- Server SDK: `sources.update` typed to the real request/response;
+  `orgShareSource` response typed `{ source_id, org_shared }`.
+
+### Changed (breaking)
+- `timeout` → `readyTimeout`: default **30000** (was 15000), `0` now disables
+  (previously fell back to the default), the error is `recoverable: true`, and
+  a late `ready` emits `recovered`. `timeout` remains as a deprecated alias.
+- `sendPrompt` returns a Promise instead of emitting `send_prompt_failed`
+  error events for local refusals.
+- Unset `startView` now opens the runtime's default view instead of forcing
+  `'/home'` (matches the served asset's behaviour).
+- Framework wrappers no longer destroy/recreate the iframe on `chrome`/`theme`
+  changes — they call `updateConfig` (debounced, content-compared). Remount
+  happens only for `serverUrl`/`auth`/`startView`; changing
+  `timeout`/`readyTimeout` no longer remounts.
+- Server SDK: `data.*` repointed from the deleted `/data/*` routes to
+  `/sources/*` (`query` moves `source_id` into the path);
+  `SourceCreateParams` is `{ name, rows }`; the user client (`asUser`) targets
+  `/api/v1` and its dashboards surface is read-only.
+- Typings: `theme.scheme` and `chrome.chat.skills` deleted (dead on the
+  runtime); legacy v1 chrome interfaces are `@deprecated` aliases;
+  `QuerriEventType`/`QuerriErrorCode` widened to what the runtime emits.
+- The wire config no longer duplicates `chat.fasterAnalysis` onto
+  `experimentalV2` — the runtime aliases legacy keys itself.
+
+### Fixed
+- 15s terminal timeout falsely failing slow-network embeds that were about to
+  work (measured 24.8s on Fast 3G).
+- The IIFE global unwrap now works under function-scoped evaluation (the
+  product's asset tests), not only as a top-level `<script>`.
+
+
 ## [0.2.1] — 2026-05-11
 
 ### Added

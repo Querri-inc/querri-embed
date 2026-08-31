@@ -140,7 +140,10 @@ QuerriEmbed.create('#container', {
 **CDN**
 
 ```html
-<script src="https://unpkg.com/@querri-inc/embed/dist/core/querri-embed.iife.global.js"></script>
+<!-- The canonical script tag: served by YOUR Querri deployment, so it can never
+     version-skew against the product. (This same file is the build of this
+     package's core.) -->
+<script src="https://app.querri.com/sdk/querri-embed.js"></script>
 <script>
   QuerriEmbed.create('#container', {
     serverUrl: 'https://app.querri.com',
@@ -198,32 +201,32 @@ auth: 'login'
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `serverUrl` | `string` | Yes | Querri server URL. Use `'https://app.querri.com'` for web-app embeds or `'https://app.querri.com/builder'` for dashboard embeds. |
+| `serverUrl` | `string` | Yes | Querri server URL, e.g. `'https://app.querri.com'`. (The old `'…/builder'` suffix is obsolete — one URL serves everything.) |
 | `auth` | `QuerriAuth` | Yes | Authentication mode (see above) |
-| `startView` | `string` | No | Initial view path (e.g. `'/dashboard/uuid'`). Defaults to `'/home'` |
-| `chrome` | `object` | No | UI chrome visibility |
-| `chrome.sidebar.show` | `boolean` | No | Sidebar visibility (default: `false` / hidden) |
-| `chrome.header.show` | `boolean` | No | Header bar visibility (default: `true`) |
-| `chrome.header.viewModeToggle` | `boolean` | No | Show chat / data-flow view-mode toggle on project pages (default: `true`) |
-| `chrome.header.share` | `boolean` | No | Show the Share button (default: `true`) |
-| `chrome.header.print` | `boolean` | No | Show the Print button (default: `true`) |
-| `chrome.header.automate` | `boolean` | No | Show the Automate button on project pages (default: `true`) |
-| `chrome.header.settings` | `boolean` | No | Show the Settings button (default: `true`) |
-| `chrome.header.menu` | `boolean` | No | Show the kebab "more options" menu (default: `true`) |
-| `chrome.chat.fullWidth` | `boolean` | No | Render chat in full-width layout (default: `false`) |
-| `chrome.chat.simpleMode` | `boolean` | No | Simplified chat UI with fewer surfaces (default: `false`) |
-| `chrome.chat.connectData` | `boolean` | No | Show the "Connect data" affordance (default: `false`) |
-| `chrome.chat.extendedThinking` | `boolean` | No | Enable extended-thinking responses (default: `false`) |
-| `chrome.chat.skills` | `boolean` | No | Show the skills picker (default: `false`) |
-| `chrome.chat.fasterAnalysis` | `boolean` | No | Show the "Faster analysis mode" (zap) toggle (default: `false`). Renamed from `experimentalV2` — the legacy key is still accepted as an alias. |
-| `chrome.chat.reasoning.merged` | `boolean` | No | Merge reasoning into the same message bubble (default: `true`) |
-| `chrome.chat.reasoning.startExpanded` | `boolean` | No | Start with the reasoning panel expanded (default: `false`) |
-| `chrome.chat.display.*` | `boolean` | No | Per-surface chat-display toggles (`tables`, `charts`, `reports`, `suggestions`, `clarifications`, `choices`, `plans`, `reasoning`, `displayMessages`, `actionCards`, `copy`, `share`, `print`, `rerun`). All default `true`. |
-| `chrome.chat.welcome.title` | `string` | No | Custom welcome heading (empty hides it) |
-| `chrome.chat.welcome.subtitle` | `string` | No | Custom welcome subheading |
-| `chrome.chat.welcome.promptButtons` | `Array<{id?,label,prompt}>` | No | Quick-prompt buttons under the welcome heading |
-| `theme` | `QuerriThemeConfig` | No | `{ scheme?: 'light' \| 'dark' \| null, colors?: Record<\`--token\`, string> }`. `colors` keys must start with `--` and are applied to `document.documentElement.style`. See the staging app's `layout.css` for the canonical `--ui-*` token list. |
-| `timeout` | `number` | No | Max time (ms) to wait for iframe to respond (default: `15000`) |
+| `startView` | `string` | No | Initial view path (e.g. `'/dashboard/uuid'`, `'/inbox'`). Unset opens the runtime's default view (the chat launcher). |
+| `chrome` | `QuerriChromeConfig` | No | UI chrome config — the **v2 vocabulary** (`rail`, `header`, `chat`, `global`, `library`, `projects`, `dashboard`, `xls`, `print`, `settings`), ~180 keys, typed from the runtime's own schema. See `{serverUrl}/sdk/README.md` for the full per-key table, or `{serverUrl}/sdk/chrome-schema.json` for the machine-readable schema. Legacy v1 keys (`sidebar.*`, `chat.connectData`, …) are still accepted — the runtime translates them one-way; unknown keys are dropped and reported via the `config` event. |
+| `theme` | `QuerriThemeConfig` | No | `{ name?: '' \| 'querri' \| 'querri-dark' \| 'night', colors?, radius?, fontFamily? }`. `colors` keys must be `--ui-*` tokens (allow-listed by the runtime). The old `scheme` key is dead — use `name`. |
+| `privacy` | `QuerriPrivacyConfig` | No | `{ sessionReplay?, identify?, errorReporting? }` — analytics consent for your end-users (replay and identify default **off**). |
+| `locale` | `string` | No | Language override, e.g. `'en'`, `'es'`. |
+| `autoHeight` | `boolean` | No | Grow the iframe to the embed's reported height (`resize` events). |
+| `readyTimeout` | `number` | No | Ms to wait for the iframe before warning (default `30000`, `0` disables). The warning is `recoverable: true` and is retracted via the `recovered` event if the embed arrives late. `timeout` is a deprecated alias. |
+
+**Gotchas worth knowing:**
+- Legacy `chrome.chat.connectData` maps to a **rail item** now — it does nothing unless the rail is shown (`chrome: { rail: { show: true } }` or legacy `sidebar.show: true`).
+- Legacy `chrome.header.{viewModeToggle,share,print,automate,settings,menu}` default **false** in v2 (the old docs said true) and only reach share-key embeds' legacy chat page.
+- Legacy `chat.skills` and `theme.scheme` are **dropped** — the runtime reports the former in the `config` event's `changes.dropped`; use `theme.name` for the latter.
+- `updateConfig()` **replaces** the config (not a merge): send the whole object each time so keys returned to defaults actually reset.
+
+Listen to the `config` event to see what the runtime did with your config:
+
+```javascript
+querri.on('config', function (report) {
+  // report.changes.dropped — keys the runtime doesn't know
+  // report.changes.coupled — keys it turned off because a parent is off
+  // report.changes.upgraded — legacy keys translated to v2
+  console.log('applied at schema v' + report.schemaVersion, report.changes);
+});
+```
 
 ## Events
 
@@ -477,15 +480,19 @@ Set the `QUERRI_API_KEY` environment variable. Find your API key at https://app.
 
 ### `timeout` -- iframe didn't respond
 
-Check that `serverUrl` is correct and the Querri server is reachable. The default timeout is 15 seconds. You can increase it for slow networks:
+Check that `serverUrl` is correct and the Querri server is reachable. The default budget is 30
+seconds (measured: ~25s on Fast 3G — the whole app boots inside that window), the error carries
+`recoverable: true`, and if the embed arrives late the SDK emits `recovered` — so treat `timeout`
+as a warning, not a terminal failure:
 
 ```javascript
-QuerriEmbed.create('#container', {
-  serverUrl: 'https://app.querri.com',
-  auth: { /* ... */ },
-  timeout: 30000, // 30 seconds
+querri.on('error', function (e) {
+  if (e.code === 'timeout' && e.recoverable) showSpinnerNote('Still loading…');
 });
+querri.on('recovered', function () { clearSpinnerNote(); });
 ```
+
+`readyTimeout: 0` disables the warning entirely.
 
 ### `popup_blocked`
 
