@@ -1,6 +1,6 @@
 {
   "name": "@querri-inc/embed",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Embed Querri views in your application. Core SDK + React, Vue, Svelte, and Angular components.",
   "type": "module",
   "license": "MIT",
@@ -197,6 +197,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "version": "node scripts/bump-version.js && git add -A",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "generate:types": "node scripts/generate-chrome-types.mjs",
+    "check:schema": "node scripts/check-chrome-schema.mjs"
   }
 }
