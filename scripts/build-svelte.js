@@ -15,15 +15,9 @@ const OUT_DIR = 'dist/svelte';
 mkdirSync(OUT_DIR, { recursive: true });
 
 // 1. Copy raw .svelte source for svelte-aware bundlers
-// The raw .svelte copy must import the built core that actually sits next to
-// it in the tarball — the source-relative path would dangle in dist/.
-writeFileSync(
-  `${OUT_DIR}/QuerriEmbed.svelte`,
-  readFileSync(SVELTE_SRC, 'utf-8').replace(
-    `from '../core/querri-embed.js'`,
-    `from '../core/index.mjs'`,
-  ),
-);
+// No raw .svelte copy in dist/: the `svelte` export condition ships the src
+// copy, and `import`/`default` use the compiled index.js below — a dist copy
+// was dead weight whose JSDoc type refs dangled.
 
 // 2. Compile to JS fallback
 const source = readFileSync(SVELTE_SRC, 'utf-8');
@@ -37,10 +31,16 @@ const result = compile(source, {
 // dist/core/ has index.mjs (tsup output). Also add a named export so
 // consumers can use either `import QuerriEmbed` or `import { QuerriEmbed }`.
 let compiledCode = result.js.code;
-compiledCode = compiledCode.replace(
-  `from '../core/querri-embed.js'`,
-  `from '../core/index.mjs'`,
-);
+const CORE_IMPORT = `from '../core/querri-embed.js'`;
+if (!compiledCode.includes(CORE_IMPORT)) {
+  // A silent no-op here ships a dist/svelte/index.js importing a path that
+  // does not exist in dist/ — fail the build instead.
+  throw new Error(
+    `build-svelte: expected ${CORE_IMPORT} in the compiled component — ` +
+      'the import in QuerriEmbed.svelte was reformatted; update this rewrite.',
+  );
+}
+compiledCode = compiledCode.replace(CORE_IMPORT, `from '../core/index.mjs'`);
 compiledCode += '\nexport { QuerriEmbed };\n';
 
 writeFileSync(`${OUT_DIR}/index.js`, compiledCode);
