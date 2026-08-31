@@ -32,7 +32,9 @@
   ],
   "files": [
     "dist",
-    "src/svelte"
+    "src/core/querri-embed.js",
+    "src/svelte/index.js",
+    "src/svelte/QuerriEmbed.svelte"
   ],
   "sideEffects": false,
   "exports": {

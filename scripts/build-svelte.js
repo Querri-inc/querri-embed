@@ -7,7 +7,7 @@
  */
 
 import { compile } from 'svelte/compiler';
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const SVELTE_SRC = 'src/svelte/QuerriEmbed.svelte';
 const OUT_DIR = 'dist/svelte';
@@ -15,7 +15,15 @@ const OUT_DIR = 'dist/svelte';
 mkdirSync(OUT_DIR, { recursive: true });
 
 // 1. Copy raw .svelte source for svelte-aware bundlers
-copyFileSync(SVELTE_SRC, `${OUT_DIR}/QuerriEmbed.svelte`);
+// The raw .svelte copy must import the built core that actually sits next to
+// it in the tarball — the source-relative path would dangle in dist/.
+writeFileSync(
+  `${OUT_DIR}/QuerriEmbed.svelte`,
+  readFileSync(SVELTE_SRC, 'utf-8').replace(
+    `from '../core/querri-embed.js'`,
+    `from '../core/index.mjs'`,
+  ),
+);
 
 // 2. Compile to JS fallback
 const source = readFileSync(SVELTE_SRC, 'utf-8');
