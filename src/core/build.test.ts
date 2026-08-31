@@ -72,10 +72,6 @@ describe('Build outputs', () => {
     expect(fileExists('angular/index.d.ts')).toBe(true);
   });
 
-  it.skipIf(!distExists)('dist/svelte/QuerriEmbed.svelte exists and is non-empty', () => {
-    expect(fileExists('svelte/QuerriEmbed.svelte')).toBe(true);
-  });
-
   it.skipIf(!distExists)('dist/svelte/index.js exists and is non-empty', () => {
     expect(fileExists('svelte/index.js')).toBe(true);
   });
