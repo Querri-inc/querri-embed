@@ -1577,6 +1577,41 @@ describe('sendPrompt', () => {
     instance.destroy();
   });
 
+  it('resolves concurrent prompts in order (FIFO, no correlation id)', async () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const first = instance.sendPrompt('one');
+    const second = instance.sendPrompt('two');
+    sendMessage('send-prompt-result', { ok: true, message: 'first answer' });
+    sendMessage('send-prompt-result', { ok: false, message: 'second answer' });
+
+    await expect(first).resolves.toEqual({ ok: true, message: 'first answer' });
+    await expect(second).resolves.toEqual({ ok: false, message: 'second answer' });
+    instance.destroy();
+  });
+
+  it('settles awaited prompts on destroy instead of stranding them', async () => {
+    // A wrapper remount (serverUrl/auth/startView prop change) destroys the
+    // instance while a caller may still be awaiting — the promise must settle.
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const pending = instance.sendPrompt('hello');
+    instance.destroy();
+
+    await expect(pending).resolves.toEqual({
+      ok: false,
+      message: 'Embed destroyed before the prompt was delivered',
+    });
+  });
+
   it('sends postMessage to iframe when ready', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,

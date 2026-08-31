@@ -199,7 +199,7 @@ function QuerriInstance(container, options) {
   this._readyTimeout = (typeof readyTimeout === 'number' && readyTimeout >= 0) ? readyTimeout : 30000;
   this._timedOut = false;
   this._createdAt = Date.now();
-  this._pendingPrompt = null;
+  this._pendingPrompts = [];
   this._listeners = {};
   this._messageHandler = null;
   this._popupMessageHandler = null;
@@ -665,9 +665,8 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'send-prompt-result':
-        if (self._pendingPrompt) {
-          var resolvePrompt = self._pendingPrompt;
-          self._pendingPrompt = null;
+        if (self._pendingPrompts.length) {
+          var resolvePrompt = self._pendingPrompts.shift();
           resolvePrompt({ ok: e.data.ok === true, message: e.data.message || '' });
         }
         break;
@@ -768,7 +767,10 @@ QuerriInstance.prototype.sendPrompt = function (text, options) {
     return Promise.resolve({ ok: false, message: 'sendPrompt requires a non-empty string' });
   }
   return new Promise(function (resolve) {
-    self._pendingPrompt = resolve;
+    // FIFO: the protocol carries no correlation id, but postMessage delivery
+    // is ordered per frame pair, and the runtime answers each send-prompt with
+    // exactly one send-prompt-result.
+    self._pendingPrompts.push(resolve);
     self._sendToIframe({
       type: 'send-prompt',
       text: text,
@@ -782,7 +784,13 @@ QuerriInstance.prototype.destroy = function () {
   this.ready = false;
   this._iframeReady = false;
   this._timedOut = false;
-  this._pendingPrompt = null;
+  // Settle, never strand: a wrapper remount destroys the instance while a
+  // sendPrompt may still be awaited — an un-settled promise hangs forever.
+  var pending = this._pendingPrompts;
+  this._pendingPrompts = [];
+  for (var i = 0; i < pending.length; i++) {
+    pending[i]({ ok: false, message: 'Embed destroyed before the prompt was delivered' });
+  }
 
   if (this._messageHandler) {
     window.removeEventListener('message', this._messageHandler);
