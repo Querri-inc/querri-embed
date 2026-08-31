@@ -1594,6 +1594,27 @@ describe('sendPrompt', () => {
     instance.destroy();
   });
 
+  it('correlates results by promptId, surviving an out-of-order or dropped answer', async () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    sendMessage('authenticated');
+
+    const first = instance.sendPrompt('one');
+    const second = instance.sendPrompt('two');
+    // The second answer arrives first — and the first never arrives at all.
+    sendMessage('send-prompt-result', { promptId: 2, ok: true, message: 'for two' });
+
+    await expect(second).resolves.toEqual({ ok: true, message: 'for two' });
+    // The unanswered first call settles on destroy instead of misaligning.
+    instance.destroy();
+    await expect(first).resolves.toEqual({
+      ok: false,
+      message: 'Embed destroyed before the prompt was delivered',
+    });
+  });
+
   it('settles awaited prompts on destroy instead of stranding them', async () => {
     // A wrapper remount (serverUrl/auth/startView prop change) destroys the
     // instance while a caller may still be awaiting — the promise must settle.
@@ -1623,7 +1644,7 @@ describe('sendPrompt', () => {
     instance.sendPrompt('hello world');
 
     expect(sendSpy).toHaveBeenCalledWith(
-      { type: 'send-prompt', text: 'hello world', autoSubmit: false }
+      { type: 'send-prompt', promptId: 1, text: 'hello world', autoSubmit: false }
     );
     instance.destroy();
   });
@@ -1639,7 +1660,7 @@ describe('sendPrompt', () => {
     instance.sendPrompt('hello', { autoSubmit: true });
 
     expect(sendSpy).toHaveBeenCalledWith(
-      { type: 'send-prompt', text: 'hello', autoSubmit: true }
+      { type: 'send-prompt', promptId: 1, text: 'hello', autoSubmit: true }
     );
     instance.destroy();
   });

@@ -11,6 +11,13 @@ function fileExists(rel: string) {
 describe('Server build outputs', () => {
   const distExists = existsSync(DIST);
 
+  // In CI the build always precedes the tests, so a missing dist/ there is a
+  // broken pipeline, not first-time setup — fail loudly instead of skipping
+  // every assertion on the artifacts a release would publish.
+  it.runIf(!!process.env.CI)('dist/ exists in CI (build ran before tests)', () => {
+    expect(distExists, 'dist/ missing — the CI build step did not run or failed silently').toBe(true);
+  });
+
   // server/index
   it.skipIf(!distExists)('dist/server/index.mjs exists and is non-empty', () => {
     expect(fileExists('server/index.mjs')).toBe(true);

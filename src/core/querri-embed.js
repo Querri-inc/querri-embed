@@ -200,6 +200,7 @@ function QuerriInstance(container, options) {
   this._timedOut = false;
   this._createdAt = Date.now();
   this._pendingPrompts = [];
+  this._promptSeq = 0;
   this._listeners = {};
   this._messageHandler = null;
   this._popupMessageHandler = null;
@@ -668,9 +669,20 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'send-prompt-result':
-        if (self._pendingPrompts.length) {
-          var resolvePrompt = self._pendingPrompts.shift();
-          resolvePrompt({ ok: e.data.ok === true, message: e.data.message || '' });
+        var entry = null;
+        if (e.data.promptId != null) {
+          for (var pi = 0; pi < self._pendingPrompts.length; pi++) {
+            if (self._pendingPrompts[pi].id === e.data.promptId) {
+              entry = self._pendingPrompts.splice(pi, 1)[0];
+              break;
+            }
+          }
+        } else if (self._pendingPrompts.length) {
+          // Runtime predating the promptId echo: ordered delivery, FIFO.
+          entry = self._pendingPrompts.shift();
+        }
+        if (entry) {
+          entry.resolve({ ok: e.data.ok === true, message: e.data.message || '' });
         }
         break;
 
@@ -776,12 +788,15 @@ QuerriInstance.prototype.sendPrompt = function (text, options) {
     return Promise.resolve({ ok: false, message: 'sendPrompt requires a non-empty string' });
   }
   return new Promise(function (resolve) {
-    // FIFO: the protocol carries no correlation id, but postMessage delivery
-    // is ordered per frame pair, and the runtime answers each send-prompt with
-    // exactly one send-prompt-result.
-    self._pendingPrompts.push(resolve);
+    // Correlated by promptId where the runtime echoes it; FIFO otherwise
+    // (ordered postMessage delivery, one result per prompt). The id is what
+    // keeps the queue aligned even if a runtime bug ever drops one result —
+    // without it, every later answer would resolve the wrong call forever.
+    var id = ++self._promptSeq;
+    self._pendingPrompts.push({ id: id, resolve: resolve });
     self._sendToIframe({
       type: 'send-prompt',
+      promptId: id,
       text: text,
       autoSubmit: opts.autoSubmit === true,
     });
@@ -798,7 +813,7 @@ QuerriInstance.prototype.destroy = function () {
   var pending = this._pendingPrompts;
   this._pendingPrompts = [];
   for (var i = 0; i < pending.length; i++) {
-    pending[i]({ ok: false, message: 'Embed destroyed before the prompt was delivered' });
+    pending[i].resolve({ ok: false, message: 'Embed destroyed before the prompt was delivered' });
   }
 
   if (this._messageHandler) {
