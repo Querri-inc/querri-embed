@@ -95,7 +95,11 @@ describe('Auth mode routing', () => {
       auth: { shareKey: 'sk-123', org: 'org-456' },
     });
     expect(instance.iframe!.src).toContain('/embed?share=sk-123&org=org-456');
-    expect(instance.iframe!.src).toContain('&startView=%2Fhome');
+    // No forced startView: unset means the runtime's own default view.
+    expect(instance.iframe!.src).not.toContain('startView=');
+    // The parent declares itself in the URL so the runtime can pin its trust
+    // anchor before anyone speaks to it.
+    expect(instance.iframe!.src).toContain('parentOrigin=');
     instance.destroy();
   });
 
@@ -103,9 +107,9 @@ describe('Auth mode routing', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk-123', org: 'org-456' },
-      startView: '/builder/dashboard/abc',
+      startView: '/dashboard/abc',
     });
-    expect(instance.iframe!.src).toContain('&startView=%2Fbuilder%2Fdashboard%2Fabc');
+    expect(instance.iframe!.src).toContain('&startView=%2Fdashboard%2Fabc');
     instance.destroy();
   });
 
@@ -114,7 +118,9 @@ describe('Auth mode routing', () => {
       serverUrl: SERVER_URL,
       auth: { fetchSessionToken: async () => 'token-123' },
     });
-    expect(instance.iframe!.src).toBe(SERVER_URL + '/embed');
+    expect(instance.iframe!.src).toBe(
+      SERVER_URL + '/embed?parentOrigin=' + encodeURIComponent(window.location.origin)
+    );
     instance.destroy();
   });
 
@@ -123,7 +129,9 @@ describe('Auth mode routing', () => {
       serverUrl: SERVER_URL,
       auth: 'login',
     });
-    expect(instance.iframe!.src).toBe(SERVER_URL + '/embed');
+    expect(instance.iframe!.src).toBe(
+      SERVER_URL + '/embed?parentOrigin=' + encodeURIComponent(window.location.origin)
+    );
     instance.destroy();
   });
 
@@ -413,7 +421,7 @@ describe('Ready timeout', () => {
     document.body.innerHTML = '';
   });
 
-  it('emits timeout error after 15s if no ready message', () => {
+  it('emits a RECOVERABLE timeout error after 30s if no ready message', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
@@ -421,11 +429,43 @@ describe('Ready timeout', () => {
     const errorCb = vi.fn();
     instance.on('error', errorCb);
 
-    vi.advanceTimersByTime(15000);
+    vi.advanceTimersByTime(30000);
 
     expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'timeout' })
+      expect.objectContaining({ code: 'timeout', recoverable: true })
     );
+    instance.destroy();
+  });
+
+  it('emits recovered when ready arrives after the timeout fired', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const recoveredCb = vi.fn();
+    instance.on('recovered', recoveredCb);
+
+    vi.advanceTimersByTime(35000);
+    sendMessage('ready');
+
+    expect(recoveredCb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'timeout', afterMs: expect.any(Number) })
+    );
+    instance.destroy();
+  });
+
+  it('readyTimeout: 0 disables the warning entirely', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+      readyTimeout: 0,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    vi.advanceTimersByTime(120000);
+
+    expect(errorCb).not.toHaveBeenCalled();
     instance.destroy();
   });
 
@@ -585,7 +625,7 @@ describe('Configurable timeout', () => {
     document.body.innerHTML = '';
   });
 
-  it('uses default 15s timeout when timeout option is not set', () => {
+  it('uses the 30s default when neither readyTimeout nor timeout is set', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
@@ -593,13 +633,30 @@ describe('Configurable timeout', () => {
     const errorCb = vi.fn();
     instance.on('error', errorCb);
 
-    vi.advanceTimersByTime(14999);
+    vi.advanceTimersByTime(29999);
     expect(errorCb).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(1);
     expect(errorCb).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'timeout' })
     );
+    instance.destroy();
+  });
+
+  it('readyTimeout wins over the deprecated timeout alias', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+      readyTimeout: 8000,
+      timeout: 5000,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    vi.advanceTimersByTime(5000);
+    expect(errorCb).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(3000);
+    expect(errorCb).toHaveBeenCalledWith(expect.objectContaining({ code: 'timeout' }));
     instance.destroy();
   });
 
@@ -633,7 +690,7 @@ describe('Configurable timeout', () => {
 
     vi.advanceTimersByTime(5000);
     expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining('5 seconds') })
+      expect.objectContaining({ message: expect.stringContaining('5000ms') })
     );
     instance.destroy();
   });
@@ -854,7 +911,10 @@ describe('Token fetch deduplication', () => {
     expect(sendSpy).toHaveBeenCalledTimes(1);
     const firstInit = sendSpy.mock.calls[0][0] as { type: string; config: Record<string, unknown> };
     expect(firstInit.type).toBe('init');
-    expect(firstInit.config).toHaveProperty('startView', '/home');
+    // Unset startView is sent as null — the runtime's own default view (the
+    // home launcher), matching the served asset's behavior.
+    expect(firstInit.config).toHaveProperty('startView', null);
+    expect(firstInit.config).toHaveProperty('schemaVersion', 2);
 
     // Iframe confirms auth -> user is now navigating within the embed.
     sendMessage('authenticated');
@@ -878,7 +938,7 @@ describe('Token fetch deduplication', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { fetchSessionToken: fetchToken },
-      startView: '/builder/dashboard/abc',
+      startView: '/dashboard/abc',
     });
 
     const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
@@ -886,7 +946,7 @@ describe('Token fetch deduplication', () => {
     sendMessage('ready');
     await vi.advanceTimersByTimeAsync(0);
     const firstInit = sendSpy.mock.calls[0][0] as { config: Record<string, unknown> };
-    expect(firstInit.config).toHaveProperty('startView', '/builder/dashboard/abc');
+    expect(firstInit.config).toHaveProperty('startView', '/dashboard/abc');
 
     sendMessage('authenticated');
     sendMessage('session-expired');
@@ -897,11 +957,11 @@ describe('Token fetch deduplication', () => {
     instance.destroy();
   });
 
-  it('aliases chat.fasterAnalysis to chat.experimentalV2 on the wire', async () => {
-    // Backwards-compat shim: the SDK exposes `fasterAnalysis` as the new
-    // canonical name, but staging frontends may still read
-    // `experimentalV2`. The shim translates one to the other so a renamed
-    // SDK keeps working against either side.
+  it('passes chrome through untouched — no wire-side alias rewriting', async () => {
+    // The old _normalizeChrome shim duplicated fasterAnalysis onto
+    // experimentalV2 on the wire. The runtime aliases legacy keys itself
+    // (one-way, per layer), and duplicating created a three-way collision on
+    // the same v2 leaf — so the SDK now sends exactly what the caller wrote.
     const fetchToken = vi.fn(() => Promise.resolve('token-123'));
 
     const instance = QuerriEmbed.create(container, {
@@ -915,10 +975,10 @@ describe('Token fetch deduplication', () => {
     sendMessage('ready');
     await vi.advanceTimersByTimeAsync(0);
     const firstInit = sendSpy.mock.calls[0][0] as {
-      config: { chrome: { chat: { fasterAnalysis: boolean; experimentalV2: boolean } } };
+      config: { chrome: { chat: Record<string, unknown> } };
     };
     expect(firstInit.config.chrome.chat.fasterAnalysis).toBe(true);
-    expect(firstInit.config.chrome.chat.experimentalV2).toBe(true);
+    expect(firstInit.config.chrome.chat).not.toHaveProperty('experimentalV2');
 
     instance.destroy();
   });
@@ -1354,7 +1414,9 @@ describe('sessionEndpoint auth mode', () => {
       serverUrl: SERVER_URL,
       auth: { sessionEndpoint: '/api/querri-session' } as any,
     });
-    expect(instance.iframe!.src).toBe(SERVER_URL + '/embed');
+    expect(instance.iframe!.src).toBe(
+      SERVER_URL + '/embed?parentOrigin=' + encodeURIComponent(window.location.origin)
+    );
     instance.destroy();
   });
 
@@ -1447,71 +1509,71 @@ describe('sendPrompt', () => {
     document.body.innerHTML = '';
   });
 
-  it('emits error when embed is not ready', () => {
+  it('resolves { ok: false } when embed is not ready', async () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
     });
-    const errorCb = vi.fn();
-    instance.on('error', errorCb);
 
-    // Not yet authenticated, so ready is false
-    instance.sendPrompt('hello');
+    // Not yet authenticated, so ready is false. A resolved refusal, not an
+    // error event: the answer belongs to the caller who asked.
+    const result = await instance.sendPrompt('hello');
 
-    expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('not ready') })
-    );
+    expect(result).toEqual({ ok: false, message: expect.stringContaining('not ready') });
     instance.destroy();
   });
 
-  it('emits error for empty string', () => {
+  it('resolves { ok: false } for empty string', async () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
     });
-    const errorCb = vi.fn();
-    instance.on('error', errorCb);
 
     sendMessage('authenticated');
-    instance.sendPrompt('');
+    const result = await instance.sendPrompt('');
 
-    expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'send_prompt_failed', message: expect.stringContaining('non-empty') })
-    );
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('non-empty');
     instance.destroy();
   });
 
-  it('emits error for whitespace-only string', () => {
+  it('resolves { ok: false } for whitespace-only string', async () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
     });
-    const errorCb = vi.fn();
-    instance.on('error', errorCb);
 
     sendMessage('authenticated');
-    instance.sendPrompt('   ');
+    const result = await instance.sendPrompt('   ');
 
-    expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'send_prompt_failed' })
-    );
+    expect(result.ok).toBe(false);
     instance.destroy();
   });
 
-  it('emits error for non-string input', () => {
+  it('resolves { ok: false } for non-string input', async () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
       auth: { shareKey: 'sk', org: 'org' },
     });
-    const errorCb = vi.fn();
-    instance.on('error', errorCb);
 
     sendMessage('authenticated');
-    instance.sendPrompt(42 as any);
+    const result = await instance.sendPrompt(42 as any);
 
-    expect(errorCb).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'send_prompt_failed' })
-    );
+    expect(result.ok).toBe(false);
+    instance.destroy();
+  });
+
+  it('resolves with the runtime answer from send-prompt-result', async () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+
+    sendMessage('authenticated');
+    const pending = instance.sendPrompt('hello');
+    sendMessage('send-prompt-result', { ok: true, message: 'Delivered' });
+
+    await expect(pending).resolves.toEqual({ ok: true, message: 'Delivered' });
     instance.destroy();
   });
 
@@ -1580,6 +1642,129 @@ describe('sendPrompt', () => {
     expect(errorCb).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'send_prompt_failed', message: 'No prompt input available on the current view' })
     );
+    instance.destroy();
+  });
+});
+
+
+describe('v2 protocol surface', () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = createContainer();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('updateConfig REPLACES the config and posts it once ready', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+      chrome: { rail: { show: true } },
+    });
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('authenticated');
+    instance.updateConfig({ chrome: { header: { show: false } } });
+
+    const msg = sendSpy.mock.calls.find(
+      (c: any[]) => (c[0] as { type: string }).type === 'updateConfig'
+    )![0] as { config: { chrome: Record<string, unknown>; schemaVersion: number } };
+    // Whole-object replacement: rail is GONE, not merged.
+    expect(msg.config.chrome).toEqual({ header: { show: false } });
+    expect(msg.config.schemaVersion).toBe(2);
+    instance.destroy();
+  });
+
+  it('updateConfig before ready folds into the init that follows', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    instance.updateConfig({ theme: { name: 'night' } });
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+
+    const init = sendSpy.mock.calls[0][0] as { type: string; config: { theme: unknown } };
+    expect(init.type).toBe('init');
+    expect(init.config.theme).toEqual({ name: 'night' });
+    // No separate updateConfig was posted pre-ready.
+    expect(sendSpy.mock.calls.filter((c: any[]) => (c[0] as any).type === 'updateConfig')).toHaveLength(0);
+    instance.destroy();
+  });
+
+  it('surfaces config-applied as the config event', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const configCb = vi.fn();
+    instance.on('config', configCb);
+
+    sendMessage('config-applied', {
+      schemaVersion: 2,
+      changes: { dropped: [{ path: 'chat.bogus', reason: 'unknown key' }] },
+    });
+
+    expect(configCb).toHaveBeenCalledWith(
+      expect.objectContaining({ schemaVersion: 2 })
+    );
+    instance.destroy();
+  });
+
+  it('resize adjusts the iframe height under autoHeight, and always emits', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+      autoHeight: true,
+    });
+    const resizeCb = vi.fn();
+    instance.on('resize', resizeCb);
+
+    sendMessage('resize', { height: 640 });
+
+    expect(instance.iframe!.style.height).toBe('640px');
+    expect(resizeCb).toHaveBeenCalledWith(expect.objectContaining({ height: 640 }));
+    instance.destroy();
+  });
+
+  it('passes chat lifecycle events through', () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { shareKey: 'sk', org: 'org' },
+    });
+    const chatCb = vi.fn();
+    instance.on('chat', chatCb);
+
+    sendMessage('chat', { phase: 'finished' });
+
+    expect(chatCb).toHaveBeenCalledWith(expect.objectContaining({ phase: 'finished' }));
+    instance.destroy();
+  });
+
+  it('sends privacy and locale in the config when set', async () => {
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+      privacy: { errorReporting: false },
+      locale: 'es',
+    });
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
+
+    const init = sendSpy.mock.calls[0][0] as { config: Record<string, unknown> };
+    expect(init.config.privacy).toEqual({ errorReporting: false });
+    expect(init.config.locale).toBe('es');
     instance.destroy();
   });
 });

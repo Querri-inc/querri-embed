@@ -186,7 +186,20 @@ function QuerriInstance(container, options) {
   this._options = options;
   this._serverUrl = options.serverUrl.replace(/\/+$/, '');
   this._origin = parseOrigin(options.serverUrl);
-  this._timeout = (options.timeout != null && options.timeout > 0) ? options.timeout : 15000;
+  // How long to wait for the iframe's `ready` before saying something is wrong.
+  // This clock covers the WHOLE cold start — document fetch, the app bundle,
+  // parse, module evaluation — not just the handshake. Measured on a warm
+  // localhost dev server that is 4.2-4.8s; on Fast 3G it was 24.8s. The old 15s
+  // budget was below a real-world load on a slow connection and reported a
+  // failure for embeds that went on to work — so it is 30s now, the error is
+  // `recoverable: true`, and it is RETRACTED (the `recovered` event) when
+  // `ready` shows up late. `readyTimeout: 0` disables the warning entirely.
+  // `timeout` survives as a deprecated alias (removal in the next major).
+  var readyTimeout = options.readyTimeout != null ? options.readyTimeout : options.timeout;
+  this._readyTimeout = (typeof readyTimeout === 'number' && readyTimeout >= 0) ? readyTimeout : 30000;
+  this._timedOut = false;
+  this._createdAt = Date.now();
+  this._pendingPrompt = null;
   this._listeners = {};
   this._messageHandler = null;
   this._popupMessageHandler = null;
@@ -260,7 +273,12 @@ QuerriInstance.prototype._init = function () {
 QuerriInstance.prototype._initShareKey = function (classified) {
   var url = this._serverUrl + '/embed?share=' + encodeURIComponent(classified.shareKey) +
     '&org=' + encodeURIComponent(classified.org);
-  url += '&startView=' + encodeURIComponent(this._options.startView || '/home');
+  // Only when the caller asked for one: unset means the runtime's own default
+  // (the home launcher), same as the served asset — forcing '/home' here made
+  // the two SDK lineages land omitted-startView embeds on different views.
+  if (this._options.startView) {
+    url += '&startView=' + encodeURIComponent(this._options.startView);
+  }
   this._createIframe(url);
   this._setupMessageListener();
 
@@ -466,10 +484,23 @@ QuerriInstance.prototype._openPopup = function () {
   // Poll for popup close (user may close manually)
   if (this._pollTimer) clearInterval(this._pollTimer);
   this._pollTimer = setInterval(function () {
-    if (self._destroyed || !self._popup || self._popup.closed) {
+    if (self._destroyed || !self._popup) {
       clearInterval(self._pollTimer);
       self._pollTimer = null;
       self._popup = null;
+      return;
+    }
+    try {
+      if (self._popup.closed) {
+        clearInterval(self._pollTimer);
+        self._pollTimer = null;
+        self._popup = null;
+      }
+    } catch (e) {
+      // COOP blocks cross-origin window.closed access.
+      // Stop polling — auth completion comes via postMessage instead.
+      clearInterval(self._pollTimer);
+      self._pollTimer = null;
     }
   }, 500);
 };
@@ -489,24 +520,35 @@ QuerriInstance.prototype._createIframe = function (src) {
   }
 
   var iframe = document.createElement('iframe');
-  iframe.src = src;
+  // Declare who the parent is IN THE URL. The runtime used to pin its trust
+  // anchor to whichever origin sent it the first message, so a script that beat
+  // this SDK to the handshake set that anchor. Passing it up front lets the
+  // runtime validate against a value it knew before anyone spoke to it.
+  iframe.src = src + (src.indexOf('?') === -1 ? '?' : '&') +
+    'parentOrigin=' + encodeURIComponent(window.location.origin);
   iframe.style.cssText = 'border:none;width:100%;height:100%;display:block;';
   iframe.setAttribute('referrerpolicy', 'strict-origin');
   iframe.allow = 'clipboard-write';
   this._container.appendChild(iframe);
   this.iframe = iframe;
 
-  // Timeout: emit error if iframe never sends 'ready'
-  var timeout = this._timeout;
-  this._readyTimer = setTimeout(function () {
-    self._readyTimer = null;
-    if (!self._destroyed && !self.ready) {
-      self._emitError('timeout',
-        'Embed iframe did not respond within ' + (timeout / 1000) + ' seconds. ' +
-        'Check that serverUrl is correct and the server is reachable.'
-      );
-    }
-  }, timeout);
+  // Warn if the iframe has not announced itself in time. `recoverable: true`
+  // because a slow connection is the common cause and the embed usually still
+  // arrives — a host that treats this as terminal shows its users an error for
+  // a page that is about to work. Paired with the `recovered` event.
+  if (this._readyTimeout > 0) {
+    this._readyTimer = setTimeout(function () {
+      self._readyTimer = null;
+      if (self._destroyed || self.ready) return;
+      self._timedOut = true;
+      self._emit('error', {
+        code: 'timeout',
+        recoverable: true,
+        message: 'Embed iframe has not responded after ' + self._readyTimeout +
+          'ms — it may still be loading',
+      });
+    }, this._readyTimeout);
+  }
 };
 
 QuerriInstance.prototype._sendToIframe = function (msg) {
@@ -518,40 +560,26 @@ QuerriInstance.prototype._sendToIframe = function (msg) {
 QuerriInstance.prototype._buildConfig = function () {
   var opts = this._options;
   var config = {
-    chrome: opts.chrome ? _normalizeChrome(opts.chrome) : {},
+    schemaVersion: 2,
+    chrome: opts.chrome || {},
     theme: opts.theme || {},
   };
   // Include startView only until the iframe has authenticated once. After
   // that, re-init messages (session-expired / auth-required re-fetch) must
   // not carry startView, otherwise every session refresh would redirect the
-  // user back to startView regardless of where they navigated to.
+  // user back to startView regardless of where they navigated to. Unset means
+  // null — the runtime's own default view, not a forced '/home'.
   if (!this._hasAuthenticated) {
-    config.startView = opts.startView || '/home';
+    config.startView = opts.startView || null;
   }
+  if (opts.privacy) config.privacy = opts.privacy;
+  if (opts.locale) config.locale = opts.locale;
+  // Internal: set by Querri's own configurator so its same-origin preview does
+  // not write the embed cookies into the operator's real session. Omitted for
+  // customers, so their payload is byte-identical to what it was.
+  if (opts.preview === true) config.preview = true;
   return config;
 };
-
-// Translate the new `chat.fasterAnalysis` key into the legacy
-// `experimentalV2` key on the wire, so a renamed-SDK still works
-// against an un-renamed frontend. After both ends ship, this can be
-// removed in the next major release. If both keys are set, the new
-// `fasterAnalysis` value wins.
-function _normalizeChrome(chrome) {
-  if (!chrome || !chrome.chat) return chrome;
-  var chat = chrome.chat;
-  if (chat.fasterAnalysis === undefined) return chrome;
-  var nextChat = {};
-  for (var k in chat) {
-    if (Object.prototype.hasOwnProperty.call(chat, k)) nextChat[k] = chat[k];
-  }
-  nextChat.experimentalV2 = chat.fasterAnalysis;
-  var nextChrome = {};
-  for (var c in chrome) {
-    if (Object.prototype.hasOwnProperty.call(chrome, c)) nextChrome[c] = chrome[c];
-  }
-  nextChrome.chat = nextChat;
-  return nextChrome;
-}
 
 // ─── postMessage Listener ─────────────────────────────────
 
@@ -559,8 +587,10 @@ QuerriInstance.prototype._setupMessageListener = function () {
   var self = this;
 
   this._messageHandler = function (e) {
-    // Origin verification
+    // Origin verification — and source: same-origin frames/popups from the
+    // Querri origin must not be able to drive this instance's handshake.
     if (e.origin !== self._origin) return;
+    if (self.iframe && e.source && e.source !== self.iframe.contentWindow) return;
     if (!e.data || !e.data.type) return;
 
     switch (e.data.type) {
@@ -569,6 +599,16 @@ QuerriInstance.prototype._setupMessageListener = function () {
         if (self._readyTimer) {
           clearTimeout(self._readyTimer);
           self._readyTimer = null;
+        }
+        // The frame answered after we had already reported it missing. Withdraw
+        // the report: a host that only ever hears the error leaves it on screen
+        // under a working embed, which is exactly what our own configurator did.
+        if (self._timedOut) {
+          self._timedOut = false;
+          self._emit('recovered', {
+            code: 'timeout',
+            afterMs: Date.now() - self._createdAt,
+          });
         }
         // Guard against duplicate 'ready' messages from the iframe
         // (e.g. embed layout + root layout both sending 'ready' before auth completes)
@@ -609,6 +649,35 @@ QuerriInstance.prototype._setupMessageListener = function () {
 
       case 'navigation':
         self._emit('navigation', e.data);
+        break;
+
+      case 'config-applied':
+        // What the runtime ACTUALLY applied, and what it changed on the way:
+        // keys it pinned, capped, coupled, renamed out of the old vocabulary,
+        // or dropped. A host that sets a key we ignore should be able to find
+        // out why without reading our source.
+        self._emit('config', e.data);
+        break;
+
+      case 'send-prompt-result':
+        if (self._pendingPrompt) {
+          var resolvePrompt = self._pendingPrompt;
+          self._pendingPrompt = null;
+          resolvePrompt({ ok: e.data.ok === true, message: e.data.message || '' });
+        }
+        break;
+
+      case 'resize':
+        if (self._options.autoHeight && self.iframe && e.data.height > 0) {
+          self.iframe.style.height = e.data.height + 'px';
+        }
+        self._emit('resize', e.data);
+        break;
+
+      case 'chat':
+        // chat:sent / chat:finished / chat:error, so a host can show its own
+        // progress affordance instead of guessing from the iframe's silence.
+        self._emit('chat', e.data);
         break;
     }
   };
@@ -657,20 +726,49 @@ QuerriInstance.prototype._deferError = function (code, message) {
 
 // ─── Public Methods ───────────────────────────────────────
 
+/**
+ * Replace the chrome/theme this embed is using.
+ *
+ * The whole object, not a patch: the runtime REPLACES the customer layer, so a
+ * key you set back to its default returns to the default. Merging would leave
+ * it stuck at the old value.
+ *
+ * Safe before `ready` — the config is folded into the init that follows.
+ */
+QuerriInstance.prototype.updateConfig = function (config) {
+  if (!config || typeof config !== 'object') return this;
+  if (config.chrome) this._options.chrome = config.chrome;
+  if (config.theme) this._options.theme = config.theme;
+  if (config.privacy) this._options.privacy = config.privacy;
+  if (typeof config.locale === 'string') this._options.locale = config.locale;
+  if (config.preview !== undefined) this._options.preview = !!config.preview;
+  if (this.ready) {
+    this._sendToIframe({ type: 'updateConfig', config: this._buildConfig() });
+  }
+  return this;
+};
+
+/**
+ * Put text in the embed's composer, and optionally send it.
+ * Resolves with `{ ok, message }` — `ok: false` when the current view has no
+ * prompt input, which is a real answer rather than silence.
+ */
 QuerriInstance.prototype.sendPrompt = function (text, options) {
+  var self = this;
+  var opts = options || {};
   if (!this.ready) {
-    this._emitError('send_prompt_failed', 'Cannot send prompt: embed is not ready');
-    return;
+    return Promise.resolve({ ok: false, message: 'Embed is not ready yet' });
   }
   if (typeof text !== 'string' || !text.trim()) {
-    this._emitError('send_prompt_failed', 'sendPrompt requires a non-empty string');
-    return;
+    return Promise.resolve({ ok: false, message: 'sendPrompt requires a non-empty string' });
   }
-  var opts = options || {};
-  this._sendToIframe({
-    type: 'send-prompt',
-    text: text,
-    autoSubmit: opts.autoSubmit === true,
+  return new Promise(function (resolve) {
+    self._pendingPrompt = resolve;
+    self._sendToIframe({
+      type: 'send-prompt',
+      text: text,
+      autoSubmit: opts.autoSubmit === true,
+    });
   });
 };
 
@@ -678,6 +776,8 @@ QuerriInstance.prototype.destroy = function () {
   this._destroyed = true;
   this.ready = false;
   this._iframeReady = false;
+  this._timedOut = false;
+  this._pendingPrompt = null;
 
   if (this._messageHandler) {
     window.removeEventListener('message', this._messageHandler);
@@ -751,7 +851,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '0.2.1',
+  version: '1.0.0',
 };
 
 export default QuerriEmbed;
