@@ -53,6 +53,8 @@ import type {
   QuerriAuth,
   QuerriChromeConfig,
   QuerriInstance,
+  QuerriPrivacyConfig,
+  QuerriThemeConfig,
 } from '../core/index.js';
 
 export interface QuerriEmbedProps {
@@ -60,7 +62,16 @@ export interface QuerriEmbedProps {
   auth: QuerriAuth;
   startView?: string;
   chrome?: QuerriChromeConfig;
-  theme?: Record<string, unknown>;
+  theme?: QuerriThemeConfig;
+  privacy?: QuerriPrivacyConfig;
+  /** BCP-47 locale tag for the embedded UI (e.g. 'en', 'de-DE'). */
+  locale?: string;
+  /** Size the host element to the embed's content via the resize event. */
+  autoHeight?: boolean;
+  /** Ready budget in ms; 0 disables. Creation-only — changes never remount. */
+  readyTimeout?: number;
+  /** @deprecated Alias of readyTimeout — removed in the next major. */
+  timeout?: number;
   [key: string]: unknown;
 }
 

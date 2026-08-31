@@ -623,6 +623,9 @@ QuerriInstance.prototype._setupMessageListener = function () {
         break;
 
       case 'authenticated':
+        // Any message from the frame proves it is alive — authenticated
+        // implies ready even if the ready message itself was lost.
+        self._iframeReady = true;
         // Session validated, content is rendering — emit only once
         if (!self.ready) {
           self.ready = true;
@@ -746,7 +749,13 @@ QuerriInstance.prototype.updateConfig = function (config) {
   if (config.privacy) this._options.privacy = config.privacy;
   if (typeof config.locale === 'string') this._options.locale = config.locale;
   if (config.preview !== undefined) this._options.preview = !!config.preview;
-  if (this.ready) {
+  // Gate on the FRAME being alive, not on auth: the runtime accepts
+  // updateConfig as soon as its bridge installs, and gating on `ready`
+  // (= authenticated) silently swallowed any update landing in the
+  // init->authenticated window — the wrappers' content-compare then
+  // suppressed the retry, losing the change permanently. Before the frame
+  // says `ready`, the mutation above is enough: init carries it.
+  if (this._iframeReady) {
     this._sendToIframe({ type: 'updateConfig', config: this._buildConfig() });
   }
   return this;

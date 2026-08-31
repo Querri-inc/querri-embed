@@ -99,6 +99,9 @@ export class QuerriEmbedComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Angular Universal runs ngOnInit on the server, where there is no DOM to
+    // mount into — creating there throws. The browser pass creates normally.
+    if (typeof window === 'undefined') return;
     this.initialized = true;
     this.createInstance();
   }

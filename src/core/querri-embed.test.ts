@@ -1735,6 +1735,30 @@ describe('v2 protocol surface', () => {
     instance.destroy();
   });
 
+  it('posts an update landing between init and authenticated (nothing re-sends it later)', async () => {
+    // The runtime accepts updateConfig as soon as its bridge installs. Gating
+    // the send on `ready` (= authenticated) swallowed updates in this window,
+    // and the wrappers' content-compare then suppressed any retry — the
+    // change was lost permanently, not merely delayed.
+    const fetchToken = vi.fn(() => Promise.resolve('token-123'));
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: fetchToken },
+    });
+    const sendSpy = vi.spyOn(instance as any, '_sendToIframe');
+
+    sendMessage('ready'); // frame alive, init sent — auth still in flight
+    await vi.advanceTimersByTimeAsync(0);
+    instance.updateConfig({ chrome: { rail: { show: true } } });
+
+    const updates = sendSpy.mock.calls.filter(
+      (c: any[]) => (c[0] as any).type === 'updateConfig'
+    );
+    expect(updates).toHaveLength(1);
+    expect((updates[0][0] as any).config.chrome).toEqual({ rail: { show: true } });
+    instance.destroy();
+  });
+
   it('surfaces config-applied as the config event', () => {
     const instance = QuerriEmbed.create(container, {
       serverUrl: SERVER_URL,
