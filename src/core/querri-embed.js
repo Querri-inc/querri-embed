@@ -888,7 +888,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '1.0.0',
+  version: '1.0.1',
 };
 
 export default QuerriEmbed;
