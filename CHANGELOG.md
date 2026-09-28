@@ -7,6 +7,21 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-09-28
+
+No change to runtime behaviour: the browser build differs from 1.0.0 only in its
+`version` string.
+
+### Fixed
+- Typings: `chrome.rail.items.sites` (default `true`) and
+  `chrome.rail.items.connectors` (default `false`). The runtime added both after
+  1.0.0 and serves them in `{serverUrl}/sdk/chrome-schema.json`. The vendored
+  schema predated them, so a typed config setting either failed the
+  excess-property check. The schema is byte-identical to the served one again.
+- "Missing API key" (the server integrations' `ConfigError`, and the README)
+  pointed at `app.querri.com/settings/api-keys`, which was never a page. Keys are
+  created at `/settings/api`, by an org admin.
+
 ## [1.0.0] — 2026-08-31
 
 The first major: this package becomes the **single source** of the browser SDK —

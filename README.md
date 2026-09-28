@@ -476,7 +476,7 @@ Your container needs explicit dimensions. Add `style="width: 100%; height: 600px
 
 ### "Missing API key" error
 
-Set the `QUERRI_API_KEY` environment variable. Find your API key at https://app.querri.com/settings/api-keys.
+Set the `QUERRI_API_KEY` environment variable. An org admin creates API keys at https://app.querri.com/settings/api.
 
 ### `timeout` -- iframe didn't respond
 

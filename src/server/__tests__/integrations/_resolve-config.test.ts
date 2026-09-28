@@ -34,7 +34,8 @@ describe('resolveConfig', () => {
 
   it('throws ConfigError with setup URL when API key is missing', () => {
     expect(() => resolveConfig()).toThrow(ConfigError);
-    expect(() => resolveConfig()).toThrow('app.querri.com/settings/api-keys');
+    // /settings/api-keys never existed; the page is /settings/api (admin-only).
+    expect(() => resolveConfig()).toThrow('https://app.querri.com/settings/api.');
   });
 
   it('resolves orgId from env var', () => {
