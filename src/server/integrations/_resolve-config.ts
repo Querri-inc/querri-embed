@@ -25,7 +25,7 @@ export function resolveConfig(options?: IntegrationOptions): QuerriConfig {
     throw new ConfigError(
       'Missing API key. Set the QUERRI_API_KEY environment variable or pass ' +
       '{ apiKey: "qk_..." } to the handler options. ' +
-      'Find your API key at https://app.querri.com/settings/api-keys.',
+      'An org admin creates API keys at https://app.querri.com/settings/api.',
     );
   }
 
