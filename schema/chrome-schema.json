@@ -154,6 +154,20 @@
 					"phase": 1,
 					"dependsOn": "rail.show"
 				},
+				"sites": {
+					"type": "bool",
+					"default": true,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
+				"connectors": {
+					"type": "bool",
+					"default": false,
+					"area": "shell",
+					"phase": 1,
+					"dependsOn": "rail.show"
+				},
 				"inbox": {
 					"type": "bool",
 					"default": false,

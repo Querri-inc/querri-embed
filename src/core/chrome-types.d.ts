@@ -55,6 +55,10 @@ export interface QuerriChromeConfig {
       projects?: boolean;
       /** @default true Depends on `rail.show`. */
       dashboards?: boolean;
+      /** @default true Depends on `rail.show`. */
+      sites?: boolean;
+      /** @default false Depends on `rail.show`. */
+      connectors?: boolean;
       /** @default false Depends on `rail.show`. */
       inbox?: boolean;
       /** @default true Depends on `rail.show`. */
