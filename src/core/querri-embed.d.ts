@@ -307,6 +307,8 @@ export type QuerriErrorCode =
  * `code`, `permission` and `reason` come from the endpoint's JSON body — the
  * server SDK's session handlers answer with `{ error, code, permission,
  * reason, doc_url }` (e.g. `code: 'role_disabled'` for a draft Custom Role).
+ * The Nuxt handler's h3 error body nests them under `data`; that is read too.
+ * Never set for an error thrown by a custom `fetchSessionToken`.
  */
 export interface QuerriErrorDetail {
   /** HTTP status the session endpoint answered with. */

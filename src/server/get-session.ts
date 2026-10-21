@@ -56,8 +56,11 @@ interface QuerriLike {
  *    SDK auto-creates (or reuses) a deterministically-named policy and assigns
  *    the user to it. If `policy_ids` are provided, those are used directly.
  * 3. **Session creation** — calls `embed.createSession()` and returns the token.
- *    `params.role` (Custom Roles) is forwarded only when set; the result's
- *    `role_id` is the applied role, or `null`.
+ *    `params.role` (Custom Roles) is forwarded only when it is a non-empty
+ *    string (`null` and `''` are not sent); the result's `role_id` is the
+ *    applied role, or `null`. Steps 1 and 2 run first, so if the role is
+ *    refused the user has still been created/updated and their policies
+ *    applied.
  *
  * Decide `role` on your server from your own auth, never from the browser's
  * request.
@@ -117,7 +120,7 @@ export async function getSession(
     user_id: userId,
     origin: params.origin,
     ttl: params.ttl ?? 3600,
-    ...(params.role !== undefined && { role: params.role }),
+    ...(typeof params.role === 'string' && params.role !== '' && { role: params.role }),
   });
 
   return {

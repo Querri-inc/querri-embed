@@ -184,6 +184,16 @@ describe('getSession', () => {
     expect(result).toHaveProperty('role_id', null);
   });
 
+  it('does not send a role key when role is empty or null', async () => {
+    for (const role of ['', null]) {
+      const client = makeMockClient();
+      const result = await getSession(client, { user: 'ext_1', role });
+      const sent = client.embed.createSession.mock.calls[0][0];
+      expect(Object.keys(sent)).not.toContain('role');
+      expect(result).toHaveProperty('role_id', null);
+    }
+  });
+
   it('forwards role to createSession and returns the applied role_id', async () => {
     const client = makeMockClient();
     client.embed.createSession.mockResolvedValueOnce({

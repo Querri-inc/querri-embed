@@ -3,6 +3,8 @@ import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
 import { resolveConfig, sessionErrorBody } from './_resolve-config.js';
 
+export type { SessionErrorBody } from './_resolve-config.js';
+
 /**
  * Minimal structural type for the `h3` module's runtime surface used here.
  * Typed as a local interface so consumers need not depend on h3's types at

@@ -184,10 +184,21 @@ function classifyAuth(auth) {
  * server SDK handler's JSON (`{ error, code, permission, reason }`) on
  * `err.detail`, so a refused role (e.g. `role_disabled`) is visible in the
  * `token_fetch_failed` event instead of a bare status.
+ *
+ * The Nuxt handler throws h3's `createError({ data })`, which answers
+ * `{ statusCode, statusMessage, data: { error, code, ... } }` -- so when the
+ * top level has no `code`, the fields are read from `body.data`.
+ *
+ * The error is marked `_querriSessionEndpoint` so `_handleFetchToken` forwards
+ * only this `detail`, never one a custom `fetchSessionToken` attached.
  */
 function sessionEndpointError(res) {
   return res.json().catch(function () { return null; }).then(function (body) {
     var detail = { status: res.status };
+    if (body && typeof body === 'object' && typeof body.code !== 'string' &&
+        body.data && typeof body.data === 'object') {
+      body = body.data;
+    }
     if (body && typeof body === 'object') {
       if (typeof body.code === 'string') detail.code = body.code;
       if (typeof body.permission === 'string') detail.permission = body.permission;
@@ -197,6 +208,7 @@ function sessionEndpointError(res) {
       'Session endpoint returned ' + res.status + (detail.code ? ' (' + detail.code + ')' : '')
     );
     err.detail = detail;
+    err._querriSessionEndpoint = true;
     throw err;
   });
 }
@@ -389,7 +401,7 @@ QuerriInstance.prototype._handleFetchToken = function () {
         self._emitError('token_fetch_failed',
           'Failed to fetch session token after ' + maxRetries + ' attempts: ' +
           (err.message || 'Unknown error'),
-          err && err.detail
+          err && err._querriSessionEndpoint ? err.detail : undefined
         );
       }
     });

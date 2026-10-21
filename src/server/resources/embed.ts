@@ -12,13 +12,15 @@ export class EmbedResource extends BaseResource {
       user_id: params.user_id,
       origin: params.origin,
       ttl: params.ttl ?? 3600,
-      ...(params.role !== undefined && { role: params.role }),
+      ...(typeof params.role === 'string' && params.role !== '' && { role: params.role }),
     });
   }
 
   /**
    * Refresh a session token. The new session keeps the old one's role; the
-   * response carries `role_id` when it has one.
+   * response carries `role_id` when it has one. Servers released after
+   * 2026-10-21 also return `role_id` from refresh and list; earlier servers
+   * return it only from create.
    */
   refreshSession(sessionToken: string): Promise<EmbedSession> {
     return this._post<EmbedSession>('/embed/sessions/refresh', {

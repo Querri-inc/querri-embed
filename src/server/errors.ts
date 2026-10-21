@@ -48,12 +48,18 @@ export class APITimeoutError extends APIConnectionError {
 }
 
 /**
- * Error codes the Querri `/v1` API sends in `error.code`.
+ * Error codes the Querri `/v1` API sends in `error.code` for
+ * authentication, access, Custom Roles and embed sessions.
  *
  * Status-based classes stay the primary way to branch (`PermissionError`,
  * `NotFoundError`, …); the code tells you *which* 403 or 404 it was.
- * The server may add codes over time, so treat `APIError.code` as a plain
- * string and use these constants for comparison, not exhaustiveness.
+ * The API sends other codes too (e.g. `project_not_found`,
+ * `invalid_parameters`), so treat `APIError.code` as a string and use these
+ * constants for comparison, not exhaustiveness.
+ *
+ * `USER_NOT_FOUND` is 400 on embed session creation and 404 on the users
+ * endpoints. `ROLE_NOT_ALLOWED` means the person the key acts for (its bound
+ * user, else its creator) doesn't hold every permission the role grants.
  */
 export const ERROR_CODES = {
   // Authentication (401) and tenant resolution
@@ -85,8 +91,33 @@ export const ERROR_CODES = {
   MEMBERSHIP_CHECK_FAILED: 'membership_check_failed',
 } as const;
 
-/** A documented `/v1` error code (see {@link ERROR_CODES}). */
+/** One of the `/v1` error codes in {@link ERROR_CODES}. */
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
+/**
+ * Why a `permission_denied` refusal happened (`APIError.reason`). The server
+ * may add more, so compare against these rather than switching exhaustively.
+ *
+ * - `role_denied` — the caller's role does not include the permission
+ * - `not_in_plan` — the organization's plan does not include the feature
+ * - `flag_off` — the feature is turned off for the organization
+ * - `embed_disabled` — the action is not available inside an embed
+ * - `dependency_unmet` — the permission needs another the role lacks
+ * - `forbidden` — refused for another reason
+ * - `scope_exceeds_role` — creating an API key with scopes its creator or
+ *   bound user lacks (the refused scopes are in the body's `scopes`)
+ */
+export type PermissionDeniedReason =
+  | 'role_denied'
+  | 'not_in_plan'
+  | 'flag_off'
+  | 'embed_disabled'
+  | 'dependency_unmet'
+  | 'forbidden'
+  | 'scope_exceeds_role';
+
+/** An error code: lowercase snake_case, no dots or spaces. */
+const CODE_SHAPE = /^[a-z][a-z0-9_]*$/;
 
 /**
  * Normalize a `/v1` error body to the `{ error: {...} }` / flat shape
@@ -145,10 +176,12 @@ export class APIError extends QuerriError {
    */
   readonly permission: string | undefined;
   /**
-   * Why a permission was refused: `role_denied`, `not_in_plan`, `flag_off`,
-   * `embed_disabled`, `dependency_unmet` or `forbidden`.
+   * Why a permission was refused: one of {@link PermissionDeniedReason}
+   * (`role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`,
+   * `dependency_unmet`, `forbidden`, `scope_exceeds_role`); the server may
+   * add more, so it is typed as a string.
    */
-  readonly reason: string | undefined;
+  readonly reason: PermissionDeniedReason | (string & {}) | undefined;
   /** The response body exactly as the server sent it (not unwrapped). */
   readonly body: unknown;
   readonly headers: Headers;
@@ -177,7 +210,15 @@ export class APIError extends QuerriError {
           ? (b.error as Record<string, unknown>)
           : b;
       this.type = typeof errObj.type === 'string' ? errObj.type : undefined;
-      this.code = typeof errObj.code === 'string' ? errObj.code : undefined;
+      // The in-app flat shape `{error: 'permission_denied', permission, reason}`
+      // carries its code as the `error` string itself. Only a code-shaped
+      // string counts — some flat bodies put a human message in `error`.
+      this.code =
+        typeof errObj.code === 'string'
+          ? errObj.code
+          : typeof b.error === 'string' && CODE_SHAPE.test(b.error)
+            ? b.error
+            : undefined;
       this.docUrl =
         typeof errObj.doc_url === 'string' ? errObj.doc_url : undefined;
       this.reason = typeof errObj.reason === 'string' ? errObj.reason : undefined;
@@ -187,7 +228,14 @@ export class APIError extends QuerriError {
         this.requestId = errObj.request_id;
       }
     }
-    this.permission = permission ?? headers.get('x-permission-denied') ?? undefined;
+    // The server sets `X-Permission-Denied` to the error code (e.g.
+    // `permission_denied`) when no single permission applies. Permission keys
+    // always contain a dot (`<area>.<object>.<verb>`, `org.admin`); error
+    // codes never do — so only a dotted header value is a permission.
+    const headerPermission = headers.get('x-permission-denied');
+    this.permission =
+      permission ??
+      (headerPermission && headerPermission.includes('.') ? headerPermission : undefined);
   }
 
   private static makeMessage(status: number, body: unknown): string {

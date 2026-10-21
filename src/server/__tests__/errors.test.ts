@@ -97,6 +97,53 @@ describe('APIError envelope parsing', () => {
     expect(err.body).toBeNull();
   });
 
+  it('ignores an X-Permission-Denied header that carries an error code, not a key', () => {
+    const err = thrown(
+      403,
+      {
+        detail: {
+          error: {
+            code: 'permission_denied',
+            reason: 'scope_exceeds_role',
+            scopes: ['*'],
+          },
+        },
+      },
+      { 'x-permission-denied': 'permission_denied' },
+    );
+    expect(err.code).toBe('permission_denied');
+    expect(err.reason).toBe('scope_exceeds_role');
+    expect(err.permission).toBeUndefined();
+  });
+
+  it('reads a dotted X-Permission-Denied header when the body is not JSON', () => {
+    const err = thrown(403, '<html>Forbidden</html>', {
+      'x-permission-denied': 'dashboards.list.view',
+    });
+    expect(err).toBeInstanceOf(PermissionError);
+    expect(err.permission).toBe('dashboards.list.view');
+  });
+
+  it('reads the code from the in-app flat shape ({detail: {error: string, …}})', () => {
+    const err = thrown(403, {
+      detail: {
+        error: 'permission_denied',
+        permission: 'dashboards.list.view',
+        reason: 'role_denied',
+        layer: 'role',
+      },
+    });
+    expect(err.code).toBe('permission_denied');
+    expect(err.permission).toBe('dashboards.list.view');
+    expect(err.reason).toBe('role_denied');
+  });
+
+  it('does not treat a human message in a flat `error` string as a code', () => {
+    const err = thrown(403, { error: 'You cannot do that.' });
+    expect(err.message).toBe('You cannot do that.');
+    expect(err.code).toBeUndefined();
+  });
+
   it('reads an embed role error (403 role_disabled)', () => {
     const err = thrown(403, ROLE_DISABLED_BODY);
     expect(err).toBeInstanceOf(PermissionError);

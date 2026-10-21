@@ -15,28 +15,40 @@ sends. Additive only.
 ### Added
 - **Custom Roles on embed sessions.** `getSession({ role })` and
   `embed.createSession({ role })` take a role id or key the session runs as;
-  the key is sent only when set. `getSession()` returns the applied `role_id`
+  the key is sent only when it is a non-empty string (`null` and `''` are not
+  sent). `getSession()` returns the applied `role_id`
   (`null` when no role was requested); `EmbedSession`, `EmbedSessionListItem`
   and the refresh response carry `role_id?` when the session has one. `role` is
   distinct from `user.role`, the org role used when creating the user.
 - `APIError.permission` and `APIError.reason` for `403 permission_denied`
-  refusals (`permission` falls back to the `X-Permission-Denied` header).
+  refusals. `permission` falls back to the `X-Permission-Denied` header only
+  when it holds a permission key (contains a `.`); the server puts the error
+  code there when no single permission applies. The in-app flat body
+  `{detail: {error: 'permission_denied', permission, reason}}` reads its
+  `code` from the `error` string. New `PermissionDeniedReason` type
+  (`role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`,
+  `dependency_unmet`, `forbidden`, `scope_exceeds_role`).
 - `ERROR_CODES` and the `ErrorCode` type, exported from
   `@querri-inc/embed/server`: the auth, permission, Custom Role and embed
   session codes.
 - Session handlers (`nextjs`, `sveltekit`, `react-router`, `nuxt`, `express` /
   `angular`) answer a refusal with `{ error, code, permission, reason, doc_url }`
-  (keys that do not apply are omitted).
+  (keys that do not apply are omitted). The `SessionErrorBody` type is exported
+  from each integration entry point.
 - Browser: in `sessionEndpoint` mode a failed endpoint response is reported on
   `token_fetch_failed` with `detail: { status, code?, permission?, reason? }`
   read from the endpoint's JSON, and the message names the code
-  (`Session endpoint returned 403 (role_disabled)`). New `QuerriErrorDetail`
-  type.
+  (`Session endpoint returned 403 (role_disabled)`). The Nuxt handler's h3
+  error body (fields under `data`) is read too. `detail` is only ever the
+  endpoint's; an error thrown by a custom `fetchSessionToken` is reported
+  without one. New `QuerriErrorDetail` type.
 - Typings: `QuerriErrorCode` gains `view_error` (a page inside the embed failed
   to render; `QuerriErrorEvent.status` carries its HTTP status) and
   `preview_escaped` (embed configurator only, `recoverable`).
 - Docs: error-code table, valid API-key scope names, `embed:role:assign`, and
-  how key scopes follow the key's person.
+  how key scopes follow the key's creator and bound user. The refresh/list
+  `role_id` echo and the key-creation rules need a Querri server released
+  after 2026-10-21.
 
 ### Fixed
 - **The server SDK never unwrapped FastAPI's `{"detail": …}` envelope**, so
@@ -53,9 +65,9 @@ sends. Additive only.
   so a typed config setting either failed the excess-property check. The schema
   is byte-identical to the served one again.
 - Docs: the keys example used scope names that do not exist (`read:data`,
-  `write:projects`); the README error table listed 7 of the 16 codes; the
-  `timeout` row said the default was 15s (it is 30s); `startView` now documents
-  its `'/home'` default.
+  `write:projects`); the README error table listed 7 of the 14 codes (it now
+  lists all 16); the `timeout` row said the default was 15s (it is 30s);
+  `startView` now documents its `'/home'` default.
 
 ### Note
 - The browser build changed (`sessionEndpoint` error detail). Your Querri

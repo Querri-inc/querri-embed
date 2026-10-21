@@ -1617,6 +1617,63 @@ describe('sessionEndpoint auth mode', () => {
     });
     instance.destroy();
   });
+
+  it("does not forward a custom fetchSessionToken error's own detail", async () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: {
+        fetchSessionToken: () =>
+          Promise.reject(Object.assign(new Error('x'), { detail: { foo: 1 } })),
+      },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(errorCb).toHaveBeenCalledTimes(1);
+    const event = errorCb.mock.calls[0][0];
+    expect(event.code).toBe('token_fetch_failed');
+    expect(event).not.toHaveProperty('detail');
+    instance.destroy();
+  });
+
+  it('reads the error fields from a Nuxt (h3 createError) body under `data`', async () => {
+    // h3's createError({ statusCode, statusMessage, data }) serializes like this.
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            statusCode: 403,
+            statusMessage: 'That role is a draft; an admin must enable it first.',
+            data: {
+              error: 'That role is a draft; an admin must enable it first.',
+              code: 'role_disabled',
+            },
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { sessionEndpoint: '/api/querri-session' } as any,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    const event = errorCb.mock.calls[0][0];
+    expect(event.code).toBe('token_fetch_failed');
+    expect(event.message).toContain('Session endpoint returned 403 (role_disabled)');
+    expect(event.detail).toEqual({ status: 403, code: 'role_disabled' });
+
+    vi.unstubAllGlobals();
+    instance.destroy();
+  });
 });
 
 describe('sendPrompt', () => {

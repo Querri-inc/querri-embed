@@ -22,7 +22,7 @@ export {
   StreamCancelledError,
   ERROR_CODES,
 } from './errors.js';
-export type { ErrorCode } from './errors.js';
+export type { ErrorCode, PermissionDeniedReason } from './errors.js';
 
 // Types
 export type {

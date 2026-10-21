@@ -430,14 +430,16 @@ Return a `role` (role id or key) from `resolveParams`, or pass it to `getSession
 
 ```typescript
 const session = await client.getSession({ user: 'ext_alice', role: 'analyst' });
-session.role_id; // 'role_…'
+session.role_id; // 'role_…' (custom role) or a built-in id such as 'system:creator'
 ```
+
+`role` is sent only when it is a non-empty string; `null` and `''` mean no role. The user is created/updated and their access policies applied before the session is requested, so if the role is refused those earlier steps have still happened.
 
 `role` is different from `user.role`, which is the user's org role (`admin` / `member`) used when the user is first created. A role the user already holds is simply selected; granting one they do not hold needs a key with the `embed:role:assign` scope and the role on the org's embed allowlist (Settings → Embed). Calls made through `client.asUser(session)` are subject to the session's role. See [docs/server-sdk.md](docs/server-sdk.md#custom-role-role).
 
 ### Errors
 
-API failures throw a subclass of `APIError` (`AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError`, …) carrying the server's `code`, `message`, `docUrl` and `requestId`. A role-system refusal is a `PermissionError` with `code: 'permission_denied'` plus `permission` and `reason`. Compare codes with the exported `ERROR_CODES`:
+API failures throw a subclass of `APIError` (`AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError`, …) carrying the server's `code`, `message`, `docUrl` and `requestId`. A role-system refusal is a `PermissionError` with `code: 'permission_denied'` plus `permission` and `reason`. `reason` is one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks); the server may add more (type: `PermissionDeniedReason`). Compare codes with the exported `ERROR_CODES` — the codes for authentication, access, Custom Roles and embed sessions; the API sends other codes too (e.g. `project_not_found`, `invalid_parameters`), so treat `code` as a string:
 
 ```typescript
 import { PermissionError, ERROR_CODES } from '@querri-inc/embed/server';
@@ -451,7 +453,7 @@ try {
 }
 ```
 
-The session handlers answer a refusal with Querri's status and `{ error, code, permission?, reason?, doc_url? }`. Full code table: [docs/server-sdk.md](docs/server-sdk.md#error-codes).
+The session handlers answer a refusal with Querri's status and `{ error, code, permission?, reason?, doc_url? }`. Code table: [docs/server-sdk.md](docs/server-sdk.md#error-codes).
 
 ### Environment Variables
 
@@ -546,7 +548,7 @@ The login popup requires a user gesture (e.g., a button click). Browsers block p
 
 Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 automatic retries (1s, 2s backoff). Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
 
-In `sessionEndpoint` mode, when your endpoint answers with an error status the event carries `detail`: the status plus the `code`, `permission` and `reason` from its JSON (the server SDK's handlers send these). For example a draft Custom Role reports:
+In `sessionEndpoint` mode, when your endpoint answers with an error status the event carries `detail`: the status plus the `code`, `permission` and `reason` from its JSON (the server SDK's handlers send these; for the Nuxt handler they are read from h3's `data`). For example a draft Custom Role reports:
 
 ```javascript
 querri.on('error', function (e) {

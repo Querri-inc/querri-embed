@@ -3,6 +3,8 @@ import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams } from '../types.js';
 import { resolveConfig, sessionErrorBody } from './_resolve-config.js';
 
+export type { SessionErrorBody } from './_resolve-config.js';
+
 export interface QuerriMiddlewareOptions {
   apiKey?: string;
   orgId?: string;

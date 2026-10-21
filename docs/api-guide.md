@@ -311,7 +311,7 @@ Content-Type: application/json
 | `ttl` | number | No | `3600` | Session lifetime in seconds (`900`–`86400`; outside that range is a `422`) |
 | `role` | string | No | — | **Custom Roles:** role id or key (max 100 characters) the session runs as. Omit to keep the user's own role. |
 
-The key needs the `embed:session:create` scope. A `role` the user already holds is simply selected; granting one they do not hold also needs `embed:role:assign`, the role on the org's embed allowlist (Settings → Embed), and a key creator who holds every permission in the role. Refusals: `role_not_found` (404); `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403).
+The key needs the `embed:session:create` scope. A `role` the user already holds is simply selected; granting one they do not hold also needs `embed:role:assign`, the role on the org's embed allowlist (Settings → Embed), and the person the key acts for (its bound user, else its creator) holding every permission in the role. Refusals: `role_not_found` (404); `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403).
 
 > **Security:** decide `role` on your server from your own auth. Never take it from the browser's request. A role read from the page lets any visitor pick their own permissions.
 
@@ -328,7 +328,7 @@ The key needs the `embed:session:create` scope. A `role` the user already holds 
 }
 ```
 
-`role_id` is present only when a `role` was applied.
+`role_id` is present only when a `role` was applied. It can be a custom role id (`role_…`) or a built-in one such as `system:creator`.
 
 ### curl
 
@@ -657,8 +657,8 @@ API errors return a JSON body wrapped in a `detail` key:
 | `detail.error.code` | Machine-readable error code |
 | `detail.error.message` | Human-readable description |
 | `detail.error.doc_url` | Link to the code's documentation, when present |
-| `detail.error.permission` | `permission_denied` only: the permission key refused (also sent as the `X-Permission-Denied` header) |
-| `detail.error.reason` | `permission_denied` only: `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet` or `forbidden` |
+| `detail.error.permission` | `permission_denied` only: the permission key refused (also sent as the `X-Permission-Denied` header; when no single permission applies, that header carries the error code instead) |
+| `detail.error.reason` | `permission_denied` only: one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks; the refused `scopes` are listed); the server may add more |
 
 A role-system refusal looks like this (`403`, header `X-Permission-Denied: dashboards.list.view`):
 
@@ -677,7 +677,7 @@ A role-system refusal looks like this (`403`, header `X-Permission-Denied: dashb
 }
 ```
 
-The full list of codes, with status and meaning, is in the [Server SDK reference](./server-sdk.md#error-codes).
+The codes for authentication, access, Custom Roles and embed sessions, with status and meaning, are in the [Server SDK reference](./server-sdk.md#error-codes). The API sends other codes too (e.g. `project_not_found`, `invalid_parameters`), so treat `code` as a string.
 
 Request validation errors (e.g., missing required fields) use a different format:
 
@@ -705,8 +705,8 @@ Every response includes an `x-request-id` header you can reference when contacti
 | `401` | Authentication failed — check your API key | No |
 | `403` | Forbidden — the key lacks a scope (`insufficient_scope`), the caller's role lacks a permission (`permission_denied`), or a session `role` was refused (`role_*`, `seat_change_required`) | No |
 | `404` | Resource not found (including `role_not_found`) | No |
-| `422` | Request validation failed (`detail` is a list of field errors) | No |
 | `409` | Conflict — resource already exists | No |
+| `422` | Request validation failed (`detail` is a list of field errors) | No |
 | `429` | Rate limited | Yes — respect the `Retry-After` header |
 | `500+` | Server error | Yes (idempotent methods only) |
 
@@ -745,7 +745,7 @@ Content-Type: application/json
 }
 ```
 
-The refreshed session keeps the original's Custom Role; `role_id` is present when it has one. `GET /api/v1/embed/sessions` items carry `role_id` the same way.
+The refreshed session keeps the original's Custom Role; `role_id` is present when it has one. `GET /api/v1/embed/sessions` items always carry `role_id`, `null` when the session has no role. Servers released after 2026-10-21 also return `role_id` from refresh and list; earlier servers return it only from create.
 
 ```bash
 curl -X POST https://app.querri.com/api/v1/embed/sessions/refresh \

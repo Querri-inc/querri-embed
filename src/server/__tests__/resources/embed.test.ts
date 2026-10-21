@@ -69,6 +69,19 @@ describe('EmbedResource', () => {
     expect(session.role_id).toBeUndefined();
   });
 
+  it('createSession treats an empty or null role as unset', async () => {
+    for (const role of ['', null]) {
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ session_token: 'tok_none', expires_in: 3600, user_id: 'u1' }),
+      );
+      const client = makeClient();
+      await client.embed.createSession({ user_id: 'u1', role });
+      const body = JSON.parse(mockFetch.mock.calls.at(-1)![1].body);
+      expect(Object.keys(body)).not.toContain('role');
+    }
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
   it('createSession defaults ttl to 3600', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ session_token: 'tok_def', expires_in: 3600, user_id: 'u1' }),
