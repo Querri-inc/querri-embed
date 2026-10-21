@@ -220,8 +220,8 @@ export interface QuerriEmbedOptions {
   auth: QuerriAuth;
   /**
    * Initial view path (e.g. `'/dashboard/uuid'`, `'/chat/uuid'`). Unset means
-   * the runtime's own default (the home launcher). Baked into the iframe URL
-   * at creation — `updateConfig` does not navigate.
+   * the runtime's own default, `'/home'` (the home launcher). Baked into the
+   * iframe URL at creation — `updateConfig` does not navigate.
    */
   startView?: string;
   /** Chrome UI visibility overrides (v2 vocabulary; the deprecated v1 shape is auto-upgraded). */
@@ -296,7 +296,30 @@ export type QuerriErrorCode =
   | 'navigation_failed'
   | 'validation_failed'
   | 'timeout'
-  | 'send_prompt_failed';
+  | 'send_prompt_failed'
+  /** A page inside the embed failed to render; `status` carries its HTTP status. */
+  | 'view_error'
+  /** Embed configurator preview only: the preview navigated outside the embed and is rebuilt (`recoverable`). */
+  | 'preview_escaped';
+
+/**
+ * Why a `sessionEndpoint` request failed, attached to `token_fetch_failed`.
+ * `code`, `permission` and `reason` come from the endpoint's JSON body — the
+ * server SDK's session handlers answer with `{ error, code, permission,
+ * reason, doc_url }` (e.g. `code: 'role_disabled'` for a draft Custom Role).
+ * The Nuxt handler's h3 error body nests them under `data`; that is read too.
+ * Never set for an error thrown by a custom `fetchSessionToken`.
+ */
+export interface QuerriErrorDetail {
+  /** HTTP status the session endpoint answered with. */
+  status: number;
+  /** Querri error code from the endpoint's JSON, when it sent one. */
+  code?: string;
+  /** Permission key a `permission_denied` refusal names. */
+  permission?: string;
+  /** Why the permission was refused (e.g. `'role_denied'`). */
+  reason?: string;
+}
 
 /** Payload for the `'error'` event. */
 export interface QuerriErrorEvent {
@@ -308,6 +331,10 @@ export interface QuerriErrorEvent {
    * `'recovered'` event if the embed subsequently becomes ready.
    */
   recoverable?: boolean;
+  /** HTTP status of the page that failed to render (set on `'view_error'`). */
+  status?: number;
+  /** Set on `'token_fetch_failed'` in `sessionEndpoint` mode when the endpoint answered with an error status. */
+  detail?: QuerriErrorDetail;
 }
 
 /** Payload for the `'navigation'` event. */

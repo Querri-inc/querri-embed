@@ -226,6 +226,13 @@
 				"phase": 1,
 				"dependsOn": "header.show"
 			},
+			"chartRenderer": {
+				"type": "bool",
+				"default": false,
+				"area": "header",
+				"phase": 1,
+				"dependsOn": "header.show"
+			},
 			"addProject": {
 				"type": "bool",
 				"default": true,
@@ -1224,7 +1231,7 @@
 				"type": "bool",
 				"default": true,
 				"area": "dashboard",
-				"phase": 5
+				"phase": 3
 			},
 			"widget": {
 				"download": {

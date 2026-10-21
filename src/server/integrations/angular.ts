@@ -6,4 +6,5 @@ export {
   createSessionHandler,
   createQuerriClient,
   type QuerriMiddlewareOptions,
+  type SessionErrorBody,
 } from './express.js';

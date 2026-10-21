@@ -101,6 +101,14 @@ export interface EmbedSession {
   expires_in: number;
   /** Querri user ID associated with this session, or `null` for anonymous sessions. */
   user_id: string | null;
+  /**
+   * Custom Roles: id of the role the session runs as (a custom role
+   * `role_…` or a built-in one such as `system:creator`). Present only when
+   * a `role` was requested and applied (create), or the session carries one
+   * (refresh). Servers released after 2026-10-21 also return it from
+   * refresh; earlier servers return it only from create.
+   */
+  role_id?: string;
 }
 
 export interface EmbedSessionListItem {
@@ -109,6 +117,13 @@ export interface EmbedSessionListItem {
   origin: string | null;
   created_at: string | number | null;
   auth_method: string | null;
+  /**
+   * Custom Roles: id of the role the session runs as (a custom role
+   * `role_…` or a built-in one such as `system:creator`), or `null` when the
+   * session has no role. Servers released after 2026-10-21 return it on
+   * every item; earlier servers omit it.
+   */
+  role_id?: string | null;
 }
 
 export interface EmbedSessionList {
@@ -141,6 +156,16 @@ export interface CreateSessionParams {
   user_id: string;
   origin?: string;
   ttl?: number;
+  /**
+   * Custom Roles: role id or key the session runs as (max 100 characters).
+   * Sent only when a non-empty string (`null` and `''` mean no role). Decide
+   * it on your server from your own auth — never read it from the browser's
+   * request.
+   *
+   * Errors: `role_not_found` (404); `role_not_allowed`, `role_disabled`,
+   * `insufficient_scope`, `seat_change_required` (403).
+   */
+  role?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -677,6 +702,20 @@ export interface GetSessionParams {
   origin?: string;
   /** Session TTL in seconds. @default 3600 */
   ttl?: number;
+  /**
+   * Custom Roles: role id or key the session runs as; distinct from
+   * `user.role`, the org role (`admin`/`member`) used when creating the user.
+   *
+   * Decide it on your server from your own auth — never read it from the
+   * page's request (the browser SDK's `sessionEndpoint` mode POSTs with no
+   * body on purpose). Omit it (or pass `null` or `''`) to keep the user's
+   * own role.
+   *
+   * The user is created/updated and their access policies applied before
+   * the session is requested, so if the role is refused those earlier steps
+   * have still happened.
+   */
+  role?: string | null;
 }
 
 export interface GetSessionResult {
@@ -684,4 +723,10 @@ export interface GetSessionResult {
   expires_in: number;
   user_id: string;
   external_id: string | null;
+  /**
+   * Custom Roles: id of the role the session runs as, or `null` when no
+   * `role` was requested. Always set by `getSession()`; optional in the type
+   * so hand-built results passed to `asUser()` keep compiling.
+   */
+  role_id?: string | null;
 }

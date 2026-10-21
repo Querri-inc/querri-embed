@@ -167,7 +167,7 @@ function classifyAuth(auth) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         }).then(function (res) {
-          if (!res.ok) throw new Error('Session endpoint returned ' + res.status);
+          if (!res.ok) return sessionEndpointError(res);
           return res.json();
         }).then(function (data) {
           return data.session_token;
@@ -177,6 +177,40 @@ function classifyAuth(auth) {
   }
 
   return { mode: 'invalid', message: INVALID_AUTH_SHAPE_MSG };
+}
+
+/**
+ * Turn a non-OK session-endpoint response into a thrown Error that keeps the
+ * server SDK handler's JSON (`{ error, code, permission, reason }`) on
+ * `err.detail`, so a refused role (e.g. `role_disabled`) is visible in the
+ * `token_fetch_failed` event instead of a bare status.
+ *
+ * The Nuxt handler throws h3's `createError({ data })`, which answers
+ * `{ statusCode, statusMessage, data: { error, code, ... } }` -- so when the
+ * top level has no `code`, the fields are read from `body.data`.
+ *
+ * The error is marked `_querriSessionEndpoint` so `_handleFetchToken` forwards
+ * only this `detail`, never one a custom `fetchSessionToken` attached.
+ */
+function sessionEndpointError(res) {
+  return res.json().catch(function () { return null; }).then(function (body) {
+    var detail = { status: res.status };
+    if (body && typeof body === 'object' && typeof body.code !== 'string' &&
+        body.data && typeof body.data === 'object') {
+      body = body.data;
+    }
+    if (body && typeof body === 'object') {
+      if (typeof body.code === 'string') detail.code = body.code;
+      if (typeof body.permission === 'string') detail.permission = body.permission;
+      if (typeof body.reason === 'string') detail.reason = body.reason;
+    }
+    var err = new Error(
+      'Session endpoint returned ' + res.status + (detail.code ? ' (' + detail.code + ')' : '')
+    );
+    err.detail = detail;
+    err._querriSessionEndpoint = true;
+    throw err;
+  });
 }
 
 // ─── Instance ─────────────────────────────────────────────
@@ -366,7 +400,8 @@ QuerriInstance.prototype._handleFetchToken = function () {
         self._fetchInFlight = false;
         self._emitError('token_fetch_failed',
           'Failed to fetch session token after ' + maxRetries + ' attempts: ' +
-          (err.message || 'Unknown error')
+          (err.message || 'Unknown error'),
+          err && err._querriSessionEndpoint ? err.detail : undefined
         );
       }
     });
@@ -732,8 +767,10 @@ QuerriInstance.prototype._emit = function (event, data) {
   }
 };
 
-QuerriInstance.prototype._emitError = function (code, message) {
-  this._emit('error', { code: code, message: message });
+QuerriInstance.prototype._emitError = function (code, message, detail) {
+  var payload = { code: code, message: message };
+  if (detail) payload.detail = detail;
+  this._emit('error', payload);
 };
 
 QuerriInstance.prototype._deferError = function (code, message) {
@@ -888,7 +925,7 @@ export var QuerriEmbed = {
     return new QuerriInstance(container, options);
   },
 
-  version: '1.0.1',
+  version: '1.1.0',
 };
 
 export default QuerriEmbed;

@@ -14,6 +14,7 @@ export type {
   QuerriEventCallback,
   QuerriErrorCode,
   QuerriErrorEvent,
+  QuerriErrorDetail,
   QuerriNavigationEvent,
   QuerriConfigAppliedEvent,
   QuerriResizeEvent,

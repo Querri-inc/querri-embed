@@ -130,6 +130,53 @@ describe('createSessionHandler error handling (Nuxt)', () => {
     vi.doUnmock('h3');
   });
 
+  it('puts code, permission, reason and doc_url in the h3 error data', async () => {
+    mockGetSession.mockRejectedValue(
+      new APIError(
+        403,
+        {
+          detail: {
+            error: {
+              type: 'permission_error',
+              code: 'permission_denied',
+              message: 'This action needs the dashboards.list.view permission.',
+              permission: 'dashboards.list.view',
+              reason: 'role_denied',
+              doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+            },
+          },
+        },
+        new Headers(),
+      ),
+    );
+    const createError = vi.fn().mockImplementation((opts: any) => {
+      const err = new Error(opts.statusMessage);
+      (err as any).statusCode = opts.statusCode;
+      (err as any).data = opts.data;
+      return err;
+    });
+    const h3 = {
+      readBody: vi.fn().mockResolvedValue({}),
+      getHeaders: vi.fn().mockReturnValue({}),
+      createError,
+    };
+
+    const handler = createSessionHandler({ apiKey: 'qk_test', h3 });
+    await expect(handler({})).rejects.toThrow(
+      'This action needs the dashboards.list.view permission.',
+    );
+
+    expect(createError).toHaveBeenCalledTimes(1);
+    const opts = createError.mock.calls[0][0];
+    expect(opts.statusCode).toBe(403);
+    const body = opts.data;
+    expect(body.error).toBe('This action needs the dashboards.list.view permission.');
+    expect(body.code).toBe('permission_denied');
+    expect(body.permission).toBe('dashboards.list.view');
+    expect(body.reason).toBe('role_denied');
+    expect(body.doc_url).toBe('https://docs.querri.com/api/errors#permission_denied');
+  });
+
   it('re-throws unknown errors', async () => {
     const unknownError = new Error('Something went wrong');
     mockGetSession.mockRejectedValue(unknownError);

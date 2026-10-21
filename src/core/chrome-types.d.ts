@@ -78,6 +78,8 @@ export interface QuerriChromeConfig {
     share?: boolean;
     /** @default false Depends on `header.show`. */
     print?: boolean;
+    /** @default false Depends on `header.show`. */
+    chartRenderer?: boolean;
     /** @default true Depends on `header.show`. */
     addProject?: boolean;
     /** @default true Depends on `header.show`. */
@@ -398,6 +400,8 @@ export interface QuerriChromeConfig {
     aiChat?: boolean;
     /** @default true Depends on `dashboard.share`. */
     embedLinks?: boolean;
+    /** @default true */
+    export?: boolean;
     widget?: {
       /** @default false */
       download?: boolean;

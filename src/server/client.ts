@@ -130,6 +130,11 @@ export class Querri {
    * Create a user-scoped client that calls the internal API with the user's
    * embed session token. The internal API applies FGA filtering automatically.
    *
+   * Calls made this way are also subject to the session's Custom Role (the
+   * `role` passed to `getSession()`, else the user's own): a refused action
+   * throws `PermissionError` with `code: 'permission_denied'` and the
+   * `permission` / `reason` that explain it.
+   *
    * @example
    * ```ts
    * const session = await client.getSession({ user: 'ext_123' });

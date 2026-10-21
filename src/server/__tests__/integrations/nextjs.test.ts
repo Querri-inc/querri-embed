@@ -61,7 +61,22 @@ describe('createSessionHandler (Next.js)', () => {
 
   it('returns error Response for APIError', async () => {
     mockGetSession.mockRejectedValue(
-      new APIError(403, { error: 'Forbidden', code: 'permission_denied' }, new Headers()),
+      new APIError(
+        403,
+        {
+          detail: {
+            error: {
+              type: 'permission_error',
+              code: 'permission_denied',
+              message: 'This action needs the dashboards.list.view permission.',
+              permission: 'dashboards.list.view',
+              reason: 'role_denied',
+              doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+            },
+          },
+        },
+        new Headers(),
+      ),
     );
 
     const handler = createSessionHandler({ apiKey: 'qk_test' });
@@ -75,8 +90,11 @@ describe('createSessionHandler (Next.js)', () => {
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error).toBe('Forbidden');
+    expect(body.error).toBe('This action needs the dashboards.list.view permission.');
     expect(body.code).toBe('permission_denied');
+    expect(body.permission).toBe('dashboards.list.view');
+    expect(body.reason).toBe('role_denied');
+    expect(body.doc_url).toBe('https://docs.querri.com/api/errors#permission_denied');
   });
 
   it('returns 500 for unknown errors', async () => {

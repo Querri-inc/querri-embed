@@ -173,4 +173,56 @@ describe('getSession', () => {
       ttl: 3600,
     });
   });
+
+  it('does not send a role key when role is unset, and returns role_id null', async () => {
+    const client = makeMockClient();
+
+    const result = await getSession(client, { user: 'ext_1' });
+
+    const sent = client.embed.createSession.mock.calls[0][0];
+    expect(Object.keys(sent)).not.toContain('role');
+    expect(result).toHaveProperty('role_id', null);
+  });
+
+  it('does not send a role key when role is empty or null', async () => {
+    for (const role of ['', null]) {
+      const client = makeMockClient();
+      const result = await getSession(client, { user: 'ext_1', role });
+      const sent = client.embed.createSession.mock.calls[0][0];
+      expect(Object.keys(sent)).not.toContain('role');
+      expect(result).toHaveProperty('role_id', null);
+    }
+  });
+
+  it('forwards role to createSession and returns the applied role_id', async () => {
+    const client = makeMockClient();
+    client.embed.createSession.mockResolvedValueOnce({
+      session_token: 'tok_role',
+      expires_in: 3600,
+      user_id: 'u_resolved',
+      role_id: 'role_analyst',
+    });
+
+    const result = await getSession(client, {
+      user: { external_id: 'ext_1', role: 'member' },
+      origin: 'https://myapp.com',
+      role: 'analyst',
+    });
+
+    // user.role is the org role and goes to user creation only.
+    expect(client.users.getOrCreate).toHaveBeenCalledWith('ext_1', { role: 'member' });
+    expect(client.embed.createSession).toHaveBeenCalledWith({
+      user_id: 'u_resolved',
+      origin: 'https://myapp.com',
+      ttl: 3600,
+      role: 'analyst',
+    });
+    expect(result).toEqual({
+      session_token: 'tok_role',
+      expires_in: 3600,
+      user_id: 'u_resolved',
+      external_id: 'ext_1',
+      role_id: 'role_analyst',
+    });
+  });
 });
