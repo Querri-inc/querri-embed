@@ -1,12 +1,19 @@
 import { Querri } from '../client.js';
 import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams } from '../types.js';
-import { resolveConfig } from './_resolve-config.js';
+import { resolveConfig, sessionErrorBody } from './_resolve-config.js';
 
 export interface QuerriMiddlewareOptions {
   apiKey?: string;
   orgId?: string;
   host?: string;
+  /**
+   * Build the `getSession()` params from your own auth. Decide `role`
+   * (Custom Roles) here on the server — never read it from the request body
+   * or query: the browser SDK's `sessionEndpoint` mode POSTs with no body on
+   * purpose, and a role taken from the page lets any visitor pick their own
+   * permissions.
+   */
   resolveParams?: (req: { body: unknown; headers: Record<string, string | undefined> }) => Promise<GetSessionParams> | GetSessionParams;
 }
 
@@ -54,7 +61,7 @@ export function createSessionHandler(options?: QuerriMiddlewareOptions) {
       res.json(session);
     } catch (err) {
       if (err instanceof APIError) {
-        res.status(err.status).json({ error: err.message, code: err.code });
+        res.status(err.status).json(sessionErrorBody(err));
       } else {
         res.status(500).json({ error: 'Internal server error' });
       }

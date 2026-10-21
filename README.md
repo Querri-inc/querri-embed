@@ -203,7 +203,7 @@ auth: 'login'
 |--------|------|----------|-------------|
 | `serverUrl` | `string` | Yes | Querri server URL, e.g. `'https://app.querri.com'`. (The old `'…/builder'` suffix is obsolete — one URL serves everything.) |
 | `auth` | `QuerriAuth` | Yes | Authentication mode (see above) |
-| `startView` | `string` | No | Initial view path (e.g. `'/dashboard/uuid'`, `'/inbox'`). Unset opens the runtime's default view (the chat launcher). |
+| `startView` | `string` | No | Initial view path (e.g. `'/dashboard/uuid'`, `'/inbox'`). Unset opens `'/home'`, the runtime's default view (the home launcher). |
 | `chrome` | `QuerriChromeConfig` | No | UI chrome config — the **v2 vocabulary** (`rail`, `header`, `chat`, `global`, `library`, `projects`, `dashboard`, `xls`, `print`, `settings`), ~180 keys, typed from the runtime's own schema. See `{serverUrl}/sdk/README.md` for the full per-key table, or `{serverUrl}/sdk/chrome-schema.json` for the machine-readable schema. Legacy v1 keys (`sidebar.*`, `chat.connectData`, …) are still accepted — the runtime translates them one-way; unknown keys are dropped and reported via the `config` event. |
 | `theme` | `QuerriThemeConfig` | No | `{ name?: '' \| 'querri' \| 'querri-dark' \| 'night', colors?, radius?, fontFamily? }`. `colors` keys must be `--ui-*` tokens (allow-listed by the runtime). The old `scheme` key is dead — use `name`. |
 | `privacy` | `QuerriPrivacyConfig` | No | `{ sessionReplay?, identify?, errorReporting? }` — analytics consent for your end-users (replay and identify default **off**). |
@@ -221,7 +221,9 @@ Listen to the `config` event to see what the runtime did with your config:
 
 ```javascript
 querri.on('config', function (report) {
-  // report.changes.dropped — keys the runtime doesn't know
+  // report.changes.dropped — keys the runtime doesn't know, and values it
+  //   refused: each entry is { path, reason }, e.g. reason 'unsafe CSS value'
+  //   (a theme colour) or 'not an http(s) URL' (a link or image URL)
   // report.changes.coupled — keys it turned off because a parent is off
   // report.changes.upgraded — legacy keys translated to v2
   console.log('applied at schema v' + report.schemaVersion, report.changes);
@@ -232,10 +234,14 @@ querri.on('config', function (report) {
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `ready` | `{}` | Embed authenticated and ready |
-| `error` | `{ code, message }` | An error occurred |
-| `session-expired` | `{}` | Session token expired |
+| `ready` | `{}` | Embed authenticated and ready. Emitted again after a re-authentication (the embed posts `authenticated` once the fresh token is accepted). |
+| `error` | `{ code, message, recoverable?, status?, detail? }` | An error occurred. See [Error Codes](#error-codes). |
+| `session-expired` | `{}` | Session token expired. Fires once per expired token; in `sessionEndpoint` / `fetchSessionToken` mode the SDK then fetches a new token by itself. |
 | `navigation` | `{ type, path?, ... }` | User navigated within the embed |
+| `config` | `{ schemaVersion, changes }` | What the runtime applied from your `chrome` / `theme` (see above) |
+| `resize` | `{ height }` | Content height in CSS pixels (drives `autoHeight`) |
+| `chat` | `{ phase, ... }` | Chat lifecycle: sent / finished / error |
+| `recovered` | `{ code, afterMs? }` | Retracts an earlier `recoverable` error (e.g. `timeout`) |
 
 ```javascript
 // Example: handling events
@@ -253,12 +259,21 @@ instance.on('navigation', ({ type, path }) => {
 | Code | Meaning |
 |------|---------|
 | `invalid_auth` | Auth config is invalid |
-| `token_fetch_failed` | `fetchSessionToken` callback failed after 3 automatic retries |
+| `invalid_share_key` | The share key is not valid for this organization, or has expired |
+| `invalid_start_view` | `startView` is not a relative path starting with `/` |
+| `token_fetch_failed` | `fetchSessionToken` callback (or `sessionEndpoint` request) failed after 3 automatic retries. In `sessionEndpoint` mode an error response adds `detail: { status, code?, permission?, reason? }` read from the endpoint's JSON. |
+| `token_fetch_exhausted` | The token was refetched 3 cycles in a row without the embed accepting it; the SDK stops retrying |
 | `popup_blocked` | Browser blocked the login popup |
 | `auth_failed` | Authentication failed after popup login |
 | `auth_required` | Auth required but no login mode configured |
-| `timeout` | Iframe didn't respond within timeout period (default: 15s, configurable via `timeout` option) |
+| `auth_timeout` | The embed received `init` but authentication did not finish within 20s (`recoverable`) |
+| `init_timeout` | The embed received no `init` within 20s (`recoverable`) |
+| `validation_failed` | The embed could not validate the session token |
+| `navigation_failed` | The embed could not navigate to `startView` |
+| `timeout` | Iframe didn't respond within `readyTimeout` (default 30s; `recoverable`) |
 | `send_prompt_failed` | `sendPrompt()` failed — embed not ready, text empty, or current view has no prompt input |
+| `view_error` | A page inside the embed failed to render; `status` carries its HTTP status |
+| `preview_escaped` | Embed configurator preview only: the preview navigated outside the embed and is being rebuilt (`recoverable`) |
 
 ## Instance API
 
@@ -407,7 +422,36 @@ export const POST = createSessionHandler({
 
 If you omit `resolveParams`, the handler creates an anonymous session.
 
-> **Security:** Always derive user identity and access from your server-side auth system. Never read `user` or `access` from the request body — a malicious client can impersonate any user or escalate access.
+> **Security:** Always derive user identity, access and `role` from your server-side auth system. Never read `user`, `access` or `role` from the request body — a malicious client can impersonate any user or escalate access. The browser SDK's `sessionEndpoint` mode POSTs with no body on purpose.
+
+### Custom Roles
+
+Return a `role` (role id or key) from `resolveParams`, or pass it to `getSession()`, to run the embed session as that Custom Role. The result carries the applied `role_id` (`null` when no role was requested):
+
+```typescript
+const session = await client.getSession({ user: 'ext_alice', role: 'analyst' });
+session.role_id; // 'role_…'
+```
+
+`role` is different from `user.role`, which is the user's org role (`admin` / `member`) used when the user is first created. A role the user already holds is simply selected; granting one they do not hold needs a key with the `embed:role:assign` scope and the role on the org's embed allowlist (Settings → Embed). Calls made through `client.asUser(session)` are subject to the session's role. See [docs/server-sdk.md](docs/server-sdk.md#custom-role-role).
+
+### Errors
+
+API failures throw a subclass of `APIError` (`AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError`, …) carrying the server's `code`, `message`, `docUrl` and `requestId`. A role-system refusal is a `PermissionError` with `code: 'permission_denied'` plus `permission` and `reason`. Compare codes with the exported `ERROR_CODES`:
+
+```typescript
+import { PermissionError, ERROR_CODES } from '@querri-inc/embed/server';
+
+try {
+  await client.getSession({ user: 'ext_alice', role: 'analyst' });
+} catch (err) {
+  if (err instanceof PermissionError && err.code === ERROR_CODES.ROLE_DISABLED) {
+    // the role is a draft; an admin must enable it
+  }
+}
+```
+
+The session handlers answer a refusal with Querri's status and `{ error, code, permission?, reason?, doc_url? }`. Full code table: [docs/server-sdk.md](docs/server-sdk.md#error-codes).
 
 ### Environment Variables
 
@@ -502,6 +546,16 @@ The login popup requires a user gesture (e.g., a button click). Browsers block p
 
 Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 automatic retries (1s, 2s backoff). Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
 
+In `sessionEndpoint` mode, when your endpoint answers with an error status the event carries `detail`: the status plus the `code`, `permission` and `reason` from its JSON (the server SDK's handlers send these). For example a draft Custom Role reports:
+
+```javascript
+querri.on('error', function (e) {
+  if (e.code === 'token_fetch_failed' && e.detail) {
+    console.log(e.detail); // { status: 403, code: 'role_disabled' }
+  }
+});
+```
+
 ### `send_prompt_failed`
 
 `sendPrompt()` could not deliver the text. Common causes:
@@ -525,6 +579,7 @@ import type {
   QuerriEventType,
   QuerriEventCallback,
   QuerriErrorEvent,
+  QuerriErrorDetail,
   QuerriNavigationEvent,
   SendPromptOptions,
 } from '@querri-inc/embed';

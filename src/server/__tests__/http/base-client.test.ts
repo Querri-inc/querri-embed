@@ -2,9 +2,25 @@ import { HttpClient } from '../../http/base-client.js';
 import {
   AuthenticationError,
   NotFoundError,
+  PermissionError,
   RateLimitError,
+  ValidationError,
   APITimeoutError,
 } from '../../errors.js';
+
+/** Wrap an error object the way FastAPI puts it on the wire for every /v1 error. */
+function v1Error(error: Record<string, unknown>) {
+  return { detail: { error } };
+}
+
+async function caught(p: Promise<unknown>): Promise<unknown> {
+  try {
+    await p;
+  } catch (err) {
+    return err;
+  }
+  throw new Error('expected the request to reject');
+}
 
 let mockFetch: ReturnType<typeof vi.fn>;
 
@@ -63,33 +79,158 @@ describe('HttpClient', () => {
     expect(result).toBeUndefined();
   });
 
-  it('throws AuthenticationError on 401', async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Unauthorized' }, 401));
+  it('throws AuthenticationError on 401 with the server code, message and request id', async () => {
+    // Verbatim live /v1 body (captured 2026-10-21).
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        v1Error({
+          type: 'authentication_error',
+          code: 'missing_api_key',
+          message:
+            'Authorization required. Provide a Bearer qk_ API key or a valid JWT token.',
+          doc_url: 'https://docs.querri.com/api/errors#missing_api_key',
+        }),
+        401,
+        { 'X-Request-Id': 'req_bcd3adccd74d40429159b73182bd6962' },
+      ),
+    );
     const client = makeClient();
 
-    await expect(
-      client.request({ method: 'GET', path: '/users' }),
-    ).rejects.toThrow(AuthenticationError);
+    const err = await caught(client.request({ method: 'GET', path: '/users' }));
+    expect(err).toBeInstanceOf(AuthenticationError);
+    const e = err as AuthenticationError;
+    expect(e.code).toBe('missing_api_key');
+    expect(e.type).toBe('authentication_error');
+    expect(e.message).toBe(
+      'Authorization required. Provide a Bearer qk_ API key or a valid JWT token.',
+    );
+    expect(e.docUrl).toBe('https://docs.querri.com/api/errors#missing_api_key');
+    expect(e.requestId).toBe('req_bcd3adccd74d40429159b73182bd6962');
   });
 
-  it('throws NotFoundError on 404', async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Not found' }, 404));
+  it('throws PermissionError on 403 permission_denied with permission and reason', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        v1Error({
+          type: 'permission_error',
+          code: 'permission_denied',
+          message: 'This action needs the dashboards.list.view permission.',
+          permission: 'dashboards.list.view',
+          reason: 'role_denied',
+          doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+        }),
+        403,
+        { 'X-Permission-Denied': 'dashboards.list.view' },
+      ),
+    );
     const client = makeClient();
 
-    await expect(
-      client.request({ method: 'GET', path: '/users/missing' }),
-    ).rejects.toThrow(NotFoundError);
+    const err = await caught(client.request({ method: 'GET', path: '/dashboards' }));
+    expect(err).toBeInstanceOf(PermissionError);
+    const e = err as PermissionError;
+    expect(e.code).toBe('permission_denied');
+    expect(e.permission).toBe('dashboards.list.view');
+    expect(e.reason).toBe('role_denied');
+    expect(e.message).toBe('This action needs the dashboards.list.view permission.');
+  });
+
+  it('throws NotFoundError on 404 with the server code', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        v1Error({
+          type: 'not_found_error',
+          code: 'role_not_found',
+          message: 'No role with that id or key.',
+          doc_url: 'https://docs.querri.com/api/errors#role_not_found',
+        }),
+        404,
+      ),
+    );
+    const client = makeClient();
+
+    const err = await caught(client.request({ method: 'GET', path: '/users/missing' }));
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as NotFoundError).code).toBe('role_not_found');
+    expect((err as NotFoundError).message).toBe('No role with that id or key.');
+  });
+
+  it('throws ValidationError (status 422) on a Pydantic validation body', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          detail: [
+            {
+              type: 'greater_than_equal',
+              loc: ['body', 'ttl'],
+              msg: 'Input should be greater than or equal to 900',
+              input: 1,
+            },
+          ],
+        },
+        422,
+      ),
+    );
+    const client = makeClient();
+
+    const err = await caught(
+      client.request({ method: 'POST', path: '/embed/sessions', body: { ttl: 1 } }),
+    );
+    expect(err).toBeInstanceOf(ValidationError);
+    const e = err as ValidationError;
+    expect(e.status).toBe(422);
+    expect(e.message).toBe(
+      'Validation failed: body.ttl: Input should be greater than or equal to 900',
+    );
+  });
+
+  it('keeps the header-sourced permission when the error body is not JSON', async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response('<html>Forbidden</html>', {
+        status: 403,
+        headers: { 'Content-Type': 'text/html', 'X-Permission-Denied': 'projects.view' },
+      }),
+    );
+    const client = makeClient();
+
+    const err = await caught(client.request({ method: 'GET', path: '/projects' }));
+    expect(err).toBeInstanceOf(PermissionError);
+    const e = err as PermissionError;
+    expect(e.body).toBeNull();
+    expect(e.message).toBe('Request failed with status 403');
+    expect(e.permission).toBe('projects.view');
+    expect(e.code).toBeUndefined();
+  });
+
+  it('still reads a flat { error, code } body (regression guard)', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: 'Not found', code: 'session_not_found' }, 404),
+    );
+    const client = makeClient();
+
+    const err = await caught(client.request({ method: 'GET', path: '/users/missing' }));
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as NotFoundError).message).toBe('Not found');
+    expect((err as NotFoundError).code).toBe('session_not_found');
   });
 
   it('throws RateLimitError on 429', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse({ error: 'Rate limited' }, 429, { 'retry-after': '5' }),
+      jsonResponse(
+        v1Error({
+          type: 'rate_limit_error',
+          code: 'rate_limit_exceeded',
+          message: 'Too many requests.',
+        }),
+        429,
+        { 'retry-after': '5' },
+      ),
     );
     const client = makeClient();
 
-    await expect(
-      client.request({ method: 'GET', path: '/users' }),
-    ).rejects.toThrow(RateLimitError);
+    const err = await caught(client.request({ method: 'GET', path: '/users' }));
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect((err as RateLimitError).retryAfter).toBe(5);
+    expect((err as RateLimitError).code).toBe('rate_limit_exceeded');
   });
 
   it('retries on 429 and 500 for GET requests', async () => {

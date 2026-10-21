@@ -7,6 +7,61 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 
 ## [Unreleased]
 
+## [1.1.0] — Unreleased
+
+Custom Roles support, and the server SDK now reads the errors the API actually
+sends. Additive only.
+
+### Added
+- **Custom Roles on embed sessions.** `getSession({ role })` and
+  `embed.createSession({ role })` take a role id or key the session runs as;
+  the key is sent only when set. `getSession()` returns the applied `role_id`
+  (`null` when no role was requested); `EmbedSession`, `EmbedSessionListItem`
+  and the refresh response carry `role_id?` when the session has one. `role` is
+  distinct from `user.role`, the org role used when creating the user.
+- `APIError.permission` and `APIError.reason` for `403 permission_denied`
+  refusals (`permission` falls back to the `X-Permission-Denied` header).
+- `ERROR_CODES` and the `ErrorCode` type, exported from
+  `@querri-inc/embed/server`: the auth, permission, Custom Role and embed
+  session codes.
+- Session handlers (`nextjs`, `sveltekit`, `react-router`, `nuxt`, `express` /
+  `angular`) answer a refusal with `{ error, code, permission, reason, doc_url }`
+  (keys that do not apply are omitted).
+- Browser: in `sessionEndpoint` mode a failed endpoint response is reported on
+  `token_fetch_failed` with `detail: { status, code?, permission?, reason? }`
+  read from the endpoint's JSON, and the message names the code
+  (`Session endpoint returned 403 (role_disabled)`). New `QuerriErrorDetail`
+  type.
+- Typings: `QuerriErrorCode` gains `view_error` (a page inside the embed failed
+  to render; `QuerriErrorEvent.status` carries its HTTP status) and
+  `preview_escaped` (embed configurator only, `recoverable`).
+- Docs: error-code table, valid API-key scope names, `embed:role:assign`, and
+  how key scopes follow the key's person.
+
+### Fixed
+- **The server SDK never unwrapped FastAPI's `{"detail": …}` envelope**, so
+  every real `/v1` error had `code`, `type` and `docUrl` undefined and the
+  message "Request failed with status N". `APIError` now reads
+  `{detail: {error: …}}`, `{detail: {…}}` and `{detail: "text"}`; `body` stays
+  the raw wire body.
+- `422` validation errors throw `ValidationError` (status 422) with a readable
+  message (`Validation failed: body.ttl: Input should be greater than or equal
+  to 900`) instead of a bare `APIError`.
+- Typings: `chrome.header.chartRenderer` (default `false`) and
+  `chrome.dashboard.export` (default `true`). The runtime added the first and
+  moved the second to phase 3 after 1.0.1; the vendored schema predated both,
+  so a typed config setting either failed the excess-property check. The schema
+  is byte-identical to the served one again.
+- Docs: the keys example used scope names that do not exist (`read:data`,
+  `write:projects`); the README error table listed 7 of the 16 codes; the
+  `timeout` row said the default was 15s (it is 30s); `startView` now documents
+  its `'/home'` default.
+
+### Note
+- The browser build changed (`sessionEndpoint` error detail). Your Querri
+  deployment serves its own copy at `/sdk/querri-embed.js`; it picks this up
+  when the deployment re-vendors 1.1.0.
+
 ## [1.0.1] — 2026-09-28
 
 No change to runtime behaviour: the browser build differs from 1.0.0 only in its

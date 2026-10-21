@@ -29,6 +29,10 @@ export type UserDashboardsResource = Pick<
  * `embed:session:create`), so there is no `embed` accessor here — use the
  * parent API-key client for session management.
  *
+ * Calls are subject to the session's Custom Role: an action the role does not
+ * allow throws `PermissionError` with `code: 'permission_denied'`, plus
+ * `permission` (e.g. `'dashboards.list.view'`) and `reason` (e.g. `'role_denied'`).
+ *
  * Create via `client.asUser(session)`.
  */
 export class UserQuerri {

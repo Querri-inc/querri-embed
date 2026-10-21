@@ -35,6 +35,40 @@ describe('EmbedResource', () => {
     expect(body.ttl).toBe(7200);
   });
 
+  it('createSession sends role when set and surfaces role_id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        session_token: 'tok_role',
+        expires_in: 3600,
+        user_id: 'u1',
+        role_id: 'role_analyst',
+      }),
+    );
+
+    const client = makeClient();
+    const session = await client.embed.createSession({ user_id: 'u1', role: 'analyst' });
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({
+      user_id: 'u1',
+      ttl: 3600,
+      role: 'analyst',
+    });
+    expect(session.role_id).toBe('role_analyst');
+  });
+
+  it('createSession sends no role key when role is unset', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ session_token: 'tok_none', expires_in: 3600, user_id: 'u1' }),
+    );
+
+    const client = makeClient();
+    const session = await client.embed.createSession({ user_id: 'u1' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(Object.keys(body)).not.toContain('role');
+    expect(session.role_id).toBeUndefined();
+  });
+
   it('createSession defaults ttl to 3600', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ session_token: 'tok_def', expires_in: 3600, user_id: 'u1' }),
@@ -60,6 +94,46 @@ describe('EmbedResource', () => {
     expect(url).toContain('/api/v1/embed/sessions/refresh');
     expect(opts.method).toBe('POST');
     expect(JSON.parse(opts.body)).toEqual({ session_token: 'tok_old' });
+  });
+
+  it('refreshSession passes role_id through when the session has a role', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        session_token: 'tok_new',
+        expires_in: 3600,
+        user_id: 'u1',
+        role_id: 'role_analyst',
+      }),
+    );
+
+    const client = makeClient();
+    const session = await client.embed.refreshSession('tok_old');
+
+    expect(session.role_id).toBe('role_analyst');
+  });
+
+  it('listSessions items carry role_id when a session has a role', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          {
+            session_token: 'es_1',
+            user_id: 'u1',
+            origin: null,
+            created_at: null,
+            auth_method: 'api_key',
+            role_id: 'role_analyst',
+          },
+        ],
+        has_more: false,
+        next_cursor: null,
+      }),
+    );
+
+    const client = makeClient();
+    const list = await client.embed.listSessions();
+
+    expect(list.data[0].role_id).toBe('role_analyst');
   });
 
   it('listSessions sends GET /api/v1/embed/sessions', async () => {

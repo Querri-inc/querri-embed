@@ -56,7 +56,22 @@ describe('createSessionHandler (Express/Angular)', () => {
   it('returns error for APIError', async () => {
     const headers = new Headers();
     mockGetSession.mockRejectedValue(
-      new APIError(403, { error: 'Forbidden', code: 'permission_denied' }, headers),
+      new APIError(
+        403,
+        {
+          detail: {
+            error: {
+              type: 'permission_error',
+              code: 'permission_denied',
+              message: 'This action needs the dashboards.list.view permission.',
+              permission: 'dashboards.list.view',
+              reason: 'role_denied',
+              doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+            },
+          },
+        },
+        headers,
+      ),
     );
 
     const middleware = createSessionHandler({ apiKey: 'qk_test' });
@@ -67,7 +82,15 @@ describe('createSessionHandler (Express/Angular)', () => {
     await middleware(req, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(errorJson).toHaveBeenCalledWith({ error: 'Forbidden', code: 'permission_denied' });
+    expect(errorJson).toHaveBeenCalledTimes(1);
+    const body = errorJson.mock.calls[0][0];
+    expect(body).toEqual({
+      error: 'This action needs the dashboards.list.view permission.',
+      code: 'permission_denied',
+      permission: 'dashboards.list.view',
+      reason: 'role_denied',
+      doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+    });
   });
 
   it('returns 500 for unknown errors', async () => {

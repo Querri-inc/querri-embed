@@ -12,9 +12,14 @@ export class EmbedResource extends BaseResource {
       user_id: params.user_id,
       origin: params.origin,
       ttl: params.ttl ?? 3600,
+      ...(params.role !== undefined && { role: params.role }),
     });
   }
 
+  /**
+   * Refresh a session token. The new session keeps the old one's role; the
+   * response carries `role_id` when it has one.
+   */
   refreshSession(sessionToken: string): Promise<EmbedSession> {
     return this._post<EmbedSession>('/embed/sessions/refresh', {
       session_token: sessionToken,

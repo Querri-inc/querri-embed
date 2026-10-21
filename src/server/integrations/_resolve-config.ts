@@ -1,5 +1,30 @@
 import type { QuerriConfig } from '../types.js';
 import { ConfigError } from '../errors.js';
+import type { APIError } from '../errors.js';
+
+/**
+ * JSON body a session handler answers with when Querri refuses the session.
+ * Undefined keys drop out of the JSON, so a plain 401 carries only `error`
+ * and `code`; a `permission_denied` adds `permission` and `reason`.
+ */
+export interface SessionErrorBody {
+  error: string;
+  code: string | undefined;
+  permission: string | undefined;
+  reason: string | undefined;
+  doc_url: string | undefined;
+}
+
+/** Build the error JSON every framework session handler returns for an `APIError`. */
+export function sessionErrorBody(err: APIError): SessionErrorBody {
+  return {
+    error: err.message,
+    code: err.code,
+    permission: err.permission,
+    reason: err.reason,
+    doc_url: err.docUrl,
+  };
+}
 
 export interface IntegrationOptions {
   apiKey?: string;

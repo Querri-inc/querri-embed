@@ -1494,6 +1494,129 @@ describe('sessionEndpoint auth mode', () => {
     vi.unstubAllGlobals();
     instance.destroy();
   });
+
+  async function failAllAttempts() {
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0); // 1st attempt fails
+    await vi.advanceTimersByTimeAsync(1000); // retry after 1s
+    await vi.advanceTimersByTimeAsync(0); // 2nd attempt fails
+    await vi.advanceTimersByTimeAsync(2000); // retry after 2s
+    await vi.advanceTimersByTimeAsync(0); // 3rd attempt fails
+  }
+
+  it('surfaces the server SDK error JSON on token_fetch_failed (403 role error)', async () => {
+    // The body a server-SDK session handler answers with when Querri refuses the role.
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: 'That role is a draft; an admin must enable it first.',
+            code: 'role_disabled',
+            doc_url: 'https://docs.querri.com/api/errors#role_disabled',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { sessionEndpoint: '/api/querri-session' } as any,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledTimes(1);
+    const event = errorCb.mock.calls[0][0];
+    expect(event.code).toBe('token_fetch_failed');
+    expect(event.message).toContain('Session endpoint returned 403 (role_disabled)');
+    expect(event.detail).toEqual({ status: 403, code: 'role_disabled' });
+
+    vi.unstubAllGlobals();
+    instance.destroy();
+  });
+
+  it('carries permission and reason for a permission_denied refusal', async () => {
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: 'This action needs the embed.view permission.',
+            code: 'permission_denied',
+            permission: 'embed.view',
+            reason: 'role_denied',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { sessionEndpoint: '/api/querri-session' } as any,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(errorCb.mock.calls[0][0].detail).toEqual({
+      status: 403,
+      code: 'permission_denied',
+      permission: 'embed.view',
+      reason: 'role_denied',
+    });
+
+    vi.unstubAllGlobals();
+    instance.destroy();
+  });
+
+  it('keeps the bare status when the endpoint answers without JSON', async () => {
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response('<html>Bad gateway</html>', { status: 502 })),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { sessionEndpoint: '/api/querri-session' } as any,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    const event = errorCb.mock.calls[0][0];
+    expect(event.code).toBe('token_fetch_failed');
+    expect(event.message).toContain('Session endpoint returned 502');
+    expect(event.message).not.toContain('(');
+    expect(event.detail).toEqual({ status: 502 });
+
+    vi.unstubAllGlobals();
+    instance.destroy();
+  });
+
+  it('does not add detail to errors from a custom fetchSessionToken', async () => {
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken: () => Promise.reject(new Error('network error')) },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(errorCb.mock.calls[0][0]).toEqual({
+      code: 'token_fetch_failed',
+      message: expect.stringContaining('network error'),
+    });
+    instance.destroy();
+  });
 });
 
 describe('sendPrompt', () => {

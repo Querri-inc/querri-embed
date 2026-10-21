@@ -1,7 +1,7 @@
 import { Querri } from '../client.js';
 import { APIError } from '../errors.js';
 import type { QuerriConfig, GetSessionParams, GetSessionResult } from '../types.js';
-import { resolveConfig } from './_resolve-config.js';
+import { resolveConfig, sessionErrorBody } from './_resolve-config.js';
 
 /**
  * Minimal structural type for the `h3` module's runtime surface used here.
@@ -22,6 +22,13 @@ export interface SessionHandlerOptions {
   apiKey?: string;
   orgId?: string;
   host?: string;
+  /**
+   * Build the `getSession()` params from your own auth. Decide `role`
+   * (Custom Roles) here on the server — never read it from the request body
+   * or query: the browser SDK's `sessionEndpoint` mode POSTs with no body on
+   * purpose, and a role taken from the page lets any visitor pick their own
+   * permissions.
+   */
   resolveParams?: (event: { body: unknown; headers: Record<string, string | undefined> }) => Promise<GetSessionParams> | GetSessionParams;
   /** Pass the h3 module if auto-import fails (e.g. in monorepos or file: linked packages). */
   h3?: H3Module;
@@ -150,7 +157,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
         throw h3.createError({
           statusCode: err.status,
           statusMessage: err.message,
-          data: { error: err.message, code: err.code },
+          data: sessionErrorBody(err),
         });
       }
       throw err;

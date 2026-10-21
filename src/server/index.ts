@@ -20,7 +20,9 @@ export {
   StreamError,
   StreamTimeoutError,
   StreamCancelledError,
+  ERROR_CODES,
 } from './errors.js';
+export type { ErrorCode } from './errors.js';
 
 // Types
 export type {
