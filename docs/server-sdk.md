@@ -1185,7 +1185,7 @@ console.log(key.secret); // Only available at creation time
 
 `embed:role:assign` lets `getSession({ role })` / `embed.createSession({ role })` grant an allowlisted Custom Role the user does not already hold. Minting a key with it in Settings needs the `api.write_scopes.use`, `admin.embed.manage` and `admin.people.manage` permissions.
 
-**Scopes follow a person's role.** A JWT caller gets the scopes their active role allows (a Guest is read-only). An API key acts for its `bound_user_id`, else for the person who created it in Settings → API keys, and on every call keeps only the scopes that person holds *now*: a demoted or departed creator narrows the key. Settings refuses to mint a key with more than its creator's scopes (`403 permission_denied`, reason `scope_exceeds_role`). Bind keys you mint through this SDK to a user with `bound_user_id` when they should follow that person's role.
+**Scopes follow a person's role.** A JWT caller gets the scopes their active role allows (a Guest is read-only). An API key acts for its `bound_user_id`, else for the person who created it in Settings → API keys, and on every call keeps only the scopes that person holds *now*: a demoted or departed creator narrows the key. A new key can't carry more than the person minting it holds, nor more than the user it is bound to holds, whether it is created in Settings or with `client.keys.create()` (`403 permission_denied`, reason `scope_exceeds_role`, with the refused `scopes` listed). A key created with `client.keys.create()` acts for the same person as the key that created it. Pass `bound_user_id` when a key should follow one specific person's role instead.
 
 #### `client.keys.retrieve(keyId)`
 
