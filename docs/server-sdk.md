@@ -205,7 +205,7 @@ const user = await client.users.create({
   external_id: 'usr_alice',
   first_name: 'Alice',
   last_name: 'Smith',
-  role: 'viewer',
+  role: 'member',
 });
 ```
 
@@ -249,6 +249,8 @@ update(userId: string, params: UserUpdateParams): Promise<User>
 ```typescript
 const updated = await client.users.update('user_abc123', { role: 'admin' });
 ```
+
+`role` is the org role, `'admin'` or `'member'` (any other value is a `422`). You can only give or remove a role whose permissions you hold yourself, and the organization must keep an Admin: otherwise the call throws `PermissionError` with `code` `'escalation_denied'`, or `ConflictError` with `'last_admin'` (servers released after 2026-10-21; deleting a user follows the same rule).
 
 #### `client.users.del(userId)`
 
