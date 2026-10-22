@@ -64,13 +64,13 @@ export const POST = createSessionHandler({
 
 **What a refused session looks like**
 
-When Querri refuses the session, every handler answers with Querri's status and this JSON (keys that do not apply are omitted):
+When Querri refuses the session, every handler answers with Querri's status and this JSON (keys that do not apply are omitted; the Nuxt handlers send it as h3's error `data`, and `defineQuerriSessionHandler` needs `h3` importable — or passed as `{ h3 }` — to do so, else it rethrows the `APIError`):
 
 ```json
 { "error": "That role is a draft; an admin must enable it first.", "code": "role_disabled", "doc_url": "https://docs.querri.com/api/errors#role_disabled" }
 ```
 
-A `permission_denied` refusal adds `permission` and `reason`. In `sessionEndpoint` mode the browser SDK reads this JSON and reports it on the `token_fetch_failed` error event as `detail: { status, code, permission, reason }`. See [Error codes](#error-codes).
+A `permission_denied` refusal adds `permission` and `reason`. In `sessionEndpoint` mode the browser SDK reads this JSON and reports it on the `token_fetch_failed` error event as `detail: { status, code, permission, reason }`; a 4xx other than 408/429 is not retried, so the event fires after the first answer. See [Error codes](#error-codes).
 
 ### Manual setup with the Querri client
 
@@ -191,6 +191,8 @@ Resolution order: explicit config value > environment variable > default value.
 
 Manage users in your organization.
 
+> **Role guards (servers released after 2026-10-21).** `create()`, `update()`, `del()` and `getOrCreate()` — and so [`getSession()`](#getsession-deep-dive) for a user who does not exist yet — follow the People page's rules. A change that would give or remove permissions the caller does not hold throws `PermissionError` with `code: 'escalation_denied'` (the permissions the caller lacks are in the raw body: `err.body.detail.error.missing`); one that would leave the organization without an Admin throws `ConflictError` with `code: 'last_admin'`. For an API key, "the caller" means the permissions both its creator and its bound user hold.
+
 #### `client.users.create(params)`
 
 Create a new user.
@@ -205,7 +207,7 @@ const user = await client.users.create({
   external_id: 'usr_alice',
   first_name: 'Alice',
   last_name: 'Smith',
-  role: 'viewer',
+  role: 'member',
 });
 ```
 
@@ -249,6 +251,8 @@ update(userId: string, params: UserUpdateParams): Promise<User>
 ```typescript
 const updated = await client.users.update('user_abc123', { role: 'admin' });
 ```
+
+`role` is the org role, `'admin'` or `'member'` (any other value is a `422`). You can only give or remove a role whose permissions you hold yourself, and the organization must keep an Admin: otherwise the call throws `PermissionError` with `code` `'escalation_denied'` (`err.body.detail.error.missing` lists the permissions you lack), or `ConflictError` with `'last_admin'` (servers released after 2026-10-21; `create()`, `del()` and `getOrCreate()` follow the same rules — see [Users](#users)).
 
 #### `client.users.del(userId)`
 
@@ -321,9 +325,9 @@ const session = await client.embed.createSession({
 | `user_id` | `string` | Querri user ID the session acts as |
 | `origin` | `string?` | Allowed origin for the embed iframe |
 | `ttl` | `number?` | Lifetime in seconds (default `3600`; the server accepts `900`–`86400`) |
-| `role` | `string?` | **Custom Roles:** role id or key (max 100 chars) the session runs as. Sent only when a non-empty string (`null` and `''` mean no role). |
+| `role` | `string \| null` (optional) | **Custom Roles:** role id or key (max 100 chars) the session runs as. Sent only when a non-empty string (`null` and `''` mean no role). |
 
-When `role` is applied, the response adds `role_id`:
+When `role` is applied, the response adds `role_id`. A server too old to know Custom Roles ignores `role`: there is no `role_id` and the session runs as the user's own role — so check `role_id` when the role matters:
 
 ```typescript
 const session = await client.embed.createSession({ user_id: 'user_abc123', role: 'analyst' });
@@ -332,7 +336,13 @@ const session = await client.embed.createSession({ user_id: 'user_abc123', role:
 
 `role_id` can be a custom role id (`role_…`) or a built-in one such as `system:creator`.
 
-The role must be enabled and not Admin. A role the user already holds is simply selected. Granting one they do not hold needs a key with the `embed:role:assign` scope, the role on the org's embed allowlist (Settings → Embed), and the person the key acts for (its bound user, else its creator) holding every permission in it. The refusals are `role_not_found` (404) and `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403). See [Error codes](#error-codes).
+The role must be enabled and not Admin. A role the user already holds is simply selected. Granting one they do not hold needs a key with the `embed:role:assign` scope (included in `*`), the role on the org's embed allowlist (Settings → Embed), and the people the key acts for holding every permission in it — on servers released after 2026-10-21, both its creator and its bound user; before, its bound user (else its creator).
+
+> **A grant is permanent.** It adds the role to the user's role assignment, so later sessions and the Querri app see it too. Revoking the session does not remove it; an admin removes it in Settings → People.
+
+The refusals are `role_not_found` (404) and `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403). See [Error codes](#error-codes).
+
+On servers released after 2026-10-21 a key also can't open a session as someone who holds more than the key's people (its creator and its bound user), for example an Admin from a key a Creator made: `PermissionError` with `code` `'escalation_denied'` (with or without `role`).
 
 > **Security:** Decide `role` on your server from your own auth. Never take it from the browser's request.
 
@@ -1165,7 +1175,7 @@ create(params: ApiKeyCreateParams): Promise<ApiKeyCreated>
 const key = await client.keys.create({
   name: 'CI Pipeline Key',
   scopes: ['data:read', 'admin:projects:read'],
-  bound_user_id: 'user_abc123', // the key follows this person's role
+  bound_user_id: 'user_abc123', // the key follows this person's role; binding to someone other than yourself needs an Admin
   expires_in_days: 90,
 });
 console.log(key.secret); // Only available at creation time
@@ -1184,11 +1194,20 @@ console.log(key.secret); // Only available at creation time
 | Library / skills | `admin:library:read`, `admin:library:write`, `admin:skills:read`, `admin:skills:write` |
 | Org | `admin:keys:manage`, `admin:audit:read`, `admin:usage:read` |
 | Library seeding (dev/staging only) | `admin:library:seed` |
-| All | `*` (needs the Admin role) |
+| All | `*` (needs the Admin role; includes `embed:role:assign`) |
 
 `embed:role:assign` lets `getSession({ role })` / `embed.createSession({ role })` grant an allowlisted Custom Role the user does not already hold. Minting a key with it in Settings needs the `api.write_scopes.use`, `admin.embed.manage` and `admin.people.manage` permissions.
 
-**Scopes follow a person's role.** A JWT caller gets the scopes their active role allows (a Guest is read-only). An API key acts for its creator *and* its bound user (`bound_user_id`), and every call keeps only the scopes both of them hold *now*: a demoted or departed creator or bound user narrows the key. A new key can't carry more than its creator and its bound user hold (`403 permission_denied`, reason `scope_exceeds_role`, with the refused `scopes` listed). Only an Admin may bind a key to someone else (`403 permission_denied`, `permission: 'org.admin'`, `reason: 'role_denied'`); binding a key to yourself is fine. A key created with `client.keys.create()` acts for the same creator and bound user as the key that created it, and keeps that key's workspace, its sources (equal or narrower), its access policies and its IP allow-list (equal or narrower). `bound_user_id` cannot be a pseudo id. These rules apply on servers released after 2026-10-21; earlier servers cap only keys created in Settings.
+**Scopes follow a person's role.** A JWT caller gets the scopes their active role allows (a Guest is read-only). An API key acts for its creator *and* its bound user (`bound_user_id`), and every call keeps only the scopes both of them hold *now*: a demoted or departed creator or bound user narrows the key. On servers released after 2026-10-21 the same two people also bound what the key's embed role grants and `/v1` user-role changes may give: every permission must be held by both (before, by its bound user, else its creator).
+
+On servers released after 2026-10-21, creating a key is checked too:
+
+- A new key can't carry more than its creator and its bound user hold: `403 permission_denied`, reason `scope_exceeds_role`. The refused scopes are in the raw body, `err.body.detail.error.scopes`.
+- Only an Admin may bind a key to someone other than themselves: `403 permission_denied`, `permission: 'org.admin'`, `reason: 'role_denied'`. Binding a key to yourself is fine.
+- `bound_user_id` cannot be a pseudo id (`api_key:…`, `jwt:…`, `embed:…`, `public`, `embed-api`, the service account): `400 invalid_parameters`.
+- A key created with `client.keys.create()` (a key minting a key) keeps the minting key's creator and bound user — a bound key can only mint keys bound to the same user (else `400 invalid_parameters`) — and its workspace. Its sources must be equal or narrower, its access policies exactly the same set, and each IP allow-list entry inside one of the parent's IPs or CIDR ranges. It cannot expire after the parent and its `rate_limit_per_minute` is capped at the parent's.
+
+Earlier servers cap only keys created in Settings, and check embed role grants against the key's bound user (else its creator).
 
 #### `client.keys.retrieve(keyId)`
 
@@ -1457,11 +1476,11 @@ interface GetSessionResult {
   expires_in: number;       // Seconds until the token expires
   user_id: string;          // Querri internal user ID
   external_id: string | null;  // Your external ID for the user
-  role_id?: string | null;     // Applied Custom Role id, or null when no role was requested
+  role_id?: string | null;     // Applied Custom Role id, or null (no role requested, or the server ignored it)
 }
 ```
 
-`role_id` is always set by `getSession()` (`null` without `role`); the key is optional in the type so hand-built results passed to `asUser()` keep compiling. It can be a custom role id (`role_…`) or a built-in one such as `system:creator`.
+`role_id` is always set by `getSession()` (`null` without `role`, and also when a server too old to know Custom Roles ignored `role` — the session then runs as the user's own role, so check `role_id` when the role matters); the key is optional in the type so hand-built results passed to `asUser()` keep compiling. It can be a custom role id (`role_…`) or a built-in one such as `system:creator`.
 
 ### User Resolution
 
@@ -1489,7 +1508,7 @@ await client.getSession({
 });
 ```
 
-In both cases, if the user already exists, they are returned as-is (the profile fields are used at creation time).
+In both cases, if the user already exists, they are returned as-is (the profile fields are used at creation time). Creating a new user follows the [role guards](#users): on servers released after 2026-10-21 `getSession()` can throw `escalation_denied` (403) or `last_admin` (409) from this step.
 
 ### Access Policies
 
@@ -1542,9 +1561,9 @@ On subsequent calls with the same sources and filters, the SDK finds the existin
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `role` | `string` | `undefined` | Role id or key the session runs as. Omit (or pass `null` or `''`) to keep the user's own role. |
+| `role` | `string \| null` | `undefined` | Role id or key the session runs as. Omit (or pass `null` or `''`) to keep the user's own role. |
 
-`getSession()` forwards `role` to `embed.createSession()` only when it is a non-empty string and returns the applied `role_id`. The user is created/updated and their access policies applied before the session is requested, so if the role is refused those earlier steps have still happened. The rules and refusals are the same as [`client.embed.createSession`](#clientembedcreatesessionparams). Decide `role` on your server, never from the browser's request.
+`getSession()` forwards `role` to `embed.createSession()` only when it is a non-empty string and returns the applied `role_id` (check it when the role matters: `null` also means an older server ignored `role`). The user is created/updated and their access policies applied before the session is requested, so if the role is refused those earlier steps have still happened. The rules and refusals are the same as [`client.embed.createSession`](#clientembedcreatesessionparams). A granted role is **permanent**: it is added to the user's role assignment (later sessions and the Querri app see it), revoking the session does not remove it, and an admin removes it in Settings → People. Decide `role` on your server, never from the browser's request.
 
 ---
 
@@ -1803,7 +1822,7 @@ Every `/v1` error arrives as `{"detail": {"error": {type, code, message, doc_url
 
 ### Error codes
 
-`ERROR_CODES` (and the `ErrorCode` type) are exported from `@querri-inc/embed/server`, so you can compare without typos: `err.code === ERROR_CODES.ROLE_DISABLED`. They are the codes for authentication, access, Custom Roles and embed sessions; the API sends other codes too (e.g. `project_not_found`, `invalid_parameters`), so treat `code` as a string.
+`ERROR_CODES` (and the `ErrorCode` type) are exported from `@querri-inc/embed/server`, so you can compare without typos: `err.code === ERROR_CODES.ROLE_DISABLED`. They are the codes for authentication, access, Custom Roles, embed sessions and user changes, plus `invalid_parameters`; the API sends other codes too (e.g. `project_not_found`), so treat `code` as a string. `ERROR_CODES` is frozen. Extra fields a refusal carries (`scopes`, `missing`) are not copied onto the error; read them from the raw body, e.g. `err.body.detail.error.missing`.
 
 | Code | Status | Meaning |
 |---|---|---|
@@ -1812,13 +1831,16 @@ Every `/v1` error arrives as `{"detail": {"error": {type, code, message, doc_url
 | `invalid_jwt` | 401 | JWT could not be verified |
 | `invalid_embed_session` | 401 | Embed session token unknown or expired |
 | `missing_tenant_id` | 400 | The key needs an `X-Tenant-ID` (set `orgId`) |
+| `invalid_parameters` | 400 | A parameter is invalid (e.g. an unknown scope, a pseudo `bound_user_id`, or a key minted by a key that breaks its parent's limits) |
 | `ip_not_allowed` | 403 | Caller IP is not on the key's allowlist |
 | `org_scheduled_for_deletion` | 403 | The organization is being deleted |
 | `rate_limit_exceeded` | 429 | Too many requests; see `RateLimitError.retryAfter` |
 | `insufficient_scope` | 403 | The key lacks a scope the call needs (for `role`: `embed:role:assign`, to grant a role the user does not hold) |
 | `permission_denied` | 403 | The caller's role does not allow the action; see `permission` and `reason` |
+| `escalation_denied` | 403 | Creating, changing or deleting a user would give or remove permissions the caller lacks (listed in `err.body.detail.error.missing`) |
+| `last_admin` | 409 | The change would leave the organization without an Admin |
 | `role_not_found` | 404 | No role with that id or key in the organization |
-| `role_not_allowed` | 403 | Admin role, a role not on the embed allowlist, or one where the person the key acts for (its bound user, else its creator) doesn't hold every permission |
+| `role_not_allowed` | 403 | Admin role, a role not on the embed allowlist, or one granting a permission the key's people don't hold (servers released after 2026-10-21: its creator and its bound user must both hold it; before: its bound user, else its creator) |
 | `role_disabled` | 403 | The role is a draft; an admin must enable it |
 | `seat_change_required` | 403 | The role needs a creator seat; an admin must assign it in Settings |
 | `user_not_found` | 400 / 404 | `user_id` is not a user in this organization (400 on embed session creation, 404 on the users endpoints) |
@@ -1841,7 +1863,7 @@ Every `/v1` error arrives as `{"detail": {"error": {type, code, message, doc_url
 | `embed_disabled` | The action is not available inside an embed |
 | `dependency_unmet` | The permission needs another permission the role lacks |
 | `forbidden` | Refused for another reason |
-| `scope_exceeds_role` | Creating an API key with scopes its creator or bound user lacks (the refused `scopes` are listed) |
+| `scope_exceeds_role` | Creating an API key with scopes its creator or bound user lacks (the refused scopes are in `err.body.detail.error.scopes`) |
 
 The server may add reasons; the exported `PermissionDeniedReason` type lists these.
 
@@ -1976,10 +1998,12 @@ If you omit `resolveParams`, the handler reads the request body as `GetSessionPa
     {auth}
     startView="/dashboard/your-dashboard-uuid"
     on:ready={() => console.log('Loaded')}
-    on:error={(e) => console.error(e.detail)}
+    on:error={(e) => console.error(e.detail.code, e.detail.detail)}
   />
 </div>
 ```
+
+Svelte hands each payload over as the event's `detail`: in `on:error`, `e.detail` is the `QuerriErrorEvent` (`code`, `message`, …), so the error's own `detail` — the `{ status, code?, permission?, reason? }` of a refused `sessionEndpoint` request — is `e.detail.detail`. `QuerriErrorEvent`, `QuerriErrorDetail` and `QuerriErrorCode` are exported from `@querri-inc/embed/svelte`.
 
 #### How It Works
 
@@ -2164,37 +2188,53 @@ export default createSessionHandler();
 With custom param resolution:
 
 ```typescript
+// server/api/querri-session.post.ts
+import { createSessionHandler } from '@querri-inc/embed/server/nuxt';
+// Your own server-side auth, e.g. a lookup of the session cookie in `headers.cookie`.
+import { getCurrentUser } from '~/server/utils/auth';
+
 export default createSessionHandler({
-  resolveParams: async ({ body, headers }) => ({
-    user: { external_id: body.userId, email: body.email },
-  }),
+  // Who the user is comes from YOUR auth — never from the request body.
+  resolveParams: async ({ headers }) => {
+    const user = await getCurrentUser(headers);
+    return { user: { external_id: user.id, email: user.email } };
+  },
 });
 ```
 
-For developers who need more control, `defineQuerriSessionHandler` is the manual alternative -- you wrap it yourself with `defineEventHandler` and `readBody`:
+For developers who need more control, `defineQuerriSessionHandler` is the manual alternative -- you wrap it yourself with `defineEventHandler`, and can read the user your own auth middleware put on `event.context`:
 
 ```typescript
+// server/api/querri-session.post.ts
 import { defineQuerriSessionHandler } from '@querri-inc/embed/server/nuxt';
+import type { GetSessionParams } from '@querri-inc/embed/server';
+
+// Set by your auth middleware (e.g. server/middleware/auth.ts) — your app's shape.
+interface AppUser { id: string; email: string; tenantId: string }
 
 const handler = defineQuerriSessionHandler({
-  resolveParams: async ({ body, headers }) => ({
-    user: {
-      external_id: (body as any).userId,
-      email: (body as any).email,
-    },
-    access: {
-      sources: ['src_sales'],
-      filters: { tenant_id: (body as any).userId },
-    },
-  }),
+  // `body` is whatever the event handler passes below: here, the signed-in user.
+  resolveParams: async ({ body }): Promise<GetSessionParams> => {
+    const user = body as AppUser;
+    return {
+      user: { external_id: user.id, email: user.email },
+      access: {
+        sources: ['src_sales'],
+        filters: { tenant_id: user.tenantId },
+      },
+    };
+  },
 });
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const headers = getHeaders(event);
-  return handler({ body, headers });
+  const user = event.context.user as AppUser | undefined;
+  if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in first' });
+  // Pass the user from YOUR auth, never the request body.
+  return handler({ body: user, headers: getHeaders(event) });
 });
 ```
+
+Both handlers answer a Querri refusal with Querri's status and `{ error, code, permission?, reason?, doc_url? }` (as h3's error `data`). `defineQuerriSessionHandler` needs `h3` for that (pass `{ h3 }` if it can't be auto-imported); without it, it rethrows the `APIError`.
 
 #### Client Component: `pages/dashboard.vue`
 
@@ -2216,10 +2256,8 @@ import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const auth = {
   fetchSessionToken: async () => {
-    const res = await $fetch('/api/querri-session', {
-      method: 'POST',
-      body: { userId: 'usr_alice', email: 'alice@example.com' },
-    });
+    // No body: the server works out who is signed in from its own auth.
+    const res = await $fetch('/api/querri-session', { method: 'POST' });
     return res.session_token;
   },
 };
@@ -2233,7 +2271,7 @@ function onError(err) { console.error(err); }
 
 1. The Vue component calls `fetchSessionToken()` at mount time.
 2. Nuxt's `$fetch` sends a POST to `/api/querri-session`.
-3. `createSessionHandler` processes the body, resolves access, and returns a session token.
+3. `createSessionHandler` identifies the user from your server's auth, resolves access, and returns a session token.
 4. The token is passed to the embed iframe for authentication.
 
 #### Direct Client Access
@@ -2259,17 +2297,22 @@ import { createSessionHandler } from '@querri-inc/embed/server/express';
 const app = express();
 app.use(express.json());
 
+// Your own server-side auth: who is signed in on this request (for example
+// the user Passport put on `req.user`, or a lookup of your session cookie).
+import { getCurrentUser } from './auth';
+
 app.post('/api/querri-session', createSessionHandler({
   resolveParams: async (req) => {
-    // Extract user info from your auth middleware (e.g., req.headers.authorization)
+    // Identity, access and role come from YOUR auth — never from req.body.
+    const user = await getCurrentUser(req);
     return {
       user: {
-        external_id: req.body.userId,
-        email: req.body.email,
+        external_id: user.id,
+        email: user.email,
       },
       access: {
         sources: ['src_sales'],
-        filters: { tenant_id: req.body.userId },
+        filters: { tenant_id: user.tenantId },
       },
     };
   },
@@ -2311,11 +2354,8 @@ export class DashboardComponent {
   constructor(private http: HttpClient) {
     this.auth = {
       fetchSessionToken: async () => {
-        const res = await fetch('/api/querri-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 'usr_alice', email: 'alice@example.com' }),
-        });
+        // No body: the server identifies the user from its own auth.
+        const res = await fetch('/api/querri-session', { method: 'POST' });
         const data = await res.json();
         return data.session_token;
       },
@@ -2409,11 +2449,8 @@ import { QuerriEmbed } from '@querri-inc/embed/vue';
 
 const auth = {
   fetchSessionToken: async () => {
-    const res = await fetch('/api/querri-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'usr_alice', email: 'alice@example.com' }),
-    });
+    // No body: the server identifies the user from its own auth.
+    const res = await fetch('/api/querri-session', { method: 'POST' });
     const data = await res.json();
     return data.session_token;
   },

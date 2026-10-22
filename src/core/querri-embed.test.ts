@@ -1527,14 +1527,22 @@ describe('sessionEndpoint auth mode', () => {
     const errorCb = vi.fn();
     instance.on('error', errorCb);
 
-    await failAllAttempts();
+    // A 4xx refusal is not retried: one call, and the error at once.
+    sendMessage('ready');
+    await vi.advanceTimersByTimeAsync(0);
 
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(errorCb).toHaveBeenCalledTimes(1);
     const event = errorCb.mock.calls[0][0];
     expect(event.code).toBe('token_fetch_failed');
     expect(event.message).toContain('Session endpoint returned 403 (role_disabled)');
+    expect(event.message).not.toContain('attempts');
     expect(event.detail).toEqual({ status: 403, code: 'role_disabled' });
+
+    // ...and nothing is scheduled behind it.
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(errorCb).toHaveBeenCalledTimes(1);
 
     vi.unstubAllGlobals();
     instance.destroy();
@@ -1573,6 +1581,54 @@ describe('sessionEndpoint auth mode', () => {
     });
 
     vi.unstubAllGlobals();
+    instance.destroy();
+  });
+
+  it.each([408, 429, 500, 503])('retries a %i from the endpoint (3 attempts)', async (status) => {
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: 'try later', code: 'busy' }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { sessionEndpoint: '/api/querri-session' } as any,
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledTimes(1);
+    const event = errorCb.mock.calls[0][0];
+    expect(event.message).toContain('after 3 attempts');
+    expect(event.detail).toEqual({ status, code: 'busy' });
+
+    vi.unstubAllGlobals();
+    instance.destroy();
+  });
+
+  it('keeps retrying a custom fetchSessionToken whatever it throws', async () => {
+    const fetchSessionToken = vi.fn(() =>
+      Promise.reject(Object.assign(new Error('nope'), { detail: { status: 403 } })),
+    );
+    const instance = QuerriEmbed.create(container, {
+      serverUrl: SERVER_URL,
+      auth: { fetchSessionToken },
+    });
+    const errorCb = vi.fn();
+    instance.on('error', errorCb);
+
+    await failAllAttempts();
+
+    expect(fetchSessionToken).toHaveBeenCalledTimes(3);
+    expect(errorCb).toHaveBeenCalledTimes(1);
     instance.destroy();
   });
 

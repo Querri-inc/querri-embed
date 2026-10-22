@@ -54,7 +54,7 @@ export interface User {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  /** User role (e.g. `'viewer'`, `'editor'`, `'admin'`). */
+  /** Org role: `'admin'` or `'member'`. */
   role: string;
   /** Your external user ID, set via `getOrCreate()`. `null` for users created without one. */
   external_id: string | null;
@@ -106,7 +106,9 @@ export interface EmbedSession {
    * `role_…` or a built-in one such as `system:creator`). Present only when
    * a `role` was requested and applied (create), or the session carries one
    * (refresh). Servers released after 2026-10-21 also return it from
-   * refresh; earlier servers return it only from create.
+   * refresh; earlier servers return it only from create. A server too old to
+   * know Custom Roles ignores `role` and omits this, and the session runs as
+   * the user's own role — check `role_id` when the role matters.
    */
   role_id?: string;
 }
@@ -164,6 +166,10 @@ export interface CreateSessionParams {
    *
    * Errors: `role_not_found` (404); `role_not_allowed`, `role_disabled`,
    * `insufficient_scope`, `seat_change_required` (403).
+   *
+   * A granted role is PERMANENT: it is added to the user's role assignment,
+   * so later sessions and the Querri app see it too. Revoking the session
+   * does not remove it; an admin removes it in Settings → People.
    */
   role?: string | null;
 }
@@ -547,6 +553,12 @@ export interface ApiKeyCreateParams {
   expires_in_days?: number;
   source_scope?: Record<string, unknown>;
   access_policy_ids?: string[];
+  /**
+   * Querri user the key acts for. Only an Admin may bind a key to someone
+   * other than themselves (403 `permission_denied`, permission `org.admin`);
+   * pseudo ids (`api_key:…`, `jwt:…`, `embed:…`, `public`, `embed-api`) are
+   * refused (400 `invalid_parameters`). Servers released after 2026-10-21.
+   */
   bound_user_id?: string;
   rate_limit_per_minute?: number;
   ip_allowlist?: string[];
@@ -714,6 +726,10 @@ export interface GetSessionParams {
    * The user is created/updated and their access policies applied before
    * the session is requested, so if the role is refused those earlier steps
    * have still happened.
+   *
+   * A granted role is PERMANENT: it is added to the user's role assignment,
+   * so later sessions and the Querri app see it too. Revoking the session
+   * does not remove it; an admin removes it in Settings → People.
    */
   role?: string | null;
 }
@@ -725,8 +741,11 @@ export interface GetSessionResult {
   external_id: string | null;
   /**
    * Custom Roles: id of the role the session runs as, or `null` when no
-   * `role` was requested. Always set by `getSession()`; optional in the type
-   * so hand-built results passed to `asUser()` keep compiling.
+   * `role` was requested — or when a server too old to know Custom Roles
+   * ignored `role`, in which case the session runs as the user's own role.
+   * Check `role_id` when the role matters. Always set by `getSession()`;
+   * optional in the type so hand-built results passed to `asUser()` keep
+   * compiling.
    */
   role_id?: string | null;
 }

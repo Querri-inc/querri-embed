@@ -144,6 +144,82 @@ describe('APIError envelope parsing', () => {
     expect(err.code).toBeUndefined();
   });
 
+  it('reads the human `message` beside a code-shaped `error` string', () => {
+    const err = thrown(400, {
+      detail: { error: 'too_many_attachments', message: 'Human msg' },
+    });
+    expect(err.code).toBe('too_many_attachments');
+    expect(err.message).toBe('Human msg');
+  });
+
+  it('does not read a code from a top-level legacy `{error: string}` body', () => {
+    const err = thrown(403, { error: 'forbidden' });
+    expect(err.message).toBe('forbidden');
+    expect(err.code).toBeUndefined();
+  });
+
+  it('reads a code from the same flat string when it came wrapped in `detail`', () => {
+    const err = thrown(403, { detail: { error: 'forbidden' } });
+    expect(err.code).toBe('forbidden');
+  });
+
+  it('keeps a top-level string `error` over a string `detail` (as in 1.0.1)', () => {
+    const err = thrown(400, { error: 'x', detail: 'y' });
+    expect(err.message).toBe('x');
+    expect(err.code).toBeUndefined();
+  });
+
+  it('keeps a top-level error object over a string `detail`', () => {
+    const err = thrown(403, {
+      error: {
+        type: 'permission_error',
+        code: 'permission_denied',
+        message: 'No.',
+        doc_url: 'https://docs.querri.com/api/errors#permission_denied',
+      },
+      detail: 'd',
+    });
+    expect(err.code).toBe('permission_denied');
+    expect(err.type).toBe('permission_error');
+    expect(err.docUrl).toBe('https://docs.querri.com/api/errors#permission_denied');
+    expect(err.message).toBe('No.');
+  });
+
+  it('keeps a top-level error over a Pydantic-style list `detail`', () => {
+    const err = thrown(422, { error: 'bad_input', detail: [{ loc: ['body'], msg: 'x' }] });
+    expect(err.type).toBeUndefined();
+    expect(err.message).toBe('bad_input');
+  });
+
+  it('does not take the header permission for a refusal that is not permission_denied', () => {
+    const err = thrown(
+      403,
+      {
+        detail: {
+          error: {
+            type: 'permission_error',
+            code: 'escalation_denied',
+            message: 'You cannot grant permissions you lack.',
+            missing: ['dashboards.list.view'],
+          },
+        },
+      },
+      { 'x-permission-denied': 'dashboards.list.view' },
+    );
+    expect(err.code).toBe(ERROR_CODES.ESCALATION_DENIED);
+    expect(err.permission).toBeUndefined();
+    expect((err.body as any).detail.error.missing).toEqual(['dashboards.list.view']);
+  });
+
+  it('takes the header permission for a permission_denied code without a body permission', () => {
+    const err = thrown(
+      403,
+      { detail: { error: { code: 'permission_denied', message: 'No.' } } },
+      { 'x-permission-denied': 'org.admin' },
+    );
+    expect(err.permission).toBe('org.admin');
+  });
+
   it('reads an embed role error (403 role_disabled)', () => {
     const err = thrown(403, ROLE_DISABLED_BODY);
     expect(err).toBeInstanceOf(PermissionError);
@@ -262,9 +338,19 @@ describe('ERROR_CODES', () => {
         'origin_required',
         'origin_not_allowed',
         'rate_limit_exceeded',
+        'escalation_denied',
+        'last_admin',
+        'invalid_parameters',
       ]),
     );
-    expect(values).toHaveLength(23);
+    expect(values).toHaveLength(26);
+  });
+
+  it('is frozen', () => {
+    expect(Object.isFrozen(ERROR_CODES)).toBe(true);
+    expect(() => {
+      (ERROR_CODES as Record<string, string>).MISSING_API_KEY = 'changed';
+    }).toThrow(TypeError);
   });
 
   it('is exported from the server entry point', () => {

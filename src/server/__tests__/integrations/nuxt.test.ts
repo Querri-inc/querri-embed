@@ -48,6 +48,69 @@ describe('defineQuerriSessionHandler (Nuxt)', () => {
   });
 });
 
+describe('defineQuerriSessionHandler error handling (Nuxt)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const ROLE_DISABLED = {
+    detail: {
+      error: {
+        type: 'permission_error',
+        code: 'role_disabled',
+        message: 'That role is a draft; an admin must enable it first.',
+        doc_url: 'https://docs.querri.com/api/errors#role_disabled',
+      },
+    },
+  };
+
+  it('throws a refusal as an h3 error with Querri\'s status and the session error body', async () => {
+    mockGetSession.mockRejectedValue(new APIError(403, ROLE_DISABLED, new Headers()));
+    const createError = vi.fn().mockImplementation((opts: any) => {
+      const err = new Error(opts.statusMessage);
+      (err as any).statusCode = opts.statusCode;
+      (err as any).data = opts.data;
+      return err;
+    });
+    const h3 = { readBody: vi.fn(), getHeaders: vi.fn(), createError };
+
+    const handler = defineQuerriSessionHandler({ apiKey: 'qk_test', h3 });
+    const thrown = await handler({ body: {}, headers: {} }).catch((e) => e);
+
+    expect(thrown).not.toBeInstanceOf(APIError);
+    expect(thrown.statusCode).toBe(403);
+    expect(createError).toHaveBeenCalledTimes(1);
+    expect(createError.mock.calls[0][0]).toEqual({
+      statusCode: 403,
+      statusMessage: 'That role is a draft; an admin must enable it first.',
+      data: {
+        error: 'That role is a draft; an admin must enable it first.',
+        code: 'role_disabled',
+        doc_url: 'https://docs.querri.com/api/errors#role_disabled',
+      },
+    });
+  });
+
+  it('rethrows the APIError unchanged when h3 is not available', async () => {
+    const apiError = new APIError(403, ROLE_DISABLED, new Headers());
+    mockGetSession.mockRejectedValue(apiError);
+
+    const handler = defineQuerriSessionHandler({ apiKey: 'qk_test' });
+    await expect(handler({ body: {}, headers: {} })).rejects.toBe(apiError);
+  });
+
+  it('rethrows non-API errors unchanged', async () => {
+    const boom = new Error('boom');
+    mockGetSession.mockRejectedValue(boom);
+    const createError = vi.fn();
+    const h3 = { readBody: vi.fn(), getHeaders: vi.fn(), createError };
+
+    const handler = defineQuerriSessionHandler({ apiKey: 'qk_test', h3 });
+    await expect(handler({ body: {}, headers: {} })).rejects.toBe(boom);
+    expect(createError).not.toHaveBeenCalled();
+  });
+});
+
 describe('createSessionHandler (Nuxt)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

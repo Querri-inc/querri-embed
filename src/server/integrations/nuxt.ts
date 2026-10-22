@@ -38,6 +38,26 @@ export interface SessionHandlerOptions {
 
 type HandlerInput = { body: unknown; headers: Record<string, string | undefined> };
 
+/** `options.h3`, else the `h3` module Nuxt provides, else `undefined`. */
+async function loadH3(options: SessionHandlerOptions | undefined): Promise<H3Module | undefined> {
+  if (options?.h3) return options.h3;
+  try {
+    const h3ModuleName = 'h3';
+    return (await import(h3ModuleName)) as H3Module;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Querri's status and {@link sessionErrorBody} as an h3 error. */
+function toH3Error(h3: H3Module, err: APIError): Error {
+  return h3.createError({
+    statusCode: err.status,
+    statusMessage: err.message,
+    data: sessionErrorBody(err),
+  });
+}
+
 async function resolveSessionFor(
   client: Querri,
   input: HandlerInput,
@@ -59,6 +79,13 @@ async function resolveSessionFor(
  * Wrap it with Nuxt's `defineEventHandler` and `readBody`:
  *
  * h3's `defineEventHandler` auto-serializes the returned object as JSON.
+ *
+ * A Querri refusal (an `APIError`) is thrown as an h3 error carrying Querri's
+ * status and the same JSON body `createSessionHandler` answers with
+ * (`{ error, code, permission?, reason?, doc_url? }`), so
+ * `defineEventHandler` answers e.g. 403 with the code instead of a 500. This
+ * needs `h3` (pass `options.h3` if it can't be auto-imported); without it the
+ * `APIError` is rethrown unchanged.
  *
  * @example
  * ```ts
@@ -101,7 +128,15 @@ export function defineQuerriSessionHandler(options?: SessionHandlerOptions) {
       typeof input === 'object' && input !== null && 'body' in input
         ? (input as HandlerInput)
         : { body: input, headers: {} };
-    return resolveSessionFor(client, event, options);
+    try {
+      return await resolveSessionFor(client, event, options);
+    } catch (err) {
+      if (err instanceof APIError) {
+        const h3 = await loadH3(options);
+        if (h3) throw toH3Error(h3, err);
+      }
+      throw err;
+    }
   };
 }
 
@@ -135,18 +170,13 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
   let client: Querri | undefined;
 
   return async (event: unknown): Promise<GetSessionResult> => {
-    let h3: H3Module | undefined = options?.h3;
+    const h3 = await loadH3(options);
     if (!h3) {
-      try {
-        const h3ModuleName = 'h3';
-        h3 = (await import(h3ModuleName)) as H3Module;
-      } catch {
-        throw new Error(
-          'Could not import h3. If using a monorepo or file: link, pass ' +
-          '{ h3: await import("h3") } to createSessionHandler(), or use ' +
-          'defineQuerriSessionHandler() with manual readBody/getHeaders calls.',
-        );
-      }
+      throw new Error(
+        'Could not import h3. If using a monorepo or file: link, pass ' +
+        '{ h3: await import("h3") } to createSessionHandler(), or use ' +
+        'defineQuerriSessionHandler() with manual readBody/getHeaders calls.',
+      );
     }
 
     try {
@@ -155,13 +185,7 @@ export function createSessionHandler(options?: SessionHandlerOptions) {
       const headers = h3.getHeaders(event);
       return await resolveSessionFor(client, { body, headers }, options);
     } catch (err) {
-      if (err instanceof APIError) {
-        throw h3.createError({
-          statusCode: err.status,
-          statusMessage: err.message,
-          data: sessionErrorBody(err),
-        });
-      }
+      if (err instanceof APIError) throw toH3Error(h3, err);
       throw err;
     }
   };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, statSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { resolve } from 'path';
 
 const DIST = resolve(__dirname, '../../dist');
@@ -74,5 +74,27 @@ describe('Build outputs', () => {
 
   it.skipIf(!distExists)('dist/svelte/index.js exists and is non-empty', () => {
     expect(fileExists('svelte/index.js')).toBe(true);
+  });
+
+  // dist/svelte/index.d.ts is hand-written by scripts/build-svelte.js, so it
+  // can drift from src/svelte/index.ts — every type the source entry exports
+  // must be exported by the published declarations too.
+  it.skipIf(!distExists)('dist/svelte/index.d.ts exports every type src/svelte/index.ts does', () => {
+    const typeNames = (text: string) => {
+      const names = new Set<string>();
+      for (const block of text.matchAll(/export type \{([^}]*)\}/g)) {
+        for (const raw of block[1].split(',')) {
+          const name = raw.replace(/\/\/.*$/gm, '').trim();
+          if (name) names.add(name);
+        }
+      }
+      return names;
+    };
+    const src = typeNames(readFileSync(resolve(__dirname, '../svelte/index.ts'), 'utf-8'));
+    const dist = typeNames(readFileSync(distFile('svelte/index.d.ts'), 'utf-8'));
+    expect(src.size).toBeGreaterThan(0);
+    expect(src).toContain('QuerriErrorDetail');
+    expect(src).toContain('QuerriErrorCode');
+    expect([...src].filter((n) => !dist.has(n))).toEqual([]);
   });
 });
