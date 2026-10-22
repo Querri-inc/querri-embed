@@ -10,31 +10,36 @@ Prior to `1.0.0`, minor version bumps may contain breaking changes.
 ## [1.1.0] — Unreleased
 
 Custom Roles support, and the server SDK now reads the errors the API actually
-sends. Additive only.
+sends. Additive only, with one behaviour change in the browser build: a
+`sessionEndpoint` 4xx refusal is no longer retried (see Changed).
 
 ### Added
 - **Custom Roles on embed sessions.** `getSession({ role })` and
   `embed.createSession({ role })` take a role id or key the session runs as;
   the key is sent only when it is a non-empty string (`null` and `''` are not
-  sent). `getSession()` returns the applied `role_id`
-  (`null` when no role was requested); `EmbedSession`, `EmbedSessionListItem`
-  and the refresh response carry `role_id?` when the session has one. `role` is
-  distinct from `user.role`, the org role used when creating the user.
+  sent). `getSession()` returns the applied `role_id` (`null` when no role was
+  requested — or when a server too old to know Custom Roles ignored `role`, so
+  check `role_id` when the role matters); `EmbedSession`,
+  `EmbedSessionListItem` and the refresh response carry `role_id?` when the
+  session has one. `role` is distinct from `user.role`, the org role used when
+  creating the user. A grant is permanent: it adds the role to the user's role
+  assignment, and revoking the session does not remove it.
 - `APIError.permission` and `APIError.reason` for `403 permission_denied`
   refusals. `permission` falls back to the `X-Permission-Denied` header only
-  when it holds a permission key (contains a `.`); the server puts the error
-  code there when no single permission applies. The in-app flat body
-  `{detail: {error: 'permission_denied', permission, reason}}` reads its
-  `code` from the `error` string. New `PermissionDeniedReason` type
+  when it holds a permission key (contains a `.`) and the refusal's code is
+  `permission_denied` or absent; the server puts the error code there when no
+  single permission applies. New `PermissionDeniedReason` type
   (`role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`,
   `dependency_unmet`, `forbidden`, `scope_exceeds_role`).
-- `ERROR_CODES` and the `ErrorCode` type, exported from
-  `@querri-inc/embed/server`: the auth, permission, Custom Role and embed
-  session codes.
+- `ERROR_CODES` (frozen; literal types kept) and the `ErrorCode` type,
+  exported from `@querri-inc/embed/server`: the auth, permission, Custom Role,
+  embed session and user-change codes, including `escalation_denied` (403),
+  `last_admin` (409) and `invalid_parameters` (400).
 - Session handlers (`nextjs`, `sveltekit`, `react-router`, `nuxt`, `express` /
-  `angular`) answer a refusal with `{ error, code, permission, reason, doc_url }`
-  (keys that do not apply are omitted). The `SessionErrorBody` type is exported
-  from each integration entry point.
+  `angular`) answer a refusal with Querri's status and
+  `{ error, code, permission, reason, doc_url }` (keys that do not apply are
+  omitted). The `SessionErrorBody` type is exported from each integration
+  entry point.
 - Browser: in `sessionEndpoint` mode a failed endpoint response is reported on
   `token_fetch_failed` with `detail: { status, code?, permission?, reason? }`
   read from the endpoint's JSON, and the message names the code
@@ -45,34 +50,82 @@ sends. Additive only.
 - Typings: `QuerriErrorCode` gains `view_error` (a page inside the embed failed
   to render; `QuerriErrorEvent.status` carries its HTTP status) and
   `preview_escaped` (embed configurator only, `recoverable`).
-- Docs: error-code table, valid API-key scope names, `embed:role:assign`, and
-  how key scopes follow the key's creator and bound user. The refresh/list
-  `role_id` echo and the key-creation rules need a Querri server released
-  after 2026-10-21.
+- Docs: error-code table, valid API-key scope names, `embed:role:assign`
+  (included in `*`), and whom a key acts for: its scopes are what its creator
+  *and* its bound user both hold, and on servers released after 2026-10-21 so
+  are its embed role grants and `/v1` user-role changes (before: its bound
+  user, else its creator). The key-creation rules — capped by creator and
+  bound user (`scope_exceeds_role`), only an Admin binds a key to someone else,
+  no pseudo `bound_user_id`, and a key minted by a key keeping its parent's
+  creator, bound user, workspace, sources (equal or narrower), access policies
+  (the same set), IP allow-list (inside the parent's), expiry and rate-limit
+  cap. The `/v1` users role guards: `users.create()`, `update()`, `del()` and
+  `getOrCreate()` — and `getSession()` for a new user — can be refused with
+  `escalation_denied` (`missing` in the raw body) or `last_admin`. Where a
+  refusal lists `scopes` / `missing`, the docs say they are in
+  `err.body.detail.error`. The refresh/list `role_id` echo, the key-creation
+  rules and the user guards need a Querri server released after 2026-10-21.
+
+### Changed
+- Browser: in `sessionEndpoint` mode a 4xx answer other than 408 and 429 is
+  not retried. It is the host's (or Querri's) deliberate refusal — e.g.
+  `role_disabled` — and retrying re-ran the host's `getSession()` three times
+  for the same answer. `token_fetch_failed` now fires after the first answer,
+  with its `detail`. 408, 429, 5xx, network failures and every error from a
+  custom `fetchSessionToken` still get 3 attempts (retries after 1s and 2s).
 
 ### Fixed
 - **The server SDK never unwrapped FastAPI's `{"detail": …}` envelope**, so
   every real `/v1` error had `code`, `type` and `docUrl` undefined and the
   message "Request failed with status N". `APIError` now reads
-  `{detail: {error: …}}`, `{detail: {…}}` and `{detail: "text"}`; `body` stays
-  the raw wire body.
+  `{detail: {error: {…}}}`, `{detail: {…}}`, the flat
+  `{detail: {error: '<code>', message: '<text>'}}` (code from `error`, message
+  from `message`) and `{detail: "text"}`; `body` stays the raw wire body.
+  A string or list `detail` beside a top-level `error` is left alone, so
+  `{error: 'x', detail: 'y'}` still reads as in 1.0.1, and a code is taken from
+  a flat `error` string only inside `detail` — a top-level legacy
+  `{error: 'forbidden'}` is a message, not a code.
+- An `X-Permission-Denied` header no longer sets `APIError.permission` on a
+  refusal that is not `permission_denied` (e.g. `escalation_denied`).
 - `422` validation errors throw `ValidationError` (status 422) with a readable
   message (`Validation failed: body.ttl: Input should be greater than or equal
   to 900`) instead of a bare `APIError`.
+- Nuxt: `defineQuerriSessionHandler` rethrew the raw `APIError`, so wrapped in
+  `defineEventHandler` h3 answered 500 without the code. It now throws an h3
+  error with Querri's status and the same `SessionErrorBody` as
+  `createSessionHandler` (as `data`); its signature is unchanged. It needs `h3`
+  importable (or passed as `options.h3`); without it the `APIError` is
+  rethrown as before.
+- Svelte typings: the hand-written `@querri-inc/embed/svelte` declarations did
+  not export `QuerriErrorDetail` or `QuerriErrorCode` (nor several other types
+  the other entries export). They now export the same type list as
+  `src/svelte/index.ts`, checked by a build test.
 - Typings: `chrome.header.chartRenderer` (default `false`) and
   `chrome.dashboard.export` (default `true`). The runtime added the first and
   moved the second to phase 3 after 1.0.1; the vendored schema predated both,
   so a typed config setting either failed the excess-property check. The schema
   is byte-identical to the served one again.
+- Typings: `User.role` is documented as the org role, `'admin'` or `'member'`
+  (it said `'viewer'` / `'editor'` / `'admin'`).
 - Docs: the keys example used scope names that do not exist (`read:data`,
   `write:projects`); the README error table listed 7 of the 14 codes (it now
   lists all 16); the `timeout` row said the default was 15s (it is 30s);
-  `startView` now documents its `'/home'` default.
+  `startView` now documents its `'/home'` default; the README said
+  `token_fetch_failed` came "after 3 automatic retries" (it is 3 attempts:
+  2 retries, at 1s and 2s).
+- Docs: the Nuxt and Express / Angular session examples built `external_id`,
+  `email` and the tenant filter from the request body (`body.userId`), which
+  lets any visitor pick whom to embed as. They now take the user from the
+  server's own auth, and the browser examples POST without a body. The Nuxt
+  example is type-correct.
+- Docs: Svelte delivers the error event's payload as `e.detail`, so a
+  `sessionEndpoint` refusal's own detail is `e.detail.detail`.
 
 ### Note
-- The browser build changed (`sessionEndpoint` error detail). Your Querri
-  deployment serves its own copy at `/sdk/querri-embed.js`; it picks this up
-  when the deployment re-vendors 1.1.0.
+- The browser build changed (`sessionEndpoint` error detail, no retry on a 4xx
+  refusal). Your Querri deployment serves its own copy at
+  `/sdk/querri-embed.js`; it picks this up when the deployment re-vendors
+  1.1.0.
 
 ## [1.0.1] — 2026-09-28
 

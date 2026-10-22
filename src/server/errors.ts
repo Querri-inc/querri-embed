@@ -53,27 +53,37 @@ export class APITimeoutError extends APIConnectionError {
  *
  * Status-based classes stay the primary way to branch (`PermissionError`,
  * `NotFoundError`, …); the code tells you *which* 403 or 404 it was.
- * The API sends other codes too (e.g. `project_not_found`,
- * `invalid_parameters`), so treat `APIError.code` as a string and use these
- * constants for comparison, not exhaustiveness.
+ * The API sends other codes too (e.g. `project_not_found`), so treat
+ * `APIError.code` as a string and use these constants for comparison, not
+ * exhaustiveness.
  *
  * `USER_NOT_FOUND` is 400 on embed session creation and 404 on the users
- * endpoints. `ROLE_NOT_ALLOWED` means the person the key acts for (its bound
- * user, else its creator) doesn't hold every permission the role grants.
+ * endpoints. `ROLE_NOT_ALLOWED` means the role grants a permission the key's
+ * people don't hold: on servers released after 2026-10-21, both its creator
+ * and its bound user must hold it; before, its bound user (else its creator).
  */
-export const ERROR_CODES = {
-  // Authentication (401) and tenant resolution
+export const ERROR_CODES = Object.freeze({
+  // Authentication (401)
   MISSING_API_KEY: 'missing_api_key',
   INVALID_API_KEY: 'invalid_api_key',
-  MISSING_TENANT_ID: 'missing_tenant_id',
   INVALID_JWT: 'invalid_jwt',
   INVALID_EMBED_SESSION: 'invalid_embed_session',
+  // Tenant resolution (400, JWT callers without X-Tenant-ID)
+  MISSING_TENANT_ID: 'missing_tenant_id',
+  // Access refused before the request runs (403)
   IP_NOT_ALLOWED: 'ip_not_allowed',
   ORG_SCHEDULED_FOR_DELETION: 'org_scheduled_for_deletion',
+  // Rate limiting (429)
   RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
+  // Request validation (400)
+  INVALID_PARAMETERS: 'invalid_parameters',
   // Permissions (403)
   INSUFFICIENT_SCOPE: 'insufficient_scope',
   PERMISSION_DENIED: 'permission_denied',
+  // Users (403 / 409): changing a user would grant permissions the caller
+  // lacks (the body's `missing` lists them), or remove the last Admin
+  ESCALATION_DENIED: 'escalation_denied',
+  LAST_ADMIN: 'last_admin',
   // Custom Roles on embed sessions
   ROLE_NOT_FOUND: 'role_not_found',
   ROLE_NOT_ALLOWED: 'role_not_allowed',
@@ -89,7 +99,7 @@ export const ERROR_CODES = {
   SESSION_CREATION_FAILED: 'session_creation_failed',
   REFRESH_FAILED: 'refresh_failed',
   MEMBERSHIP_CHECK_FAILED: 'membership_check_failed',
-} as const;
+} as const);
 
 /** One of the `/v1` error codes in {@link ERROR_CODES}. */
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -105,7 +115,8 @@ export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
  * - `dependency_unmet` — the permission needs another the role lacks
  * - `forbidden` — refused for another reason
  * - `scope_exceeds_role` — creating an API key with scopes its creator or
- *   bound user lacks (the refused scopes are in the body's `scopes`)
+ *   bound user lacks (the refused scopes are in the raw body:
+ *   `err.body.detail.error.scopes`)
  */
 export type PermissionDeniedReason =
   | 'role_denied'
@@ -130,6 +141,7 @@ const CODE_SHAPE = /^[a-z][a-z0-9_]*$/;
  *   - `{"detail": [{loc, msg, type}, …]}` (Pydantic 422)          → a
  *     synthesized `{error: {type: 'validation_error', message}}`
  *   - `{"detail": "text"}`                                       → `{message}`
+ * A string or list `detail` beside a top-level `error` is left alone.
  * Anything else (already-flat `{error: …}` bodies, `null`, non-objects) is
  * returned unchanged.
  */
@@ -138,6 +150,16 @@ export function unwrapDetail(body: unknown): unknown {
   const b = body as Record<string, unknown>;
   if (!('detail' in b)) return body;
   const detail = b.detail;
+
+  // A body that already carries its own `error` (`{error: 'x', detail: 'y'}`,
+  // `{error: {code, …}, detail: 'd'}`) is read as-is: a string or list
+  // `detail` beside it is supplementary text, not the error.
+  if (typeof detail === 'string' || Array.isArray(detail)) {
+    const hasError =
+      (typeof b.error === 'string' && b.error !== '') ||
+      (!!b.error && typeof b.error === 'object' && !Array.isArray(b.error));
+    if (hasError) return body;
+  }
 
   if (typeof detail === 'string') return { message: detail };
 
@@ -201,6 +223,12 @@ export class APIError extends QuerriError {
     this.headers = headers;
     this.requestId = requestId ?? headers.get('x-request-id') ?? undefined;
 
+    // Did the error object come out of FastAPI's `{"detail": {...}}` wrapper?
+    const fromDetail =
+      !!body &&
+      typeof body === 'object' &&
+      normalized === (body as Record<string, unknown>).detail;
+
     let permission: string | undefined;
     if (normalized && typeof normalized === 'object') {
       const b = normalized as Record<string, unknown>;
@@ -210,13 +238,15 @@ export class APIError extends QuerriError {
           ? (b.error as Record<string, unknown>)
           : b;
       this.type = typeof errObj.type === 'string' ? errObj.type : undefined;
-      // The in-app flat shape `{error: 'permission_denied', permission, reason}`
-      // carries its code as the `error` string itself. Only a code-shaped
-      // string counts — some flat bodies put a human message in `error`.
+      // The in-app flat shape `{detail: {error: 'permission_denied', permission,
+      // reason}}` carries its code as the `error` string itself. Only a
+      // code-shaped string inside `detail` counts — some flat bodies put a
+      // human message in `error`, and a top-level legacy `{error: 'forbidden'}`
+      // is a message, not a code.
       this.code =
         typeof errObj.code === 'string'
           ? errObj.code
-          : typeof b.error === 'string' && CODE_SHAPE.test(b.error)
+          : fromDetail && typeof b.error === 'string' && CODE_SHAPE.test(b.error)
             ? b.error
             : undefined;
       this.docUrl =
@@ -231,16 +261,31 @@ export class APIError extends QuerriError {
     // The server sets `X-Permission-Denied` to the error code (e.g.
     // `permission_denied`) when no single permission applies. Permission keys
     // always contain a dot (`<area>.<object>.<verb>`, `org.admin`); error
-    // codes never do — so only a dotted header value is a permission.
+    // codes never do — so only a dotted header value is a permission. And it
+    // only describes a `permission_denied` refusal (or one with no code): it
+    // is not the permission of, say, an `escalation_denied`.
     const headerPermission = headers.get('x-permission-denied');
+    const headerApplies =
+      this.code === undefined || this.code === ERROR_CODES.PERMISSION_DENIED;
     this.permission =
       permission ??
-      (headerPermission && headerPermission.includes('.') ? headerPermission : undefined);
+      (headerApplies && headerPermission && headerPermission.includes('.')
+        ? headerPermission
+        : undefined);
   }
 
   private static makeMessage(status: number, body: unknown): string {
     if (body && typeof body === 'object') {
       const b = body as Record<string, unknown>;
+      // `{error: 'too_many_attachments', message: 'Human text'}`: the code
+      // is in `error`, the human text in `message`.
+      if (
+        typeof b.error === 'string' &&
+        CODE_SHAPE.test(b.error) &&
+        typeof b.message === 'string'
+      ) {
+        return b.message;
+      }
       if (typeof b.error === 'string') return b.error;
       if (typeof b.message === 'string') return b.message;
       if (b.error && typeof b.error === 'object') {

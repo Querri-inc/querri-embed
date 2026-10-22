@@ -309,6 +309,10 @@ export type QuerriErrorCode =
  * reason, doc_url }` (e.g. `code: 'role_disabled'` for a draft Custom Role).
  * The Nuxt handler's h3 error body nests them under `data`; that is read too.
  * Never set for an error thrown by a custom `fetchSessionToken`.
+ *
+ * A 4xx answer other than 408 and 429 is a deliberate refusal and is not
+ * retried: `token_fetch_failed` fires after the first request. 408, 429, 5xx
+ * and network failures get 3 attempts (retries after 1s and 2s).
  */
 export interface QuerriErrorDetail {
   /** HTTP status the session endpoint answered with. */

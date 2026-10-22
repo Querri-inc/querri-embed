@@ -58,9 +58,16 @@ interface QuerriLike {
  * 3. **Session creation** — calls `embed.createSession()` and returns the token.
  *    `params.role` (Custom Roles) is forwarded only when it is a non-empty
  *    string (`null` and `''` are not sent); the result's `role_id` is the
- *    applied role, or `null`. Steps 1 and 2 run first, so if the role is
- *    refused the user has still been created/updated and their policies
- *    applied.
+ *    applied role, or `null` (also when a server too old to know Custom
+ *    Roles ignored `role` — check `role_id` when the role matters). Steps 1
+ *    and 2 run first, so if the role is refused the user has still been
+ *    created/updated and their policies applied. A granted role is
+ *    PERMANENT: it is added to the user's role assignment (later sessions and
+ *    the Querri app see it); revoking the session does not remove it.
+ *
+ * On servers released after 2026-10-21, step 1 can be refused for a new user
+ * with 403 `escalation_denied` (the permissions the caller lacks are in
+ * `err.body.detail.error.missing`) or 409 `last_admin`.
  *
  * Decide `role` on your server from your own auth, never from the browser's
  * request.

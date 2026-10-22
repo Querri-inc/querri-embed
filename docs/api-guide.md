@@ -156,6 +156,8 @@ curl -X PUT https://app.querri.com/api/v1/users/external/usr_alice \
 
 > **Tip:** This endpoint is idempotent — calling it multiple times with the same external ID returns the same user. Existing users are **not** updated by this call; to change a user's profile or role, use `PATCH /api/v1/users/{id}`.
 
+> **Role guards (servers released after 2026-10-21):** creating a user here, and `POST /api/v1/users`, `PATCH /api/v1/users/{id}` and `DELETE /api/v1/users/{id}` (the SDK's `users.getOrCreate()`, `create()`, `update()`, `del()`, and `getSession()` for a new user), follow the People page's rules. A change that would give or remove permissions the caller does not hold is refused with `403` `escalation_denied`, and the permissions the caller lacks are listed in `detail.error.missing`; one that would leave the organization without an Admin is refused with `409` `last_admin`. For an API key, the caller's permissions are those both its creator and its bound user hold.
+
 ---
 
 ## Step 2: Create an Access Policy
@@ -309,9 +311,11 @@ Content-Type: application/json
 | `user_id` | string | Yes | — | The Querri user ID (from Step 1, **not** your external ID) |
 | `origin` | string | No | — | Domain where the embed will load. Used for origin validation. |
 | `ttl` | number | No | `3600` | Session lifetime in seconds (`900`–`86400`; outside that range is a `422`) |
-| `role` | string | No | — | **Custom Roles:** role id or key (max 100 characters) the session runs as. Omit to keep the user's own role. |
+| `role` | string \| null | No | — | **Custom Roles:** role id or key (max 100 characters) the session runs as. Omit (or send `null`) to keep the user's own role. |
 
-The key needs the `embed:session:create` scope. A `role` the user already holds is simply selected; granting one they do not hold also needs `embed:role:assign`, the role on the org's embed allowlist (Settings → Embed), and the person the key acts for (its bound user, else its creator) holding every permission in the role. Refusals: `role_not_found` (404); `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403).
+The key needs the `embed:session:create` scope. A `role` the user already holds is simply selected; granting one they do not hold also needs `embed:role:assign` (included in `*`), the role on the org's embed allowlist (Settings → Embed), and the people the key acts for holding every permission in the role — on servers released after 2026-10-21, both its creator and its bound user; before, its bound user (else its creator). Refusals: `role_not_found` (404); `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403).
+
+> **A grant is permanent.** It adds the role to the user's role assignment, so later sessions and the Querri app see it too. Revoking the session does not remove it; an admin removes it in Settings → People.
 
 > **Security:** decide `role` on your server from your own auth. Never take it from the browser's request. A role read from the page lets any visitor pick their own permissions.
 
@@ -328,7 +332,7 @@ The key needs the `embed:session:create` scope. A `role` the user already holds 
 }
 ```
 
-`role_id` is present only when a `role` was applied. It can be a custom role id (`role_…`) or a built-in one such as `system:creator`.
+`role_id` is present only when a `role` was applied. It can be a custom role id (`role_…`) or a built-in one such as `system:creator`. A server too old to know Custom Roles ignores `role`: the response has no `role_id` and the session runs as the user's own role, so check `role_id` when the role matters.
 
 ### curl
 
@@ -658,7 +662,8 @@ API errors return a JSON body wrapped in a `detail` key:
 | `detail.error.message` | Human-readable description |
 | `detail.error.doc_url` | Link to the code's documentation, when present |
 | `detail.error.permission` | `permission_denied` only: the permission key refused (also sent as the `X-Permission-Denied` header; when no single permission applies, that header carries the error code instead) |
-| `detail.error.reason` | `permission_denied` only: one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks; the refused `scopes` are listed); the server may add more |
+| `detail.error.reason` | `permission_denied` only: one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks; the refused scopes are in `detail.error.scopes`); the server may add more |
+| `detail.error.missing` | `escalation_denied` only: the permissions the caller lacks for the user change |
 
 A role-system refusal looks like this (`403`, header `X-Permission-Denied: dashboards.list.view`):
 
@@ -677,7 +682,9 @@ A role-system refusal looks like this (`403`, header `X-Permission-Denied: dashb
 }
 ```
 
-The codes for authentication, access, Custom Roles and embed sessions, with status and meaning, are in the [Server SDK reference](./server-sdk.md#error-codes). The API sends other codes too (e.g. `project_not_found`, `invalid_parameters`), so treat `code` as a string.
+The codes for authentication, access, Custom Roles, embed sessions and user changes (`escalation_denied` 403, `last_admin` 409), plus `invalid_parameters` (400), with status and meaning, are in the [Server SDK reference](./server-sdk.md#error-codes). The API sends other codes too (e.g. `project_not_found`), so treat `code` as a string.
+
+Some routes send a flatter body: `{"detail": {"error": "<code>", "message": "<human text>", …}}` (the code as a string, the text in `message`) or `{"detail": "<text>"}`. The server SDK reads all three shapes.
 
 Request validation errors (e.g., missing required fields) use a different format:
 
@@ -703,9 +710,9 @@ Every response includes an `x-request-id` header you can reference when contacti
 | `204` | Success (no content) | — |
 | `400` | Validation error — check your request body | No |
 | `401` | Authentication failed — check your API key | No |
-| `403` | Forbidden — the key lacks a scope (`insufficient_scope`), the caller's role lacks a permission (`permission_denied`), or a session `role` was refused (`role_*`, `seat_change_required`) | No |
+| `403` | Forbidden — the key lacks a scope (`insufficient_scope`), the caller's role lacks a permission (`permission_denied`), a session `role` was refused (`role_*`, `seat_change_required`), or a user change was refused (`escalation_denied`) | No |
 | `404` | Resource not found (including `role_not_found`) | No |
-| `409` | Conflict — resource already exists | No |
+| `409` | Conflict — resource already exists, or a user change would remove the last Admin (`last_admin`) | No |
 | `422` | Request validation failed (`detail` is a list of field errors) | No |
 | `429` | Rate limited | Yes — respect the `Retry-After` header |
 | `500+` | Server error | Yes (idempotent methods only) |

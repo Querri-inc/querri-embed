@@ -175,7 +175,7 @@ auth: {
 }
 ```
 
-The SDK POSTs to this URL and extracts `session_token` from the JSON response automatically (with retry).
+The SDK POSTs to this URL and extracts `session_token` from the JSON response automatically. A failed request is tried 3 times in all (retries after 1s and 2s); a 4xx answer other than 408 and 429 is a deliberate refusal (e.g. `role_disabled`) and is not retried — `token_fetch_failed` fires at once with its `detail`.
 
 For full control over the request, use a callback instead:
 
@@ -261,7 +261,7 @@ instance.on('navigation', ({ type, path }) => {
 | `invalid_auth` | Auth config is invalid |
 | `invalid_share_key` | The share key is not valid for this organization, or has expired |
 | `invalid_start_view` | `startView` is not a relative path starting with `/` |
-| `token_fetch_failed` | `fetchSessionToken` callback (or `sessionEndpoint` request) failed after 3 automatic retries. In `sessionEndpoint` mode an error response adds `detail: { status, code?, permission?, reason? }` read from the endpoint's JSON. |
+| `token_fetch_failed` | `fetchSessionToken` callback (or `sessionEndpoint` request) failed after 3 attempts (retries after 1s and 2s). In `sessionEndpoint` mode an error response adds `detail: { status, code?, permission?, reason? }` read from the endpoint's JSON, and a 4xx other than 408/429 is not retried (the event fires after the first answer). |
 | `token_fetch_exhausted` | The token was refetched 3 cycles in a row without the embed accepting it; the SDK stops retrying |
 | `popup_blocked` | Browser blocked the login popup |
 | `auth_failed` | Authentication failed after popup login |
@@ -351,6 +351,12 @@ Access the underlying instance via template ref:
 
 Events: `on:ready`, `on:error`, `on:session-expired`, `on:navigation`
 
+Svelte delivers each payload as the event's `detail`: in `on:error`, `e.detail` is the `QuerriErrorEvent` (`e.detail.code`, `e.detail.message`), and the error's own `detail` (e.g. a `sessionEndpoint` refusal) is `e.detail.detail`. The types are exported from `@querri-inc/embed/svelte` (`QuerriErrorEvent`, `QuerriErrorDetail`, `QuerriErrorCode`, …).
+
+```svelte
+<QuerriEmbed on:error={(e) => console.log(e.detail.code, e.detail.detail)} ... />
+```
+
 Access the underlying instance via `bind:this`:
 
 ```svelte
@@ -426,7 +432,7 @@ If you omit `resolveParams`, the handler creates an anonymous session.
 
 ### Custom Roles
 
-Return a `role` (role id or key) from `resolveParams`, or pass it to `getSession()`, to run the embed session as that Custom Role. The result carries the applied `role_id` (`null` when no role was requested):
+Return a `role` (role id or key) from `resolveParams`, or pass it to `getSession()`, to run the embed session as that Custom Role. The result carries the applied `role_id` — `null` when no role was requested, and also when the server is too old to know Custom Roles (it ignores `role` and the session runs as the user's own role), so check `role_id` when the role matters:
 
 ```typescript
 const session = await client.getSession({ user: 'ext_alice', role: 'analyst' });
@@ -435,11 +441,17 @@ session.role_id; // 'role_…' (custom role) or a built-in id such as 'system:cr
 
 `role` is sent only when it is a non-empty string; `null` and `''` mean no role. The user is created/updated and their access policies applied before the session is requested, so if the role is refused those earlier steps have still happened.
 
-`role` is different from `user.role`, which is the user's org role (`admin` / `member`) used when the user is first created. A role the user already holds is simply selected; granting one they do not hold needs a key with the `embed:role:assign` scope and the role on the org's embed allowlist (Settings → Embed). Calls made through `client.asUser(session)` are subject to the session's role. See [docs/server-sdk.md](docs/server-sdk.md#custom-role-role).
+`role` is different from `user.role`, which is the user's org role (`admin` / `member`) used when the user is first created. A role the user already holds is simply selected; granting one they do not hold needs a key with the `embed:role:assign` scope (included in `*`), the role on the org's embed allowlist (Settings → Embed), and the people the key acts for must hold every permission the role grants — on servers released after 2026-10-21, both the key's creator and its bound user; before, its bound user (else its creator). Otherwise the grant is refused with `role_not_allowed`.
+
+**A grant is permanent:** it adds the role to the user's role assignment, so later sessions and the Querri app see it too. Revoking the session does not remove it; an admin removes it in Settings → People.
+
+Calls made through `client.asUser(session)` are subject to the session's role. See [docs/server-sdk.md](docs/server-sdk.md#custom-role-role).
 
 ### Errors
 
-API failures throw a subclass of `APIError` (`AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError`, …) carrying the server's `code`, `message`, `docUrl` and `requestId`. A role-system refusal is a `PermissionError` with `code: 'permission_denied'` plus `permission` and `reason`. `reason` is one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks); the server may add more (type: `PermissionDeniedReason`). Compare codes with the exported `ERROR_CODES` — the codes for authentication, access, Custom Roles and embed sessions; the API sends other codes too (e.g. `project_not_found`, `invalid_parameters`), so treat `code` as a string:
+API failures throw a subclass of `APIError` (`AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError`, …) carrying the server's `code`, `message`, `docUrl` and `requestId`. A role-system refusal is a `PermissionError` with `code: 'permission_denied'` plus `permission` and `reason`. `reason` is one of `role_denied`, `not_in_plan`, `flag_off`, `embed_disabled`, `dependency_unmet`, `forbidden` or `scope_exceeds_role` (creating an API key with scopes its creator or bound user lacks); the server may add more (type: `PermissionDeniedReason`). Compare codes with the exported (frozen) `ERROR_CODES` — the codes for authentication, access, Custom Roles, embed sessions and user changes, plus `invalid_parameters`; the API sends other codes too (e.g. `project_not_found`), so treat `code` as a string. Extra fields a refusal lists stay in the raw body: the refused scopes of a `scope_exceeds_role` are `err.body.detail.error.scopes`.
+
+On servers released after 2026-10-21, `users.create()`, `users.update()`, `users.del()` and `users.getOrCreate()` — and so `getSession()` for a new user — can be refused with 403 `escalation_denied` (the change would grant permissions the caller lacks; they are listed in `err.body.detail.error.missing`) or 409 `last_admin` (it would remove the organization's last Admin):
 
 ```typescript
 import { PermissionError, ERROR_CODES } from '@querri-inc/embed/server';
@@ -546,7 +558,7 @@ The login popup requires a user gesture (e.g., a button click). Browsers block p
 
 ### `token_fetch_failed`
 
-Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 automatic retries (1s, 2s backoff). Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
+Your `fetchSessionToken` callback (or `sessionEndpoint` fetch) failed after 3 attempts (retries after 1s and 2s). In `sessionEndpoint` mode a 4xx answer other than 408 and 429 is not retried: the event fires after the first answer. Verify that your server endpoint returns `{ session_token: "..." }` as JSON and is reachable.
 
 In `sessionEndpoint` mode, when your endpoint answers with an error status the event carries `detail`: the status plus the `code`, `permission` and `reason` from its JSON (the server SDK's handlers send these; for the Nuxt handler they are read from h3's `data`). For example a draft Custom Role reports:
 

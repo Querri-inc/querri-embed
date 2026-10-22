@@ -82,17 +82,30 @@ export declare class QuerriEmbed extends SvelteComponent<QuerriEmbedProps> {
 
 export default QuerriEmbed;
 
+// Keep in step with src/svelte/index.ts (the types the other entries export).
 export type {
+  QuerriEmbedOptions,
   QuerriAuth,
   QuerriShareKeyAuth,
   QuerriTokenAuth,
+  QuerriSessionEndpointAuth,
   QuerriChromeConfig,
+  QuerriThemeConfig,
+  QuerriPrivacyConfig,
+  QuerriUpdateConfig,
   QuerriInstance,
-  QuerriEmbedOptions,
   QuerriEventType,
   QuerriEventCallback,
+  QuerriErrorCode,
   QuerriErrorEvent,
+  QuerriErrorDetail,
   QuerriNavigationEvent,
+  QuerriConfigAppliedEvent,
+  QuerriResizeEvent,
+  QuerriChatEvent,
+  QuerriRecoveredEvent,
+  SendPromptOptions,
+  SendPromptResult,
 } from '../core/index.js';
 `
 );

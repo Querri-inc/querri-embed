@@ -390,6 +390,19 @@ QuerriInstance.prototype._handleFetchToken = function () {
       });
     }).catch(function (err) {
       if (self._destroyed) return;
+      // A session endpoint's 4xx is the host's (or Querri's) deliberate
+      // answer -- e.g. 403 role_disabled -- and asking again re-runs the
+      // host's getSession() for the same refusal. Only 408 and 429 are worth
+      // retrying; 5xx and network errors still are.
+      var status = err && err._querriSessionEndpoint && err.detail ? err.detail.status : 0;
+      if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        self._fetchInFlight = false;
+        self._emitError('token_fetch_failed',
+          'Failed to fetch session token: ' + (err.message || 'Unknown error'),
+          err.detail
+        );
+        return;
+      }
       if (attempt < maxRetries) {
         var delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s
         self._retryTimer = setTimeout(function () {
