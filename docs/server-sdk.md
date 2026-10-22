@@ -342,6 +342,8 @@ The role must be enabled and not Admin. A role the user already holds is simply 
 
 The refusals are `role_not_found` (404) and `role_not_allowed`, `role_disabled`, `insufficient_scope`, `seat_change_required` (403). See [Error codes](#error-codes).
 
+On servers released after 2026-10-21 a key also can't open a session as someone who holds more than the key's people (its creator and its bound user), for example an Admin from a key a Creator made: `PermissionError` with `code` `'escalation_denied'` (with or without `role`).
+
 > **Security:** Decide `role` on your server from your own auth. Never take it from the browser's request.
 
 #### `client.embed.refreshSession(sessionToken)`
