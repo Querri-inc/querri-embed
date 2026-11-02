@@ -16,7 +16,7 @@ interface QuerriLike {
   users: {
     getOrCreate(
       externalId: string,
-      params?: { email?: string; first_name?: string; last_name?: string; role?: string },
+      params?: { email?: string; first_name?: string; last_name?: string; role?: string; role_id?: string },
     ): Promise<{ id: string; external_id: string | null }>;
   };
   policies: {

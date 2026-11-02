@@ -252,7 +252,7 @@ update(userId: string, params: UserUpdateParams): Promise<User>
 const updated = await client.users.update('user_abc123', { role: 'admin' });
 ```
 
-`role` is the org role, `'admin'` or `'member'` (any other value is a `422`). You can only give or remove a role whose permissions you hold yourself, and the organization must keep an Admin: otherwise the call throws `PermissionError` with `code` `'escalation_denied'` (`err.body.detail.error.missing` lists the permissions you lack), or `ConflictError` with `'last_admin'` (servers released after 2026-10-21; `create()`, `del()` and `getOrCreate()` follow the same rules — see [Users](#users)).
+`role` is the org role: `'admin'`, `'member'` (a creator seat) or `'guest'` (no seat; servers released after 2026-11-02). `role_id` gives a Custom Role (id or key) instead, and the seat follows that role, so a role based on Guest takes no seat; a `role` that disagrees with it is a `422` `role_conflict`. On a plan whose creator seats are all in use, `'member'` is a `409` `seat_limit_reached`, so create embed end users as `'guest'` or with a Guest-based `role_id`. You can only give or remove a role whose permissions you hold yourself, and the organization must keep an Admin: otherwise the call throws `PermissionError` with `code` `'escalation_denied'` (`err.body.detail.error.missing` lists the permissions you lack), or `ConflictError` with `'last_admin'` (servers released after 2026-10-21; `create()`, `del()` and `getOrCreate()` follow the same rules — see [Users](#users)).
 
 #### `client.users.del(userId)`
 
@@ -274,7 +274,7 @@ Look up a user by external ID, creating them if they do not exist. This is an up
 ```typescript
 getOrCreate(
   externalId: string,
-  params?: { email?: string; first_name?: string; last_name?: string; role?: string },
+  params?: { email?: string; first_name?: string; last_name?: string; role?: string; role_id?: string },
 ): Promise<User>
 ```
 

@@ -50,6 +50,20 @@ describe('getSession', () => {
     expect(result.session_token).toBe('tok_session');
   });
 
+  it('object user forwards role and role_id to getOrCreate', async () => {
+    const client = makeMockClient();
+
+    await getSession(client, {
+      user: { external_id: 'ext_3', email: 'v@example.com', role: 'guest', role_id: 'embed-viewer' },
+    });
+
+    expect(client.users.getOrCreate).toHaveBeenCalledWith('ext_3', {
+      email: 'v@example.com',
+      role: 'guest',
+      role_id: 'embed-viewer',
+    });
+  });
+
   it('object user calls getOrCreate with params', async () => {
     const client = makeMockClient();
 

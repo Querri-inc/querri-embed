@@ -102,4 +102,17 @@ describe('UsersResource', () => {
     expect(url).toContain('/api/v1/users/external/ext_1');
     expect(opts.method).toBe('PUT');
   });
+
+  it('getOrCreate() sends role guest and a Custom Role role_id in the body', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ id: 'u4', email: 'g@b.com', role: 'guest', role_id: 'role_abc', external_id: 'ext_g', first_name: null, last_name: null, created_at: null }),
+    );
+
+    const client = makeClient();
+    const user = await client.users.getOrCreate('ext_g', { email: 'g@b.com', role: 'guest', role_id: 'embed-viewer' });
+
+    expect(user.role_id).toBe('role_abc');
+    const [, opts] = mockFetch.mock.calls[0];
+    expect(JSON.parse(opts.body)).toEqual({ email: 'g@b.com', role: 'guest', role_id: 'embed-viewer' });
+  });
 });

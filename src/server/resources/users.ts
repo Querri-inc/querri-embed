@@ -43,7 +43,8 @@ export class UsersResource extends BaseResource {
       email?: string;
       first_name?: string;
       last_name?: string;
-      role?: string;
+      role?: UserCreateParams['role'];
+      role_id?: string;
     },
   ): Promise<User> {
     return this._put<User>(`/users/external/${externalId}`, params);
