@@ -33,15 +33,17 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      # npm trusted publishing (OIDC): no NPM_TOKEN. Needs Node >= 22.14 and
+      # npm >= 11.5.1, and a trusted publisher on npmjs.com naming this repo
+      # and the workflow file `ci.yml`. Provenance is attached automatically.
+      # No `registry-url`: it writes an .npmrc that expects NODE_AUTH_TOKEN.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
+          node-version: 22
+      - run: npm install -g npm@^11.5.1
       - run: npm ci
       - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
