@@ -5,6 +5,9 @@ import type {
   ShareRevokeResponse,
   OrgShareSourceParams,
   OrgShareSourceResponse,
+  WorkspaceShare,
+  WorkspaceShareParams,
+  WorkspaceShareTarget,
 } from '../types.js';
 
 export class SharingResource extends BaseResource {
@@ -76,4 +79,38 @@ export class SharingResource extends BaseResource {
       params,
     );
   }
+
+  /**
+   * Workspaces a resource is shared to. `resourceType` is passed through to the
+   * server (known: source, connector, project, dashboard, site; collection once
+   * supported); an unsupported type surfaces the server's 4xx message.
+   */
+  async listWorkspaceShares(target: WorkspaceShareTarget): Promise<WorkspaceShare[]> {
+    const res = await this._get<{ data: WorkspaceShare[] }>('/sharing/workspace', {
+      resource_type: target.resourceType,
+      resource_id: target.resourceId,
+    });
+    return res.data;
+  }
+
+  shareToWorkspace(params: WorkspaceShareParams): Promise<unknown> {
+    return this._post<unknown>('/sharing/workspace', toBody(params));
+  }
+
+  unshareFromWorkspace(params: WorkspaceShareParams): Promise<unknown> {
+    return this._client.request<unknown>({
+      method: 'DELETE',
+      path: '/sharing/workspace',
+      body: toBody(params),
+    });
+  }
+}
+
+function toBody(p: WorkspaceShareParams) {
+  return {
+    resource_type: p.resourceType,
+    resource_id: p.resourceId,
+    workspace_id: p.workspaceId,
+    relation: p.relation,
+  };
 }

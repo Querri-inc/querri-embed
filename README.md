@@ -518,7 +518,26 @@ const projects = await userClient.projects.list(); // FGA-filtered
 
 ### Available Resources
 
-The client exposes these resource namespaces: `users`, `embed`, `policies`, `projects`, `chats`, `dashboards`, `data`, `files`, `sources`, `keys`, `sharing`, `audit`, `usage`.
+The client exposes these resource namespaces: `users`, `embed`, `policies`, `projects`, `chats`, `dashboards`, `data`, `files`, `sources`, `keys`, `sharing`, `audit`, `usage`, `workspaces`, `settings`, `flags`, `library`.
+
+#### Workspaces, flags and the Library
+
+```ts
+const client = new Querri({ apiKey, workspaceId: 'ws_123' }); // sends X-Querri-Workspace on every request
+
+await client.workspaces.list();               // CursorPage<Workspace>
+await client.workspaces.members('ws_123');
+await client.settings.getContext();
+await client.flags.list();                    // { flag_key: value }
+
+// resourceType is passed through (source, connector, project, dashboard, site, ...)
+await client.sharing.shareToWorkspace({ resourceType: 'source', resourceId: 's1', workspaceId: 'ws_123', relation: 'viewer' });
+await client.sharing.listWorkspaceShares({ resourceType: 'source', resourceId: 's1' });
+
+const fact = await client.library.createFact({ libraryId, statement: '...', workspaceId: 'ws_123' });
+fact.warnings; // e.g. targets_not_visible
+await client.library.moveNode(nodeId, 'ws_456');
+```
 
 ### Full Reference
 

@@ -24,6 +24,7 @@ export interface RequestOptions {
 export class HttpClient {
   private readonly apiKey: string | undefined;
   private readonly orgId: string | undefined;
+  private readonly workspaceId: string | undefined;
   private readonly sessionToken: string | undefined;
   private readonly baseUrl: string;
   private readonly origin: string;
@@ -41,12 +42,14 @@ export class HttpClient {
       // that excludes session minting and dashboard writes.
       this.sessionToken = config.sessionToken;
       this.apiKey = undefined;
+      this.workspaceId = undefined;
       this.orgId = undefined;
       this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
     } else {
       this.sessionToken = undefined;
       this.apiKey = config.apiKey;
       this.orgId = config.orgId;
+      this.workspaceId = config.workspaceId;
       this.baseUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
     }
 
@@ -182,6 +185,9 @@ export class HttpClient {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
       if (this.orgId) {
         headers['X-Tenant-ID'] = this.orgId;
+      }
+      if (this.workspaceId) {
+        headers['X-Querri-Workspace'] = this.workspaceId;
       }
     }
 
