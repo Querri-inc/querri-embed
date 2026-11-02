@@ -102,6 +102,20 @@ export type {
   GetSessionInlineAccess,
   GetSessionPolicyAccess,
   GetSessionResult,
+  Workspace,
+  WorkspaceKind,
+  WorkspaceMember,
+  SettingsContext,
+  FlagMap,
+  WorkspaceShareTarget,
+  WorkspaceShareParams,
+  WorkspaceShare,
+  LibraryNode,
+  LibraryFact,
+  LibraryWarning,
+  LibraryListNodesParams,
+  LibraryListFactsParams,
+  LibraryCreateFactParams,
 } from './types.js';
 
 // Pagination
@@ -124,3 +138,7 @@ export { KeysResource } from './resources/keys.js';
 export { SharingResource } from './resources/sharing.js';
 export { AuditResource } from './resources/audit.js';
 export { UsageResource } from './resources/usage.js';
+export { WorkspacesResource } from './resources/workspaces.js';
+export { SettingsResource } from './resources/settings.js';
+export { FlagsResource } from './resources/flags.js';
+export { LibraryResource } from './resources/library.js';

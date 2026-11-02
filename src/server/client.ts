@@ -17,6 +17,10 @@ import { KeysResource } from './resources/keys.js';
 import { SharingResource } from './resources/sharing.js';
 import { AuditResource } from './resources/audit.js';
 import { UsageResource } from './resources/usage.js';
+import { WorkspacesResource } from './resources/workspaces.js';
+import { SettingsResource } from './resources/settings.js';
+import { FlagsResource } from './resources/flags.js';
+import { LibraryResource } from './resources/library.js';
 
 export class Querri {
   private readonly _httpClient: HttpClient;
@@ -38,6 +42,10 @@ export class Querri {
   private _sharing?: SharingResource;
   private _audit?: AuditResource;
   private _usage?: UsageResource;
+  private _workspaces?: WorkspacesResource;
+  private _settings?: SettingsResource;
+  private _flags?: FlagsResource;
+  private _library?: LibraryResource;
 
   constructor(config: QuerriConfig | string) {
     const resolved: QuerriConfig =
@@ -116,6 +124,22 @@ export class Querri {
 
   get usage(): UsageResource {
     return (this._usage ??= new UsageResource(this._httpClient));
+  }
+
+  get workspaces(): WorkspacesResource {
+    return (this._workspaces ??= new WorkspacesResource(this._httpClient));
+  }
+
+  get settings(): SettingsResource {
+    return (this._settings ??= new SettingsResource(this._httpClient));
+  }
+
+  get flags(): FlagsResource {
+    return (this._flags ??= new FlagsResource(this._httpClient));
+  }
+
+  get library(): LibraryResource {
+    return (this._library ??= new LibraryResource(this._httpClient));
   }
 
   /**

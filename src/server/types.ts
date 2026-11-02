@@ -16,6 +16,11 @@ export interface QuerriConfig {
   maxRetries?: number;
   /** Custom `fetch` implementation (e.g. for testing or proxies). */
   fetch?: typeof globalThis.fetch;
+  /**
+   * Workspace to home new content in. Sent as `X-Querri-Workspace` on every
+   * request (same header the web app's workspace switcher sends).
+   */
+  workspaceId?: string;
 }
 
 /** Configuration for a session-scoped client created via `asUser()`. */
@@ -748,4 +753,110 @@ export interface GetSessionResult {
    * compiling.
    */
   role_id?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Workspaces, settings, flags
+// ---------------------------------------------------------------------------
+
+/** `personal` | `named` | `company` (as the server's workspace model names them). */
+export type WorkspaceKind = 'personal' | 'named' | 'company' | (string & {});
+
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  kind: WorkspaceKind;
+  member_count: number;
+}
+
+export interface WorkspaceMember {
+  user_id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+/** The document the app's `GET /api/settings/context` returns. */
+export type SettingsContext = Record<string, unknown>;
+
+/** Decided flag values for the caller's org, keyed by flag key. */
+export type FlagMap = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+// Workspace sharing
+// ---------------------------------------------------------------------------
+
+export interface WorkspaceShareTarget {
+  /**
+   * Resource type as accepted by the server (e.g. `source`, `connector`,
+   * `project`, `dashboard`, `site`; `collection` once supported). Passed
+   * through unchanged; the server's 4xx message is surfaced for unknown types.
+   */
+  resourceType: string;
+  resourceId: string;
+}
+
+export interface WorkspaceShareParams extends WorkspaceShareTarget {
+  workspaceId: string;
+  relation: string;
+}
+
+export interface WorkspaceShare {
+  workspace_id: string;
+  relation: string;
+}
+
+// ---------------------------------------------------------------------------
+// Library
+// ---------------------------------------------------------------------------
+
+export interface LibraryNode {
+  id: string;
+  node_kind?: string;
+  name?: string;
+  workspace_id?: string | null;
+  /** View nodes only: state of the backing view source. */
+  build?: { status: string; row_count: number | null };
+  /** View nodes only: workspaces the view is shared to. */
+  shared_to?: WorkspaceShare[];
+  [key: string]: unknown;
+}
+
+export interface LibraryListNodesParams {
+  libraryId: string;
+  nodeKind: string;
+  workspaceId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface LibraryListFactsParams {
+  libraryId: string;
+  workspaceId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface LibraryCreateFactParams {
+  libraryId: string;
+  statement: string;
+  factKind?: string;
+  sourceNodeIds?: string[];
+  evidenceRefs?: string[];
+  confidence?: number;
+  name?: string;
+  /** Home workspace; overrides the client's `workspaceId`. */
+  workspaceId?: string;
+}
+
+export interface LibraryWarning {
+  code: string;
+  node_ids?: string[];
+  message: string;
+}
+
+export interface LibraryFact extends LibraryNode {
+  /** Non-fatal issues, e.g. `targets_not_visible`. */
+  warnings?: LibraryWarning[];
 }
