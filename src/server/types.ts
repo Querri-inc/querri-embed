@@ -826,9 +826,9 @@ export interface LibraryNode {
 export interface LibraryListNodesParams {
   libraryId: string;
   nodeKind: string;
-  workspaceId?: string;
   limit?: number;
-  cursor?: string;
+  /** Starting offset (default 0). */
+  offset?: number;
 }
 
 export interface LibraryListFactsParams {
