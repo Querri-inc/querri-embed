@@ -54,8 +54,10 @@ export interface User {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  /** Org role: `'admin'` or `'member'`. */
+  /** Org role: `'admin'`, `'member'` or `'guest'`. */
   role: string;
+  /** Custom Roles: the role the user was given with `role_id`, when one was sent. */
+  role_id?: string;
   /** Your external user ID, set via `getOrCreate()`. `null` for users created without one. */
   external_id: string | null;
   /** ISO 8601 timestamp. `null` for legacy users created before tracking was added. */
@@ -69,11 +71,35 @@ export interface UserCreateParams {
   external_id?: string;
   first_name?: string;
   last_name?: string;
-  role?: string;
+  /**
+   * Org role: `'admin'`, `'member'` (a creator seat) or `'guest'` (no seat).
+   * Embed end users usually want `'guest'`: on a plan whose creator seats are
+   * all in use, `'member'` is refused with `seat_limit_reached` (409).
+   */
+  role?: 'admin' | 'member' | 'guest' | (string & {});
+  /**
+   * Custom Roles: a role id (`role_…`) or key the user holds, in place of the
+   * org role. The seat follows the role, so a role based on Guest takes no
+   * creator seat. Sending a `role` that disagrees is a 422 `role_conflict`.
+   * Needs a Querri server released after 2026-11-02.
+   */
+  role_id?: string;
 }
 
 export interface UserUpdateParams {
-  role?: string;
+  /**
+   * Org role: `'admin'`, `'member'` (a creator seat) or `'guest'` (no seat).
+   * Embed end users usually want `'guest'`: on a plan whose creator seats are
+   * all in use, `'member'` is refused with `seat_limit_reached` (409).
+   */
+  role?: 'admin' | 'member' | 'guest' | (string & {});
+  /**
+   * Custom Roles: a role id (`role_…`) or key the user holds, in place of the
+   * org role. The seat follows the role, so a role based on Guest takes no
+   * creator seat. Sending a `role` that disagrees is a 422 `role_conflict`.
+   * Needs a Querri server released after 2026-11-02.
+   */
+  role_id?: string;
   first_name?: string;
   last_name?: string;
 }
@@ -666,7 +692,20 @@ export interface GetSessionUserParams {
   email?: string;
   first_name?: string;
   last_name?: string;
-  role?: string;
+  /**
+   * Org role: `'admin'`, `'member'` (a creator seat) or `'guest'` (no seat).
+   * Embed end users usually want `'guest'`: on a plan whose creator seats are
+   * all in use, `'member'` is refused with `seat_limit_reached` (409).
+   */
+  role?: 'admin' | 'member' | 'guest' | (string & {});
+  /**
+   * Custom Roles: a role id (`role_…`) or key the user holds, in place of the
+   * org role. Applied only when the user is created (`getOrCreate` never
+   * updates an existing user; use `users.update()`). The seat follows the role, so a role based on Guest takes no
+   * creator seat. Sending a `role` that disagrees is a 422 `role_conflict`.
+   * Needs a Querri server released after 2026-11-02.
+   */
+  role_id?: string;
 }
 
 export interface GetSessionInlineAccess {
